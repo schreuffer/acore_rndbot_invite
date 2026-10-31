@@ -4,6 +4,21 @@ The production worldserver was not stopped, replaced or reconfigured during deve
 manual deployment commands for a maintenance window after explicit operator approval. They are not
 executed by tests, packaging, or CI. Authserver is unaffected.
 
+## Guided local deployment
+
+For the currently verified `acore` baseline, the operator can run:
+
+```sh
+sudo bash /home/karsten/acore_rndbot_invite/scripts/deploy-local.sh --deploy
+```
+
+This requires entering the sudo password in the operator's own server terminal. The script verifies
+artifact and baseline hashes, checks runtime libraries, backs up the server/configuration, requests a
+graceful shutdown, atomically replaces the binary/configuration, and starts the worldserver as `karsten`.
+It does not force-kill a server that fails to stop and does not restart authserver. Startup-process failure
+triggers restoration of the backup. A running process still requires full startup and in-game checks.
+The script intentionally refuses other installed baselines. The manual procedure below remains available.
+
 ## Verify the candidate
 
 ```sh
