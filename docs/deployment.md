@@ -9,6 +9,7 @@ executed by tests, packaging, or CI. Authserver is unaffected.
 ```sh
 cd /home/karsten/acore_rndbot_invite
 sha256sum -c dist/SHA256SUMS
+mkdir -p /home/karsten/random-bot-release
 gzip -dc dist/worldserver-linux-x86_64.gz > /home/karsten/random-bot-release/worldserver.to-install
 chmod 0755 /home/karsten/random-bot-release/worldserver.to-install
 ldd /home/karsten/random-bot-release/worldserver.to-install
