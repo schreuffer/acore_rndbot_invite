@@ -139,9 +139,19 @@ index 0000000..055241f
 +    return true
 +end
 diff --git a/MultiBot.toc b/MultiBot.toc
-index 8f5eeda..6569ffb 100644
+index 8f5eeda..3e575f4 100644
 --- a/MultiBot.toc
 +++ b/MultiBot.toc
+@@ -19,8 +19,8 @@ Libs\AceDB-3.0\AceDB-3.0.lua
+ Libs\AceLocale-3.0\AceLocale-3.0.lua
+ Libs\AceTimer-3.0\AceTimer-3.0.lua
+ Libs\AceGUI-3.0\AceGUI-3.0.xml
+-Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
+ Libs\libdatabroker-1-1\LibDataBroker-1.1.lua
++Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
+ Libs\LibDropdown-1.0\LibDropdown-1.0.lua
+ 
+ 
 @@ -98,6 +98,8 @@ UI\MultiBotFormationUI.lua
  UI\MultiBotFleeUI.lua
  UI\MultiBotUnitsFilterUI.lua
@@ -555,6 +565,36 @@ index 0000000..30b9cae
 +Tests fake native WoW APIs. They validate real capability/message dispatch and actual browser handlers,
 +including native invite calls, roster refresh and event/request cleanup, but cannot prove live in-game
 +acceptance or visual layout on every screen configuration.
+diff --git a/tests/library_load_order_test.lua b/tests/library_load_order_test.lua
+new file mode 100644
+index 0000000..728aa50
+--- /dev/null
++++ b/tests/library_load_order_test.lua
+@@ -0,0 +1,24 @@
++-- Load the real minimap-library dependency chain in TOC order, with no other addon preloading it.
++strmatch = string.match
++CreateFrame = function()
++    return { SetScript = function() end, RegisterEvent = function() end }
++end
++local required = {
++    ["Libs/LibStub/LibStub.lua"] = true,
++    ["Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua"] = true,
++    ["Libs/libdatabroker-1-1/LibDataBroker-1.1.lua"] = true,
++    ["Libs/LibDBIcon-1.0/LibDBIcon-1.0.lua"] = true,
++}
++local count = 0
++for line in io.lines("MultiBot.toc") do
++    local path = string.gsub(line, "\\", "/")
++    path = string.gsub(path, "\r$", "")
++    if required[path] then
++        assert(loadfile(path))()
++        count = count + 1
++    end
++end
++assert(count == 4, "Missing minimap library in TOC")
++assert(LibStub("LibDataBroker-1.1"))
++assert(LibStub("LibDBIcon-1.0"))
++print("PASS: real minimap libraries load in TOC order without other addons")
 diff --git a/tests/random_bot_directory_test.lua b/tests/random_bot_directory_test.lua
 new file mode 100644
 index 0000000..cd37e21

@@ -5,7 +5,7 @@
   "bridge_base": "9f0e8ba767c65f7959a615f70e61ec0980266780",
   "bridge_tested": "518da78beb943e969e0554e4530cd3046e46ef8a",
   "addon_base": "020210ba849c972903128c8db37e150d076cf2a0",
-  "addon_tested": "8ec03a637a3ec26ffe358a063fd4aa5f58949ecd",
+  "addon_tested": "885619cfbf0985ec59842dc26f411b5f4b8589f7",
   "questie_bridge": "9a24fd652c1d658f87a057703298848baec26bae",
   "branch": "feature/random-bot-directory",
   "build_type": "Release",

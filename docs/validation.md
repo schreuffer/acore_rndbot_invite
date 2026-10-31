@@ -85,3 +85,12 @@ state during and after invitations/timeouts, numeric-field backdrop setup, and o
 pagination is shown/hidden. Native invitation acceptance is operator-confirmed for the deployed baseline;
 visual rendering of these latest client fixes remains to be checked in the actual Windows client.
 No server code, server binary or runtime configuration changed for this follow-up.
+
+## Login library-order regression
+
+A clean minimap-library load reproduced the operator's exact login error:
+`LibDBIcon-1.0 requires LibDataBroker-1.1.` The TOC loaded LibDBIcon before its LibDataBroker dependency.
+The order is corrected. The new `tests/library_load_order_test.lua` executes the real LibStub,
+CallbackHandler, LibDataBroker and LibDBIcon files in their actual TOC order without any other addon
+preloading a dependency. This test failed before the fix and passes afterward, and is included in CI.
+The fix changes only the addon load order; no server restart or SavedVariables changes are required.

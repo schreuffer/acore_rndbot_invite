@@ -10,3 +10,6 @@ cd MultiBot
 "${LUAC:-luac5.1}" -p Core/MultiBotComm.lua Features/MultiBotRandomBotDirectory.lua \
   UI/MultiBotRandomBotDirectoryUI.lua UI/MultiBotUnitsRootUI.lua tests/random_bot_directory_test.lua
 "${LUA:-lua5.1}" tests/random_bot_directory_test.lua
+
+"${LUAC:-luac5.1}" -p tests/library_load_order_test.lua
+"${LUA:-lua5.1}" tests/library_load_order_test.lua

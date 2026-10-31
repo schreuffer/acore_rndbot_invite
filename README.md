@@ -36,7 +36,7 @@ core or module versions differ.
 | AzerothCore Playerbot | `93333d6a9` | unchanged |
 | mod-playerbots | `05a1f6fc` | unchanged |
 | mod-multibot-bridge | `9f0e8ba` | `518da78` |
-| MultiBot Chatless | `020210ba` | `8ec03a6` |
+| MultiBot Chatless | `020210ba` | `885619c` |
 | mod-questie-bridge | `9a24fd65` | unchanged |
 
 Full hashes are in `versions.json`. Component feature commits are local commits in their respective
