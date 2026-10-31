@@ -102,6 +102,16 @@ Frame.__index = function(_, key)
     if string.match(key, "^[A-Z]") then return function() end end
 end
 function Frame:SetScript(event, fn) self.scripts[event] = fn end
+function Frame:HookScript(event, fn)
+    local previous = self.scripts[event]
+    self.scripts[event] = function(...) if previous then previous(...) end; fn(...) end
+end
+function Frame:Enable() self.enabled = true end
+function Frame:Disable() self.enabled = false end
+function Frame:IsEnabled() return self.enabled ~= false end
+function Frame:SetBackdrop(value) self.backdrop = value end
+function Frame:SetBackdropColor(...) self.backdropColor = {...} end
+function Frame:SetTextInsets(...) self.insets = {...} end
 function Frame:CreateFontString() return setmetatable({ scripts={} }, Frame) end
 function Frame:CreateTexture() return setmetatable({ scripts={} }, Frame) end
 function Frame:SetText(value) self.text = tostring(value) end
@@ -134,19 +144,26 @@ now = now + 3.1
 MultiBot.ToggleRandomBotDirectory()
 local window=frames.MultiBotRandomBotBrowser
 assert(window:IsShown() and D.pending)
+assert(window.invite:IsShown() and not window.invite:IsEnabled())
+for _, field in ipairs({window.low, window.high}) do
+    assert(field.backdrop.bgFile == "Interface\\ChatFrame\\ChatFrameBackground")
+    assert(field.backdropColor[4] == 0.9 and field.insets[1] == 6)
+end
 token = D.pending.token
-rx("RBD_BEGIN", token .. "~0~1~1~ONLINE_ONLY")
+rx("RBD_BEGIN", token .. "~0~2~2~ONLINE_ONLY")
 rx("RBD_ENTRY", entry(token))
-rx("RBD_END", token .. "~0~1~1~ONLINE_ONLY")
+rx("RBD_ENTRY", entry(token, 2, "Otherpriest"))
+rx("RBD_END", token .. "~0~2~2~ONLINE_ONLY")
 local row
 for _, b in ipairs(buttons) do if b.data then row=b; break end end
 assert(row and row.data.name == "Priest")
 row.scripts.OnClick(row)
 local invite
 for _, b in ipairs(buttons) do if b.text=="Invite" then invite=b end end
-assert(invite and invite:IsShown())
+assert(invite and invite:IsShown() and invite:IsEnabled())
 invite.scripts.OnClick()
-assert(invited=="Priest" and not invite:IsShown())
+assert(invited=="Priest" and invite:IsShown() and not invite:IsEnabled())
+assert(row.data.reason == "PENDING_INVITE")
 window.scripts.OnEvent(window,"CHAT_MSG_SYSTEM","Priest is already in a group.")
 assert(string.find(window.status.text,"Priest",1,true))
 GetNumPartyMembers = function() return 1 end
@@ -155,6 +172,26 @@ local sends=#sent
 window.scripts.OnEvent(window,"PARTY_MEMBERS_CHANGED")
 assert(#sent==sends+1 and sent[#sent][2]=="GET~ROSTER")
 assert(string.find(window.status.text,"joined",1,true))
+assert(invite:IsShown() and not invite:IsEnabled() and row.data.reason == "IN_YOUR_GROUP")
+local sendsAfterJoin = #sent
+local other = window.rows[2]
+other.scripts.OnClick(other)
+assert(invite:IsShown() and invite:IsEnabled() and #sent == sendsAfterJoin)
+invite.scripts.OnClick()
+assert(invited == "Otherpriest" and invite:IsShown() and not invite:IsEnabled())
+timers[#timers][2]()
+assert(other.data.reason == "STATUS_UNKNOWN" and invite:IsShown() and not invite:IsEnabled())
+-- The opener fills the vacant pagination slot and moves only when pagination becomes visible.
+local browse = setmetatable({scripts={}, events={}, shown=false}, Frame)
+local opener = {}
+opener.setPoint = function(x, y) opener.x, opener.y = x, y end
+local control = { buttons = { Browse = browse }, addButton = function() return opener end }
+MultiBot.BuildRandomBotDirectoryControl(control)
+assert(opener.y == 180)
+browse:Show()
+assert(opener.y == 210)
+browse:Hide()
+assert(opener.y == 180)
 window:Hide()
 assert(not next(window.events) and not D.pending)
 now=now+3.1

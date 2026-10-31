@@ -69,3 +69,19 @@ Addon: `README.md`, `MultiBot.toc`, `Core/MultiBotComm.lua`, `UI/MultiBotUnitsRo
 `tests/random_bot_directory_test.lua`, `docs/random-bot-directory.md`.
 
 No core or mod-playerbots source, SQL, live configuration, accounts or Windows installation was changed.
+
+## Operator feedback and addon UI follow-up
+
+The operator installed the verified server candidate and confirmed successful in-game native invitations.
+The first client screenshot exposed three UI issues: Invite disappeared after inviting, narrow numeric
+inputs had incomplete backgrounds, and the menu opener left an unnecessary empty slot when roster
+pagination was hidden. The follow-up keeps Invite visible with enabled/pending/disabled states, marks
+confirmed joins in the current result rows, uses sized edit-box backdrops, and positions the opener
+according to pagination visibility. Column headers now align with row cells; sort directions use ASCII
+ASC/DESC instead of unsupported arrow glyphs.
+
+Lua 5.1 regression tests cover inviting a second row without another query, button visibility/enabled
+state during and after invitations/timeouts, numeric-field backdrop setup, and opener placement as
+pagination is shown/hidden. Native invitation acceptance is operator-confirmed for the deployed baseline;
+visual rendering of these latest client fixes remains to be checked in the actual Windows client.
+No server code, server binary or runtime configuration changed for this follow-up.

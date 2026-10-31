@@ -8,7 +8,9 @@ Enter a name substring, choose class/faction/status/eligibility, and set a level
 **My level ±5** fills the range and searches immediately. **Search / Refresh** applies the current filters
 and returns to page 1. Filter changes otherwise take effect on the next explicit search.
 Click Name, Level or Class to sort; clicking the same key reverses direction. Each server page has at most
-25 rows. Select a row to see its invitation reason; eligible rows expose **Invite**. The native WoW/Playerbots
+25 rows. Select a row to see its invitation reason. **Invite** stays visible and is enabled for eligible selections.
+While an invitation is pending it is disabled; after joining, select another row to invite the next bot
+without searching again. The native WoW/Playerbots
 invitation mechanism checks current rules again. No bots are created or logged in by this feature.
 
 Online/group/master flags and zone come from live server state. V1 has no offline catalogue; the offline

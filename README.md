@@ -8,8 +8,9 @@ No new accounts, characters, database or group system. Existing MultiBot rosters
 in place. The new feature, code comments and documentation are English; upstream translations are retained.
 
 **Status:** real Playerbot-core worldserver build passed, isolated server and Lua 5.1 tests passed.
-Not deployed to the production server. Live in-game invitation, visual layout and existing-feature
-regression acceptance are still required. V1 contains online bots only; offline catalogue/login and
+The server candidate has been deployed by the operator and native bot invitation has been confirmed
+in-game. The latest addon UI fixes still require visual verification in the Windows client; broader
+existing-feature regression acceptance remains open. V1 contains online bots only; offline catalogue/login and
 reliable role classification are not implemented. Unknown roles are explicitly marked.
 
 ## Downloads and layout
@@ -35,7 +36,7 @@ core or module versions differ.
 | AzerothCore Playerbot | `93333d6a9` | unchanged |
 | mod-playerbots | `05a1f6fc` | unchanged |
 | mod-multibot-bridge | `9f0e8ba` | `518da78` |
-| MultiBot Chatless | `020210ba` | `611074b` |
+| MultiBot Chatless | `020210ba` | `8ec03a6` |
 | mod-questie-bridge | `9a24fd65` | unchanged |
 
 Full hashes are in `versions.json`. Component feature commits are local commits in their respective

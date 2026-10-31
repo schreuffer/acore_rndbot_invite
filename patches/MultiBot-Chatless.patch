@@ -165,10 +165,10 @@ index 517bb8e..1504146 100644
 +See [RandomBot browser](docs/random-bot-directory.md) for the additional Units → RandomBots window.
 diff --git a/UI/MultiBotRandomBotDirectoryUI.lua b/UI/MultiBotRandomBotDirectoryUI.lua
 new file mode 100644
-index 0000000..4caa594
+index 0000000..d46f2a1
 --- /dev/null
 +++ b/UI/MultiBotRandomBotDirectoryUI.lua
-@@ -0,0 +1,285 @@
+@@ -0,0 +1,325 @@
 +local MultiBot = _G.MultiBot
 +if not MultiBot then return end
 +local D = MultiBot.RandomBotDirectory
@@ -185,6 +185,7 @@ index 0000000..4caa594
 +    LOW_LEVEL = "Your level is too low", GEARSCORE = "Gear score too low",
 +    BATTLEGROUND = "In battleground", BG_QUEUE = "In battleground queue",
 +    PENDING_INVITE = "Invitation pending",
++    STATUS_UNKNOWN = "Invitation not confirmed. Refresh to check current status.",
 +    DISABLED = "Disabled by server: RandomBotDirectory.Enable",
 +    UNAVAILABLE = "Bridge/capability unavailable",
 +    DISCONNECTED = "Disconnected", BAD_RESPONSE = "Invalid server response",
@@ -217,7 +218,16 @@ index 0000000..4caa594
 +end
 +local function edit(parent, title, x, y, width, maxLength, numeric)
 +    label(parent, title, x, y, width)
-+    local f = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
++    -- Plain EditBox with a sized backdrop: the legacy template's center texture
++    -- does not reliably stretch to narrow numeric fields in the 3.3.5 client.
++    local f = CreateFrame("EditBox", nil, parent)
++    f:SetFontObject("GameFontHighlightSmall")
++    f:SetTextInsets(6, 6, 0, 0)
++    f:SetBackdrop({ bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
++        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 10,
++        insets = { left = 2, right = 2, top = 2, bottom = 2 } })
++    f:SetBackdropColor(0, 0, 0, 0.9)
++    f:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
 +    f:SetPoint("TOPLEFT", x + 5, y - 18)
 +    f:SetWidth(width - 10)
 +    f:SetHeight(20)
@@ -278,7 +288,13 @@ index 0000000..4caa594
 +        result.page + 1, math.max(1, math.ceil(result.total / 25)), result.total))
 +    if D.pending or result.page == 0 then window.previous:Disable() else window.previous:Enable() end
 +    if D.pending or (result.page + 1) * 25 >= result.total then window.next:Disable() else window.next:Enable() end
-+    if selected and selected.reason == "OK" and not D.pending and not invitation then window.invite:Show() else window.invite:Hide() end
++    window.invite:Show()
++    window.invite:SetText(invitation and "Inviting..." or "Invite")
++    if selected and selected.reason == "OK" and not D.pending and not invitation then
++        window.invite:Enable()
++    else
++        window.invite:Disable()
++    end
 +    if selected then window.detail:SetText((reasons[selected.reason] or selected.reason) .. " · Role: unknown")
 +    else window.detail:SetText("Select a bot. Roles unknown; directory contains online bots only.") end
 +end
@@ -316,16 +332,17 @@ index 0000000..4caa594
 +local function inviteSelected()
 +    if not selected or selected.reason ~= "OK" or invitation or D.pending then return end
 +    if InCombatLockdown() then setStatus("Please invite out of combat."); return end
-+    local pending = { name = selected.name }
++    local pending = { name = selected.name, row = selected }
 +    invitation = pending
++    pending.row.reason = "PENDING_INVITE"
 +    setStatus("Invitation sent to " .. pending.name)
 +    InviteUnit(pending.name) -- Native CMSG_GROUP_INVITE; Playerbots owns acceptance/master/follow.
 +    render()
 +    MultiBot.TimerAfter(20, function()
 +        if invitation ~= pending then return end
 +        invitation = nil
++        pending.row.reason = "STATUS_UNKNOWN"
 +        setStatus("No join confirmed after 20 s. Refresh status.")
-+        selected = nil
 +        render()
 +    end)
 +end
@@ -335,7 +352,12 @@ index 0000000..4caa594
 +    if event == "PARTY_MEMBERS_CHANGED" or event == "RAID_ROSTER_UPDATE" then
 +        if inGroup(invitation.name) then
 +            local name = invitation.name
-+            invitation, selected = nil, nil
++            invitation.row.grouped = true
++            invitation.row.reason = "IN_YOUR_GROUP"
++            for _, row in ipairs(result.rows) do
++                if row.name == name then row.grouped, row.reason = true, "IN_YOUR_GROUP" end
++            end
++            invitation = nil
 +            MultiBot.Comm.RequestRoster()
 +            setStatus(name .. " joined. Normal MultiBot roster refreshed.")
 +            render()
@@ -389,15 +411,18 @@ index 0000000..4caa594
 +    label(w, "Sort:", 20, -143, 75)
 +    local function sortBy(key)
 +        if query.sort == key then query.descending = not query.descending else query.sort, query.descending = key, false end
-+        w.sortDirection:SetText(query.sort .. (query.descending and " ↓" or " ↑"))
++        w.sortDirection:SetText(query.sort .. (query.descending and " DESC" or " ASC"))
 +        refresh(0)
 +    end
-+    button(w, "Name ↕", 90, -136, 100, function() sortBy("NAME") end)
-+    button(w, "Level ↕", 195, -136, 100, function() sortBy("LEVEL") end)
-+    button(w, "Class ↕", 300, -136, 100, function() sortBy("CLASS") end)
-+    w.sortDirection = label(w, "NAME ↑", 415, -143, 150)
++    button(w, "Name", 90, -136, 100, function() sortBy("NAME") end)
++    button(w, "Level", 195, -136, 100, function() sortBy("LEVEL") end)
++    button(w, "Class", 300, -136, 100, function() sortBy("CLASS") end)
++    w.sortDirection = label(w, "NAME ASC", 415, -143, 150)
 +    label(w, "Role: unknown (no role filter)", 580, -143, 240)
-+    label(w, "Name                   Level   Class                  Race            Faction        Zone                        Status", 20, -165, 800)
++    -- Match each heading to its row field rather than spacing proportional text.
++    local columns = { { "Name", 20, 145 }, { "Level", 168, 40 }, { "Class", 213, 120 },
++        { "Race", 338, 95 }, { "Faction", 438, 80 }, { "Zone", 523, 150 }, { "Status", 678, 135 } }
++    for _, column in ipairs(columns) do label(w, column[1], column[2], -165, column[3]) end
 +    w.rows = {}
 +    for i = 1, 25 do
 +        local row = CreateFrame("Button", nil, w)
@@ -454,25 +479,39 @@ index 0000000..4caa594
 +    if not window then createWindow() end
 +    if window:IsShown() then window:Hide() else window:Show() end
 +end
++
++function MultiBot.BuildRandomBotDirectoryControl(control)
++    local opener = control.addButton("RandomBots", 0, 180, "INV_Misc_GroupLooking", "RandomBots")
++    opener.doLeft = function() MultiBot.ToggleRandomBotDirectory() end
++    local browse = control.buttons and control.buttons.Browse
++    local function placeOpener()
++        -- Use the free slot when roster pagination is hidden; avoid overlapping it otherwise.
++        opener.setPoint(0, browse and browse:IsShown() and 210 or 180)
++    end
++    if browse then
++        browse:HookScript("OnShow", placeOpener)
++        browse:HookScript("OnHide", placeOpener)
++    end
++    placeOpener()
++end
 diff --git a/UI/MultiBotUnitsRootUI.lua b/UI/MultiBotUnitsRootUI.lua
-index 8e9969c..ba82377 100644
+index 8e9969c..ba21661 100644
 --- a/UI/MultiBotUnitsRootUI.lua
 +++ b/UI/MultiBotUnitsRootUI.lua
-@@ -2529,6 +2529,8 @@ function MultiBot.InitializeUnitsRootUI(tMultiBar)
+@@ -2529,6 +2529,7 @@ function MultiBot.InitializeUnitsRootUI(tMultiBar)
      createAllBotsCommands(controlFrame)
      createInviteControls(controlFrame)
      createBrowseButton(controlFrame)
-+    controlFrame.addButton("RandomBots", 0, 210, "INV_Misc_GroupLooking", "RandomBots")
-+        .doLeft = function() MultiBot.ToggleRandomBotDirectory() end
++    MultiBot.BuildRandomBotDirectoryControl(controlFrame)
      if MultiBot.BuildRTIControlUI then
          MultiBot.BuildRTIControlUI(controlFrame)
      end
 diff --git a/docs/random-bot-directory.md b/docs/random-bot-directory.md
 new file mode 100644
-index 0000000..9dbc72f
+index 0000000..30b9cae
 --- /dev/null
 +++ b/docs/random-bot-directory.md
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,43 @@
 +# RandomBot browser
 +
 +Open **MultiBot → Units → RandomBots**. This is an additional window; all existing roster modes remain.
@@ -483,7 +522,9 @@ index 0000000..9dbc72f
 +**My level ±5** fills the range and searches immediately. **Search / Refresh** applies the current filters
 +and returns to page 1. Filter changes otherwise take effect on the next explicit search.
 +Click Name, Level or Class to sort; clicking the same key reverses direction. Each server page has at most
-+25 rows. Select a row to see its invitation reason; eligible rows expose **Invite**. The native WoW/Playerbots
++25 rows. Select a row to see its invitation reason. **Invite** stays visible and is enabled for eligible selections.
++While an invitation is pending it is disabled; after joining, select another row to invite the next bot
++without searching again. The native WoW/Playerbots
 +invitation mechanism checks current rules again. No bots are created or logged in by this feature.
 +
 +Online/group/master flags and zone come from live server state. V1 has no offline catalogue; the offline
@@ -516,10 +557,10 @@ index 0000000..9dbc72f
 +acceptance or visual layout on every screen configuration.
 diff --git a/tests/random_bot_directory_test.lua b/tests/random_bot_directory_test.lua
 new file mode 100644
-index 0000000..4389274
+index 0000000..cd37e21
 --- /dev/null
 +++ b/tests/random_bot_directory_test.lua
-@@ -0,0 +1,165 @@
+@@ -0,0 +1,202 @@
 +-- Run from addon root with Lua 5.1; native WoW APIs are isolated fakes.
 +local now, timers, sent = 100, {}, {}
 +GetTime = function() return now end
@@ -624,6 +665,16 @@ index 0000000..4389274
 +    if string.match(key, "^[A-Z]") then return function() end end
 +end
 +function Frame:SetScript(event, fn) self.scripts[event] = fn end
++function Frame:HookScript(event, fn)
++    local previous = self.scripts[event]
++    self.scripts[event] = function(...) if previous then previous(...) end; fn(...) end
++end
++function Frame:Enable() self.enabled = true end
++function Frame:Disable() self.enabled = false end
++function Frame:IsEnabled() return self.enabled ~= false end
++function Frame:SetBackdrop(value) self.backdrop = value end
++function Frame:SetBackdropColor(...) self.backdropColor = {...} end
++function Frame:SetTextInsets(...) self.insets = {...} end
 +function Frame:CreateFontString() return setmetatable({ scripts={} }, Frame) end
 +function Frame:CreateTexture() return setmetatable({ scripts={} }, Frame) end
 +function Frame:SetText(value) self.text = tostring(value) end
@@ -656,19 +707,26 @@ index 0000000..4389274
 +MultiBot.ToggleRandomBotDirectory()
 +local window=frames.MultiBotRandomBotBrowser
 +assert(window:IsShown() and D.pending)
++assert(window.invite:IsShown() and not window.invite:IsEnabled())
++for _, field in ipairs({window.low, window.high}) do
++    assert(field.backdrop.bgFile == "Interface\\ChatFrame\\ChatFrameBackground")
++    assert(field.backdropColor[4] == 0.9 and field.insets[1] == 6)
++end
 +token = D.pending.token
-+rx("RBD_BEGIN", token .. "~0~1~1~ONLINE_ONLY")
++rx("RBD_BEGIN", token .. "~0~2~2~ONLINE_ONLY")
 +rx("RBD_ENTRY", entry(token))
-+rx("RBD_END", token .. "~0~1~1~ONLINE_ONLY")
++rx("RBD_ENTRY", entry(token, 2, "Otherpriest"))
++rx("RBD_END", token .. "~0~2~2~ONLINE_ONLY")
 +local row
 +for _, b in ipairs(buttons) do if b.data then row=b; break end end
 +assert(row and row.data.name == "Priest")
 +row.scripts.OnClick(row)
 +local invite
 +for _, b in ipairs(buttons) do if b.text=="Invite" then invite=b end end
-+assert(invite and invite:IsShown())
++assert(invite and invite:IsShown() and invite:IsEnabled())
 +invite.scripts.OnClick()
-+assert(invited=="Priest" and not invite:IsShown())
++assert(invited=="Priest" and invite:IsShown() and not invite:IsEnabled())
++assert(row.data.reason == "PENDING_INVITE")
 +window.scripts.OnEvent(window,"CHAT_MSG_SYSTEM","Priest is already in a group.")
 +assert(string.find(window.status.text,"Priest",1,true))
 +GetNumPartyMembers = function() return 1 end
@@ -677,6 +735,26 @@ index 0000000..4389274
 +window.scripts.OnEvent(window,"PARTY_MEMBERS_CHANGED")
 +assert(#sent==sends+1 and sent[#sent][2]=="GET~ROSTER")
 +assert(string.find(window.status.text,"joined",1,true))
++assert(invite:IsShown() and not invite:IsEnabled() and row.data.reason == "IN_YOUR_GROUP")
++local sendsAfterJoin = #sent
++local other = window.rows[2]
++other.scripts.OnClick(other)
++assert(invite:IsShown() and invite:IsEnabled() and #sent == sendsAfterJoin)
++invite.scripts.OnClick()
++assert(invited == "Otherpriest" and invite:IsShown() and not invite:IsEnabled())
++timers[#timers][2]()
++assert(other.data.reason == "STATUS_UNKNOWN" and invite:IsShown() and not invite:IsEnabled())
++-- The opener fills the vacant pagination slot and moves only when pagination becomes visible.
++local browse = setmetatable({scripts={}, events={}, shown=false}, Frame)
++local opener = {}
++opener.setPoint = function(x, y) opener.x, opener.y = x, y end
++local control = { buttons = { Browse = browse }, addButton = function() return opener end }
++MultiBot.BuildRandomBotDirectoryControl(control)
++assert(opener.y == 180)
++browse:Show()
++assert(opener.y == 210)
++browse:Hide()
++assert(opener.y == 180)
 +window:Hide()
 +assert(not next(window.events) and not D.pending)
 +now=now+3.1

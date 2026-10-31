@@ -2529,8 +2529,7 @@ function MultiBot.InitializeUnitsRootUI(tMultiBar)
     createAllBotsCommands(controlFrame)
     createInviteControls(controlFrame)
     createBrowseButton(controlFrame)
-    controlFrame.addButton("RandomBots", 0, 210, "INV_Misc_GroupLooking", "RandomBots")
-        .doLeft = function() MultiBot.ToggleRandomBotDirectory() end
+    MultiBot.BuildRandomBotDirectoryControl(controlFrame)
     if MultiBot.BuildRTIControlUI then
         MultiBot.BuildRTIControlUI(controlFrame)
     end
