@@ -1,0 +1,687 @@
+diff --git a/Core/MultiBotComm.lua b/Core/MultiBotComm.lua
+index 2fe8e6b..3cb4a1a 100644
+--- a/Core/MultiBotComm.lua
++++ b/Core/MultiBotComm.lua
+@@ -72,6 +72,7 @@ local CAPABILITY_STATE_FIELDS = {
+   [CRAFT_RECIPE_TARGET_CAPABILITY] = "craftRecipeTargetCapable",
+   [LOOT_RULE_ITEM_CAPABILITY] = "lootRuleItemCapable",
+   [ALT_ROSTER_CAPABILITY] = "altRosterCapable",
++  ["RANDOMBOT_DIRECTORY_V1"] = "randomBotDirectoryCapable",
+   [BOT_LIFECYCLE_CAPABILITY] = "botLifecycleCapable",
+   ["BOT_GROUP_REMOVE_V1"] = "botGroupRemoveCapable",
+   ["BOT_GROUP_LIFECYCLE_V1"] = "botGroupLifecycleCapable",
+@@ -8960,6 +8961,8 @@ function Comm.RunInventoryItemAction(name, action, itemId, count, callback, opti
+ end
+ 
+ function Comm.MarkDisconnected(reason)
++  ensureBridgeState().randomBotDirectoryCapable = false
++  if MultiBot.RandomBotDirectory then MultiBot.RandomBotDirectory.Cancel("DISCONNECTED") end
+   local state = ensureBridgeState()
+   state.autogearOptionsCapable = false
+   if MultiBot.Autogear then MultiBot.Autogear.OnDisconnect() end
+@@ -13030,6 +13033,10 @@ function Comm.HandleAddonMessage(prefix, message, distribution, sender)
+   local opcode, payload = splitOnce(message or "", "~")
+   opcode = string.upper(trim(opcode))
+ 
++  if MultiBot.RandomBotDirectory and MultiBot.RandomBotDirectory.HandlePacket(opcode, payload) then
++    return true
++  end
++
+   if Comm._HandleEquipObservePacket(opcode, payload, state) then
+     return true
+   end
+diff --git a/Features/MultiBotRandomBotDirectory.lua b/Features/MultiBotRandomBotDirectory.lua
+new file mode 100644
+index 0000000..055241f
+--- /dev/null
++++ b/Features/MultiBotRandomBotDirectory.lua
+@@ -0,0 +1,102 @@
++-- Online directory is independent of roster identity/lifecycle state.
++local MultiBot = _G.MultiBot
++if not MultiBot then return end
++local D = { sequence = 0 }
++MultiBot.RandomBotDirectory = D
++local function split(value)
++    local fields = {}
++    for field in string.gmatch((value or "") .. "~", "(.-)~") do fields[#fields + 1] = field end
++    return fields
++end
++local function integer(value, low, high)
++    if type(value) ~= "string" or not string.match(value, "^%d+$") then return nil end
++    local number = tonumber(value)
++    if not number or number < low or number > high then return nil end
++    return number
++end
++local function encode(value)
++    return (string.gsub(value, "([^%w%-_%.])", function(c) return string.format("%%%02X", string.byte(c)) end))
++end
++local function decode(value, maxLength, allowEmpty)
++    if not value or string.find(string.gsub(value, "%%[0-9a-fA-F][0-9a-fA-F]", ""), "%%") then return nil end
++    value = string.gsub(value, "%%([0-9a-fA-F][0-9a-fA-F])", function(hex) return string.char(tonumber(hex, 16)) end)
++    if (not allowEmpty and #value < 1) or #value > (maxLength or 48) or string.find(value, "[%c|~]") then return nil end
++    return value
++end
++local function finish(result, reason)
++    local pending = D.pending
++    D.pending = nil
++    if pending and pending.callback then pending.callback(result, reason) end
++end
++function D.Cancel(reason)
++    if reason then finish(nil, reason) else D.pending = nil end
++end
++function D.Request(query, callback)
++    if not MultiBot.bridge or not MultiBot.bridge.connected or not MultiBot.bridge.randomBotDirectoryCapable then
++        callback(nil, "UNAVAILABLE")
++        return false
++    end
++    if D.pending then callback(nil, "BUSY"); return false end
++    local now = GetTime()
++    if D.lastSent and now - D.lastSent < 3 then callback(nil, "RATE_LIMIT"); return false end
++    D.sequence = D.sequence + 1
++    local token = "rbd" .. math.floor(now * 1000) .. "_" .. D.sequence
++    local fields = { "RANDOMBOT_DIRECTORY", token, encode(query.name or ""), query.class or 0,
++        query.minLevel or 1, query.maxLevel or 80, query.faction or 0, query.status or 0,
++        query.invite or 0, query.page or 0, query.sort or "NAME", query.descending and 1 or 0, "ANY" }
++    local payload = table.concat(fields, "~")
++    if #(MultiBot.Comm.prefix .. "\tGET~" .. payload) > 255 then callback(nil, "TOO_LARGE"); return false end
++    D.pending = { token = token, callback = callback, page = query.page or 0,
++        generation = MultiBot.bridge.connectionGeneration, rows = {}, seen = {} }
++    D.lastSent = now
++    if not MultiBot.Comm.Send("GET", payload) then finish(nil, "DISCONNECTED"); return false end
++    MultiBot.TimerAfter(12, function()
++        if D.pending and D.pending.token == token then finish(nil, "TIMEOUT") end
++    end)
++    return true
++end
++function D.HandlePacket(opcode, payload)
++    if opcode ~= "RBD_BEGIN" and opcode ~= "RBD_ENTRY" and opcode ~= "RBD_END" and opcode ~= "ERR" then return false end
++    local f = split(payload)
++    local p = D.pending
++    if opcode == "ERR" then
++        if f[2] ~= "RANDOMBOT_DIRECTORY" then return false end
++        if p and f[3] == p.token then finish(nil, f[4] or "BAD_RESPONSE") end
++        return true
++    end
++    if not p or f[1] ~= p.token then return true end
++    if p.generation ~= MultiBot.bridge.connectionGeneration then finish(nil, "DISCONNECTED"); return true end
++    if #(payload or "") > 255 then finish(nil, "BAD_RESPONSE"); return true end
++    if opcode == "RBD_BEGIN" or opcode == "RBD_END" then
++        local page, total, count = integer(f[2], 0, 100000), integer(f[3], 0, 1000000), integer(f[4], 0, 25)
++        if #f ~= 5 or page ~= p.page or not total or not count or f[5] ~= "ONLINE_ONLY"
++            or count ~= math.min(25, math.max(0, total - page * 25)) then
++            finish(nil, "BAD_RESPONSE"); return true
++        end
++        if opcode == "RBD_BEGIN" then
++            if p.total then finish(nil, "BAD_RESPONSE"); return true end
++            p.total, p.count, p.framing = total, count, payload
++        elseif p.framing ~= payload or #p.rows ~= count then
++            finish(nil, "BAD_RESPONSE")
++        else
++            finish({ rows = p.rows, total = total, page = page })
++        end
++        return true
++    end
++    local guid = integer(f[2], 1, 4294967295)
++    local name = decode(f[3])
++    local class, level, race = integer(f[4], 1, 11), integer(f[5], 1, 80), integer(f[6], 1, 11)
++    local faction, zone = integer(f[7], 1, 2), integer(f[10], 0, 4294967295)
++    local grouped, controlled = integer(f[11], 0, 1), integer(f[12], 0, 1)
++    local zoneName = decode(f[14], 128, true)
++    if #f ~= 14 or zoneName == nil or not p.count or #p.rows >= p.count or not guid or p.seen[guid] or not name
++        or not class or class == 10 or not level or not race or not faction or not zone
++        or not grouped or not controlled or f[8] ~= "UNKNOWN" or f[9] ~= "ONLINE"
++        or not string.match(f[13] or "", "^[A-Z_]+$") or #f[13] > 32 then
++        finish(nil, "BAD_RESPONSE"); return true
++    end
++    p.seen[guid] = true
++    p.rows[#p.rows + 1] = { guid = guid, name = name, class = class, level = level, race = race,
++        faction = faction, zone = zone, zoneName = zoneName ~= "" and zoneName or nil, grouped = grouped == 1, controlled = controlled == 1, reason = f[13] }
++    return true
++end
+diff --git a/MultiBot.toc b/MultiBot.toc
+index 8f5eeda..6569ffb 100644
+--- a/MultiBot.toc
++++ b/MultiBot.toc
+@@ -98,6 +98,8 @@ UI\MultiBotFormationUI.lua
+ UI\MultiBotFleeUI.lua
+ UI\MultiBotUnitsFilterUI.lua
+ UI\MultiBotUnitsRosterUI.lua
++Features\MultiBotRandomBotDirectory.lua
++UI\MultiBotRandomBotDirectoryUI.lua
+ UI\MultiBotUnitsRootUI.lua
+ UI\MultiBotLootMasterUI.lua
+ UI\MultiBotBeastUI.lua
+diff --git a/README.md b/README.md
+index 517bb8e..1504146 100644
+--- a/README.md
++++ b/README.md
+@@ -649,3 +649,7 @@ SHA-256 E6878BEF7F3CBD31EC6D78BDDBC73C3AA059DE4DD2A5B0486DE96970D514F80C
+ ```
+ 
+ The main cleanup now resumes with the remaining automatic chat-path inventory. The external Beast Master module migration remains deferred until the end of the main cleanup.
++
++## Online RandomBot browser
++
++See [RandomBot browser](docs/random-bot-directory.md) for the additional Units → RandomBots window.
+diff --git a/UI/MultiBotRandomBotDirectoryUI.lua b/UI/MultiBotRandomBotDirectoryUI.lua
+new file mode 100644
+index 0000000..4caa594
+--- /dev/null
++++ b/UI/MultiBotRandomBotDirectoryUI.lua
+@@ -0,0 +1,285 @@
++local MultiBot = _G.MultiBot
++if not MultiBot then return end
++local D = MultiBot.RandomBotDirectory
++local classTokens = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "DEATHKNIGHT", "SHAMAN", "MAGE", "WARLOCK", "", "DRUID" }
++local classNames = { "Warrior", "Paladin", "Hunter", "Rogue", "Priest", "Death Knight", "Shaman", "Mage", "Warlock", "", "Druid" }
++local races = { "Human", "Orc", "Dwarf", "Night Elf", "Undead", "Tauren", "Gnome", "Troll", "", "Blood Elf", "Draenei" }
++local reasons = {
++    OK = "Eligible (preflight)",
++    OTHER_GROUP = "Already grouped",
++    IN_YOUR_GROUP = "Already in your group",
++    GROUP_FULL = "Group full", NOT_LEADER = "Not group leader/assistant",
++    WRONG_FACTION = "Incompatible faction",
++    PERMISSION_DENIED = "Playerbots permission denied",
++    LOW_LEVEL = "Your level is too low", GEARSCORE = "Gear score too low",
++    BATTLEGROUND = "In battleground", BG_QUEUE = "In battleground queue",
++    PENDING_INVITE = "Invitation pending",
++    DISABLED = "Disabled by server: RandomBotDirectory.Enable",
++    UNAVAILABLE = "Bridge/capability unavailable",
++    DISCONNECTED = "Disconnected", BAD_RESPONSE = "Invalid server response",
++    BAD_FILTER = "Invalid filters (level 1–80)",
++    RATE_LIMIT = "Wait at least 3 seconds between queries",
++    BUSY = "Server or request busy",
++    TIMEOUT = "Request timed out – refresh to retry",
++    TOO_LARGE = "Search too long", TOKEN_USED = "Request already processed",
++}
++local window, selected, invitation
++local result = { rows = {}, page = 0, total = 0 }
++local query = { page = 0, class = 0, faction = 0, status = 0, invite = 0, sort = "NAME" }
++local refresh, render
++local function label(parent, value, x, y, width)
++    local f = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
++    f:SetPoint("TOPLEFT", x, y)
++    f:SetWidth(width)
++    f:SetJustifyH("LEFT")
++    f:SetText(value)
++    return f
++end
++local function button(parent, value, x, y, width, callback)
++    local f = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
++    f:SetPoint("TOPLEFT", x, y)
++    f:SetWidth(width)
++    f:SetHeight(22)
++    f:SetText(value)
++    f:SetScript("OnClick", callback)
++    return f
++end
++local function edit(parent, title, x, y, width, maxLength, numeric)
++    label(parent, title, x, y, width)
++    local f = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
++    f:SetPoint("TOPLEFT", x + 5, y - 18)
++    f:SetWidth(width - 10)
++    f:SetHeight(20)
++    f:SetAutoFocus(false)
++    f:SetMaxLetters(maxLength)
++    f:SetNumeric(numeric or false)
++    f:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
++    f:SetScript("OnEnterPressed", function(self) self:ClearFocus(); refresh(0) end)
++    return f
++end
++local function dropdown(parent, title, x, y, width, choices, initial, change)
++    label(parent, title, x, y, width)
++    D.dropdownSequence = (D.dropdownSequence or 0) + 1
++    local f = CreateFrame("Frame", "MultiBotRandomFilter" .. D.dropdownSequence, parent, "UIDropDownMenuTemplate")
++    f:SetPoint("TOPLEFT", x - 16, y - 12)
++    UIDropDownMenu_SetWidth(f, width - 20)
++    UIDropDownMenu_Initialize(f, function()
++        for _, choice in ipairs(choices) do
++            local value, caption = choice[1], choice[2]
++            local info = UIDropDownMenu_CreateInfo()
++            info.text, info.value, info.checked = caption, value, f.value == value
++            info.func = function()
++                f.value = value
++                UIDropDownMenu_SetText(f, caption)
++                change(value)
++            end
++            UIDropDownMenu_AddButton(info)
++        end
++    end)
++    f.value = initial
++    for _, choice in ipairs(choices) do if choice[1] == initial then UIDropDownMenu_SetText(f, choice[2]) end end
++    return f
++end
++local function setStatus(message)
++    if window then window.status:SetText(message or "") end
++end
++render = function()
++    if not window then return end
++    for i = 1, 25 do
++        local frame, row = window.rows[i], result.rows[i]
++        frame.data = row
++        if row then
++            frame:Show()
++            local token = classTokens[row.class]
++            local color = RAID_CLASS_COLORS and RAID_CLASS_COLORS[token]
++            frame.name:SetText(row.name)
++            if color then frame.name:SetTextColor(color.r, color.g, color.b) end
++            frame.level:SetText(row.level)
++            frame.class:SetText(classNames[row.class] or token)
++            frame.race:SetText(races[row.race] or tostring(row.race))
++            frame.faction:SetText(row.faction == 1 and "Alliance" or "Horde")
++            frame.zone:SetText(row.zoneName or ("#" .. row.zone))
++            frame.state:SetText(row.controlled and "Controlled" or (row.grouped and "Grouped" or "Online"))
++            if selected == row then frame.selection:Show() else frame.selection:Hide() end
++        else frame:Hide() end
++    end
++    window.page:SetText(string.format("Page %d/%d · %d matches",
++        result.page + 1, math.max(1, math.ceil(result.total / 25)), result.total))
++    if D.pending or result.page == 0 then window.previous:Disable() else window.previous:Enable() end
++    if D.pending or (result.page + 1) * 25 >= result.total then window.next:Disable() else window.next:Enable() end
++    if selected and selected.reason == "OK" and not D.pending and not invitation then window.invite:Show() else window.invite:Hide() end
++    if selected then window.detail:SetText((reasons[selected.reason] or selected.reason) .. " · Role: unknown")
++    else window.detail:SetText("Select a bot. Roles unknown; directory contains online bots only.") end
++end
++refresh = function(page)
++    if not window or not window:IsShown() or D.pending then return end
++    local low, high = tonumber(window.low:GetText()), tonumber(window.high:GetText())
++    if not low or not high or low < 1 or high > 80 or low > high or low % 1 ~= 0 or high % 1 ~= 0 then
++        setStatus(reasons.BAD_FILTER); return
++    end
++    query.name, query.minLevel, query.maxLevel, query.page = window.search:GetText(), low, high, page or 0
++    selected = nil
++    setStatus("Loading …")
++    local requestedStatus = query.status
++    D.Request(query, function(data, reason)
++        if not window:IsShown() then return end
++        if data then
++            result = data
++            if requestedStatus == 2 then setStatus("Offline directory unavailable in V1; no offline invitations.")
++            elseif data.total == 0 then setStatus("No matching online RandomBots.")
++            else setStatus("Snapshot. Invitations are checked again by the server.") end
++        else
++            result = { rows = {}, total = 0, page = 0 }
++            setStatus(reasons[reason] or tostring(reason))
++        end
++        render()
++    end)
++    render()
++end
++local function inGroup(name)
++    if UnitName("player") == name then return false end
++    for i = 1, GetNumRaidMembers() do if UnitName("raid" .. i) == name then return true end end
++    for i = 1, GetNumPartyMembers() do if UnitName("party" .. i) == name then return true end end
++    return false
++end
++local function inviteSelected()
++    if not selected or selected.reason ~= "OK" or invitation or D.pending then return end
++    if InCombatLockdown() then setStatus("Please invite out of combat."); return end
++    local pending = { name = selected.name }
++    invitation = pending
++    setStatus("Invitation sent to " .. pending.name)
++    InviteUnit(pending.name) -- Native CMSG_GROUP_INVITE; Playerbots owns acceptance/master/follow.
++    render()
++    MultiBot.TimerAfter(20, function()
++        if invitation ~= pending then return end
++        invitation = nil
++        setStatus("No join confirmed after 20 s. Refresh status.")
++        selected = nil
++        render()
++    end)
++end
++local function onEvent(_, event, message)
++    if event == "PLAYER_LEAVING_WORLD" then window:Hide(); return end
++    if not invitation then return end
++    if event == "PARTY_MEMBERS_CHANGED" or event == "RAID_ROSTER_UPDATE" then
++        if inGroup(invitation.name) then
++            local name = invitation.name
++            invitation, selected = nil, nil
++            MultiBot.Comm.RequestRoster()
++            setStatus(name .. " joined. Normal MultiBot roster refreshed.")
++            render()
++        end
++    elseif event == "CHAT_MSG_SYSTEM" and message then
++        -- Native localized group errors remain authoritative. Do not intercept unrelated messages.
++        local direct = string.find(message, invitation.name, 1, true)
++        local generic = message == ERR_GROUP_FULL or message == ERR_NOT_LEADER or message == ERR_PLAYER_WRONG_FACTION
++        if direct or generic then setStatus(message) end
++    end
++end
++local function createWindow()
++    window = CreateFrame("Frame", "MultiBotRandomBotBrowser", UIParent)
++    local w = window
++    w:SetSize(840, 680)
++    w:SetPoint("CENTER")
++    w:SetFrameStrata("DIALOG")
++    w:SetClampedToScreen(true)
++    w:SetMovable(true)
++    w:EnableMouse(true)
++    w:RegisterForDrag("LeftButton")
++    w:SetScript("OnDragStart", function(self) self:StartMoving() end)
++    w:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
++    w:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", tile = true, tileSize = 32, edgeSize = 24, insets = { left = 6, right = 6, top = 6, bottom = 6 } })
++    label(w, "MultiBot — RandomBots", 18, -15, 550)
++    local close = CreateFrame("Button", nil, w, "UIPanelCloseButton")
++    close:SetPoint("TOPRIGHT", -4, -4)
++    close:SetScript("OnClick", function() w:Hide() end)
++    tinsert(UISpecialFrames, "MultiBotRandomBotBrowser")
++    w.search = edit(w, "Name", 20, -42, 200, 48)
++    w.low = edit(w, "Min level", 230, -42, 70, 2, true)
++    w.high = edit(w, "Max level", 310, -42, 70, 2, true)
++    w.low:SetText("1"); w.high:SetText("80")
++    button(w, "My level ±5", 390, -58, 135, function()
++        local level = UnitLevel("player")
++        w.low:SetText(math.max(1, level - 5)); w.high:SetText(math.min(80, level + 5))
++        refresh(0)
++    end)
++    button(w, "Search / Refresh", 560, -58, 250, function() refresh(0) end)
++    local classes = { { 0, "All classes" } }
++    for id, token in ipairs(classTokens) do
++        if token ~= "" then classes[#classes + 1] = { id, classNames[id] or token } end
++    end
++    dropdown(w, "Class", 20, -90, 180, classes, 0, function(v) query.class = v end)
++    dropdown(w, "Faction", 205, -90, 150,
++        { { 0, "All" }, { 1, "Alliance" }, { 2, "Horde" } }, 0, function(v) query.faction = v end)
++    dropdown(w, "Status", 360, -90, 180,
++        { { 0, "All available" }, { 1, "Online" }, { 2, "Offline (V1: empty)" } }, 0, function(v) query.status = v end)
++    dropdown(w, "Eligibility", 545, -90, 265,
++        { { 0, "All" }, { 1, "Eligible" }, { 2, "Ineligible" } }, 0, function(v) query.invite = v end)
++    label(w, "Sort:", 20, -143, 75)
++    local function sortBy(key)
++        if query.sort == key then query.descending = not query.descending else query.sort, query.descending = key, false end
++        w.sortDirection:SetText(query.sort .. (query.descending and " ↓" or " ↑"))
++        refresh(0)
++    end
++    button(w, "Name ↕", 90, -136, 100, function() sortBy("NAME") end)
++    button(w, "Level ↕", 195, -136, 100, function() sortBy("LEVEL") end)
++    button(w, "Class ↕", 300, -136, 100, function() sortBy("CLASS") end)
++    w.sortDirection = label(w, "NAME ↑", 415, -143, 150)
++    label(w, "Role: unknown (no role filter)", 580, -143, 240)
++    label(w, "Name                   Level   Class                  Race            Faction        Zone                        Status", 20, -165, 800)
++    w.rows = {}
++    for i = 1, 25 do
++        local row = CreateFrame("Button", nil, w)
++        row:SetPoint("TOPLEFT", 18, -180 - (i - 1) * 17)
++        row:SetSize(800, 17)
++        row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
++        row.selection = row:CreateTexture(nil, "BACKGROUND")
++        row.selection:SetAllPoints()
++        row.selection:SetTexture(0.2, 0.4, 0.6, 0.5)
++        row.selection:Hide()
++        row.name = label(row, "", 2, -2, 145)
++        row.level = label(row, "", 150, -2, 40)
++        row.class = label(row, "", 195, -2, 120)
++        row.race = label(row, "", 320, -2, 95)
++        row.faction = label(row, "", 420, -2, 80)
++        row.zone = label(row, "", 505, -2, 150)
++        row.state = label(row, "", 660, -2, 135)
++        row:SetScript("OnClick", function(self) selected = self.data; render() end)
++        row:SetScript("OnEnter", function(self)
++            if not self.data then return end
++            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
++            GameTooltip:SetText(self.data.name)
++            GameTooltip:AddLine(reasons[self.data.reason] or self.data.reason, 1, 1, 1, true)
++            GameTooltip:AddLine("Zone ID: " .. self.data.zone, 1, 1, 1)
++            GameTooltip:Show()
++        end)
++        row:SetScript("OnLeave", function() GameTooltip:Hide() end)
++        w.rows[i] = row
++    end
++    w.previous = button(w, "<", 20, -610, 40, function() refresh(result.page - 1) end)
++    w.next = button(w, ">", 65, -610, 40, function() refresh(result.page + 1) end)
++    w.page = label(w, "", 120, -616, 300)
++    w.invite = button(w, "Invite", 690, -610, 120, inviteSelected)
++    w.detail = label(w, "", 20, -638, 790)
++    w.status = label(w, "", 20, -655, 790)
++    w:SetScript("OnEvent", onEvent)
++    w:SetScript("OnHide", function(self)
++        self:UnregisterAllEvents()
++        D.Cancel()
++        invitation, selected = nil, nil
++        GameTooltip:Hide()
++        CloseDropDownMenus()
++    end)
++    w:SetScript("OnShow", function(self)
++        self:RegisterEvent("PARTY_MEMBERS_CHANGED")
++        self:RegisterEvent("RAID_ROSTER_UPDATE")
++        self:RegisterEvent("CHAT_MSG_SYSTEM")
++        self:RegisterEvent("PLAYER_LEAVING_WORLD")
++        refresh(0)
++    end)
++    w:Hide()
++end
++function MultiBot.ToggleRandomBotDirectory()
++    if not window then createWindow() end
++    if window:IsShown() then window:Hide() else window:Show() end
++end
+diff --git a/UI/MultiBotUnitsRootUI.lua b/UI/MultiBotUnitsRootUI.lua
+index 8e9969c..ba82377 100644
+--- a/UI/MultiBotUnitsRootUI.lua
++++ b/UI/MultiBotUnitsRootUI.lua
+@@ -2529,6 +2529,8 @@ function MultiBot.InitializeUnitsRootUI(tMultiBar)
+     createAllBotsCommands(controlFrame)
+     createInviteControls(controlFrame)
+     createBrowseButton(controlFrame)
++    controlFrame.addButton("RandomBots", 0, 210, "INV_Misc_GroupLooking", "RandomBots")
++        .doLeft = function() MultiBot.ToggleRandomBotDirectory() end
+     if MultiBot.BuildRTIControlUI then
+         MultiBot.BuildRTIControlUI(controlFrame)
+     end
+diff --git a/docs/random-bot-directory.md b/docs/random-bot-directory.md
+new file mode 100644
+index 0000000..9dbc72f
+--- /dev/null
++++ b/docs/random-bot-directory.md
+@@ -0,0 +1,41 @@
++# RandomBot browser
++
++Open **MultiBot → Units → RandomBots**. This is an additional window; all existing roster modes remain.
++It requires bridge capability `RANDOMBOT_DIRECTORY_V1` and server configuration
++`MultiBotBridge.RandomBotDirectory.Enable = 1`.
++
++Enter a name substring, choose class/faction/status/eligibility, and set a level range.
++**My level ±5** fills the range and searches immediately. **Search / Refresh** applies the current filters
++and returns to page 1. Filter changes otherwise take effect on the next explicit search.
++Click Name, Level or Class to sort; clicking the same key reverses direction. Each server page has at most
++25 rows. Select a row to see its invitation reason; eligible rows expose **Invite**. The native WoW/Playerbots
++invitation mechanism checks current rules again. No bots are created or logged in by this feature.
++
++Online/group/master flags and zone come from live server state. V1 has no offline catalogue; the offline
++filter explains this and returns no rows. Roles are explicitly unknown and have no misleading filter.
++English class/race labels and English feature text are used. Native client error messages retain their
++client language. Existing upstream translations and SavedVariables are preserved.
++
++The window allocates only 25 reusable rows. No automatic directory polling occurs. Requests are limited
++to one per 3 seconds and timeout after 12 seconds. Closing the window unregisters its events and cancels
++its request logically; delayed replies/timer callbacks cannot repopulate it. Native invitations already
++sent remain owned by WoW. Disconnect clears the pending request and capability flag.
++
++On confirmed party/raid membership, the feature requests the existing bridge roster and leaves all roster
++identity, duplicate handling and bot control to the normal MultiBot code.
++
++Install the complete supplied `MultiBot` folder into `Interface/AddOns/MultiBot` with WoW closed.
++Do not delete `WTF` or existing SavedVariables. A `/reload` is sufficient for subsequent source updates,
++but close WoW for the first folder replacement so a backup can be made consistently.
++
++Run the isolated Lua 5.1 regression test from this addon's root:
++
++```sh
++lua5.1 tests/random_bot_directory_test.lua
++luac5.1 -p Core/MultiBotComm.lua Features/MultiBotRandomBotDirectory.lua \
++  UI/MultiBotRandomBotDirectoryUI.lua UI/MultiBotUnitsRootUI.lua tests/random_bot_directory_test.lua
++```
++
++Tests fake native WoW APIs. They validate real capability/message dispatch and actual browser handlers,
++including native invite calls, roster refresh and event/request cleanup, but cannot prove live in-game
++acceptance or visual layout on every screen configuration.
+diff --git a/tests/random_bot_directory_test.lua b/tests/random_bot_directory_test.lua
+new file mode 100644
+index 0000000..4389274
+--- /dev/null
++++ b/tests/random_bot_directory_test.lua
+@@ -0,0 +1,165 @@
++-- Run from addon root with Lua 5.1; native WoW APIs are isolated fakes.
++local now, timers, sent = 100, {}, {}
++GetTime = function() return now end
++UnitName = function(unit) if unit == "player" then return "Tester" end end
++GetNumRaidMembers = function() return 0 end
++GetNumPartyMembers = function() return 0 end
++GetLocale = function() return "enUS" end
++SendAddonMessage = function(...) sent[#sent + 1] = {...} end
++MultiBot = { bridge = {}, TimerAfter = function(delay, callback) timers[#timers + 1] = { delay, callback } end }
++assert(loadfile("Core/MultiBotComm.lua"))()
++assert(loadfile("Features/MultiBotRandomBotDirectory.lua"))()
++local D, C = MultiBot.RandomBotDirectory, MultiBot.Comm
++local function rx(op, payload, sender)
++    return C.HandleAddonMessage("MBOT", op .. (payload and "~" .. payload or ""), "WHISPER", sender or "Tester")
++end
++rx("CAPS_BEGIN")
++rx("CAPS", "RANDOMBOT_DIRECTORY_V1")
++rx("CAPS_END")
++assert(MultiBot.bridge.randomBotDirectoryCapable)
++MultiBot.bridge.connected = true
++local received, failure, callbacks
++local function request(q)
++    now = now + 3.1
++    received, failure, callbacks = nil, nil, 0
++    assert(D.Request(q or {}, function(data, reason) received, failure = data, reason; callbacks = callbacks + 1 end))
++    assert(#sent[#sent][2] + #sent[#sent][1] + 1 <= 255)
++    return D.pending.token
++end
++local function entry(token, id, name)
++    return token .. "~" .. (id or 1) .. "~" .. (name or "Priest") .. "~5~58~1~1~UNKNOWN~ONLINE~12~0~0~OK~Elwynn%20Forest"
++end
++local token = request({class=5, minLevel=55, maxLevel=60, sort="LEVEL"})
++assert(string.find(sent[#sent][2], "~5~55~60~0~0~0~0~LEVEL~0~ANY", 1, true))
++rx("RBD_BEGIN", token .. "~0~1~1~ONLINE_ONLY", "Attacker")
++assert(not D.pending.total) -- Sender validation precedes directory dispatch.
++rx("RBD_BEGIN", token .. "~0~1~1~ONLINE_ONLY")
++rx("RBD_ENTRY", entry(token))
++assert(callbacks == 0) -- Atomic result, only committed after END.
++rx("RBD_END", token .. "~0~1~1~ONLINE_ONLY")
++assert(callbacks == 1 and received.total == 1 and received.rows[1].level == 58)
++assert(received.rows[1].zoneName == "Elwynn Forest" and not received.rows[1].grouped)
++token = request({page=1})
++rx("RBD_BEGIN", token .. "~1~26~1~ONLINE_ONLY")
++rx("RBD_ENTRY", entry(token, 26))
++rx("RBD_END", token .. "~1~26~1~ONLINE_ONLY")
++assert(received.page == 1 and received.rows[1].guid == 26)
++token = request({status=2})
++rx("RBD_BEGIN", token .. "~0~0~0~ONLINE_ONLY")
++rx("RBD_END", token .. "~0~0~0~ONLINE_ONLY")
++assert(received.total == 0 and #received.rows == 0)
++token = request()
++rx("RBD_BEGIN", token .. "~0~26~26~ONLINE_ONLY")
++assert(failure == "BAD_RESPONSE")
++token = request()
++rx("RBD_ENTRY", entry(token))
++assert(failure == "BAD_RESPONSE")
++token = request()
++rx("RBD_BEGIN", token .. "~0~2~2~ONLINE_ONLY")
++rx("RBD_ENTRY", entry(token))
++rx("RBD_ENTRY", entry(token))
++assert(failure == "BAD_RESPONSE")
++token = request()
++rx("RBD_BEGIN", token .. "~0~1~1~ONLINE_ONLY")
++rx("RBD_ENTRY", entry(token, 1, "%ZZ"))
++assert(failure == "BAD_RESPONSE")
++token = request()
++rx("RBD_BEGIN", token .. "~0~1~1~ONLINE_ONLY")
++rx("RBD_END", token .. "~0~1~1~ONLINE_ONLY")
++assert(failure == "BAD_RESPONSE")
++token = request()
++rx("ERR", "GET~RANDOMBOT_DIRECTORY~other~RATE_LIMIT")
++assert(D.pending)
++rx("ERR", "GET~RANDOMBOT_DIRECTORY~" .. token .. "~RATE_LIMIT")
++assert(failure == "RATE_LIMIT")
++token = request()
++D.Cancel()
++rx("RBD_BEGIN", token .. "~0~0~0~ONLINE_ONLY")
++rx("RBD_END", token .. "~0~0~0~ONLINE_ONLY")
++assert(callbacks == 0 and not D.pending)
++token = request()
++timers[#timers][2]()
++assert(failure == "TIMEOUT" and callbacks == 1)
++token = request()
++C.MarkDisconnected("test")
++assert(failure == "DISCONNECTED" and not D.pending and not MultiBot.bridge.randomBotDirectoryCapable)
++MultiBot.bridge.connected, MultiBot.bridge.randomBotDirectoryCapable = true, true
++request()
++local secondFailure
++assert(not D.Request({}, function(_, reason) secondFailure = reason end))
++assert(secondFailure == "BUSY")
++D.Cancel()
++assert(not D.Request({}, function(_, reason) secondFailure = reason end))
++assert(secondFailure == "RATE_LIMIT")
++now = now + 3.1
++assert(not D.Request({name=string.rep("ä",100)}, function(_, reason) secondFailure = reason end))
++assert(secondFailure == "TOO_LARGE")
++-- UI harness: create every control and invoke real invitation/group/close handlers.
++local frames, buttons = {}, {}
++local Frame = {}
++Frame.__index = function(_, key)
++    if Frame[key] then return Frame[key] end
++    if string.match(key, "^[A-Z]") then return function() end end
++end
++function Frame:SetScript(event, fn) self.scripts[event] = fn end
++function Frame:CreateFontString() return setmetatable({ scripts={} }, Frame) end
++function Frame:CreateTexture() return setmetatable({ scripts={} }, Frame) end
++function Frame:SetText(value) self.text = tostring(value) end
++function Frame:GetText() return self.text or "" end
++function Frame:IsShown() return self.shown == true end
++function Frame:Show() local old=self.shown; self.shown=true; if not old and self.scripts.OnShow then self.scripts.OnShow(self) end end
++function Frame:Hide() local old=self.shown; self.shown=false; if old and self.scripts.OnHide then self.scripts.OnHide(self) end end
++function Frame:RegisterEvent(e) self.events[e]=true end
++function Frame:UnregisterAllEvents() self.events={} end
++function CreateFrame(kind,name,parent)
++    local f=setmetatable({scripts={},events={},shown=true,name=name,parent=parent},Frame)
++    if name then frames[name]=f end
++    if kind=="Button" then buttons[#buttons+1]=f end
++    return f
++end
++UIParent = {}
++UISpecialFrames = {}
++tinsert = table.insert
++UIDropDownMenu_SetWidth = function() end
++UIDropDownMenu_Initialize = function(f,fn) f.initialize=fn end
++UIDropDownMenu_SetText = function() end
++CloseDropDownMenus = function() end
++GameTooltip = setmetatable({scripts={}}, Frame)
++InCombatLockdown = function() return false end
++UnitLevel = function() return 60 end
++local invited
++InviteUnit = function(name) invited=name end
++assert(loadfile("UI/MultiBotRandomBotDirectoryUI.lua"))()
++now = now + 3.1
++MultiBot.ToggleRandomBotDirectory()
++local window=frames.MultiBotRandomBotBrowser
++assert(window:IsShown() and D.pending)
++token = D.pending.token
++rx("RBD_BEGIN", token .. "~0~1~1~ONLINE_ONLY")
++rx("RBD_ENTRY", entry(token))
++rx("RBD_END", token .. "~0~1~1~ONLINE_ONLY")
++local row
++for _, b in ipairs(buttons) do if b.data then row=b; break end end
++assert(row and row.data.name == "Priest")
++row.scripts.OnClick(row)
++local invite
++for _, b in ipairs(buttons) do if b.text=="Invite" then invite=b end end
++assert(invite and invite:IsShown())
++invite.scripts.OnClick()
++assert(invited=="Priest" and not invite:IsShown())
++window.scripts.OnEvent(window,"CHAT_MSG_SYSTEM","Priest is already in a group.")
++assert(string.find(window.status.text,"Priest",1,true))
++GetNumPartyMembers = function() return 1 end
++UnitName = function(unit) return unit=="player" and "Tester" or unit=="party1" and "Priest" or nil end
++local sends=#sent
++window.scripts.OnEvent(window,"PARTY_MEMBERS_CHANGED")
++assert(#sent==sends+1 and sent[#sent][2]=="GET~ROSTER")
++assert(string.find(window.status.text,"joined",1,true))
++window:Hide()
++assert(not next(window.events) and not D.pending)
++now=now+3.1
++window:Show()
++assert(D.pending)
++window:Hide()
++assert(not D.pending)
++print("PASS: Lua 5.1 capability/sender/framing/paging/empty/offline/malformed/rate/errors/timeout/disconnect/UI/native invite/roster/cleanup")

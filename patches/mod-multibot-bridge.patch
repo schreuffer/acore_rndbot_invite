@@ -1,0 +1,814 @@
+diff --git a/README.md b/README.md
+index 5357129..4883a71 100644
+--- a/README.md
++++ b/README.md
+@@ -601,3 +601,7 @@ Playerbots HEAD: 037c01418b5d01506917a3db9b44fd56ac5f965c
+ ```
+ 
+ `mod-playerbots` remains strictly read-only. The next work resumes the remaining automatic chat-path audit/cleanup; the external Beast Master module migration stays deferred until the very end of the main cleanup.
++
++## Online RandomBot browser
++
++See [RandomBot directory V1](docs/random-bot-directory.md) for configuration, protocol, runtime limits and tests.
+diff --git a/conf/MultiBotBridge.conf.dist b/conf/MultiBotBridge.conf.dist
+index 3f58d69..22e0963 100644
+--- a/conf/MultiBotBridge.conf.dist
++++ b/conf/MultiBotBridge.conf.dist
+@@ -10,3 +10,6 @@ MultiBotBridge.EnableConsoleLogs = 0
+ # 1 = enabled (MultiBotBridge.log, 16 MiB x 4 files including rotations)
+ # 0 = disabled (default)
+ MultiBotBridge.EnableFileLogs = 0
++
++# Global online RandomBot search. Opt-in; does not change invitation permissions.
++MultiBotBridge.RandomBotDirectory.Enable = 0
+diff --git a/docs/random-bot-directory.md b/docs/random-bot-directory.md
+new file mode 100644
+index 0000000..9da1791
+--- /dev/null
++++ b/docs/random-bot-directory.md
+@@ -0,0 +1,98 @@
++# Online RandomBot directory V1
++
++The directory supplements `GET~ROSTER`; it never changes `GetBridgeVisibleBots()` or grants bot control.
++Enable it explicitly in the installed `MultiBotBridge.conf`:
++
++```ini
++MultiBotBridge.RandomBotDirectory.Enable = 1
++```
++
++Capability: `RANDOMBOT_DIRECTORY_V1`. It is advertised through the existing chunked CAPS negotiation,
++even when the administrator has disabled queries (queries then return `DISABLED`).
++
++## Wire protocol
++
++Existing `MBOT` transport, protocol version 1, percent-encoded string fields, `~` separators.
++All directory responses are private WHISPER responses to the authenticated requester, including errors.
++The existing 255-byte wire limit includes `MBOT\t`. Each response row is a separate packet.
++
++```text
++GET~RANDOMBOT_DIRECTORY~token~name~class~minLevel~maxLevel~faction~status~invite~page~sort~descending~ANY
++RBD_BEGIN~token~page~total~count~ONLINE_ONLY
++RBD_ENTRY~token~guid~name~class~level~race~faction~UNKNOWN~ONLINE~zoneId~grouped~controlled~reason~zoneName
++RBD_END~token~page~total~count~ONLINE_ONLY
++ERR~GET~RANDOMBOT_DIRECTORY~token~reason
++```
++
++- Token: existing bridge token rules, maximum 64 bytes. UI generates unique tokens per session/request.
++- Name: percent-encoded substring, at most 48 decoded bytes; ASCII case-insensitive matching.
++- Class: 0=any, otherwise WoW class ID 1–9 or 11.
++- Level bounds: 1–80, minimum must not exceed maximum.
++- Faction: 0=any, 1=Alliance, 2=Horde.
++- Status: 0=all available, 1=online, 2=offline. V1 contains online entries only; offline queries are explicitly empty.
++- Invite: 0=any, 1=preflight eligible, 2=ineligible.
++- Page: zero-based, maximum 100000. Fixed page size 25; no caller-controlled result limit.
++- Sort: NAME, LEVEL or CLASS. Descending: 0 or 1. Name and GUID provide deterministic tie breaks.
++- Final ANY: reserved role filter; other values are rejected because role is not reliably known.
++- Total: matching online entries before pagination. Count: rows in this page, maximum 25.
++- Grouped/controlled: 0 or 1; controlled means mastered by this requester, not merely any master.
++- Zone ID: current server zone; optional English zone name is omitted if its encoding exceeds the packet budget.
++- UNKNOWN is the role; ONLINE is derived from `IsInWorld()`, not a database online flag.
++- The client commits a page only when BEGIN/END match and the exact number of unique rows arrived.
++  Responses with old tokens, different connection generations or unexpected senders are ignored/rejected.
++
++Typical reasons: OK, OTHER_GROUP, IN_YOUR_GROUP, GROUP_FULL, NOT_LEADER, WRONG_FACTION,
++PERMISSION_DENIED, LOW_LEVEL, GEARSCORE, BATTLEGROUND, BG_QUEUE, PENDING_INVITE, BUSY.
++Protocol errors also include DISABLED, BAD_FIELD_COUNT, BAD_TOKEN, BAD_FILTER, NO_SESSION,
++RATE_LIMIT, TOKEN_USED and TOO_LARGE. Existing bridge framing rejects oversized incoming messages first.
++
++## Runtime and security
++
++Chat handlers strictly validate fields and queue value data (GUID/account/token/query), never persistent
++Player pointers. The queue contains at most 16 queries. A WorldScript processes at most one query every
++500 ms, after the local core's MapMgr worker wait. This avoids dereferencing map-owned players while
++map updates are running. No database queries, login scans, per-frame bot scans or automatic refresh loops
++are added. At most 512 rate states are retained; each requester may issue one query every 3 seconds.
++Accepted tokens are protected against replay for 60 seconds. Expired requester state is pruned on queries.
++
++The authenticated live player is resolved again before processing, with an account check. Only online
++players that the native RandomPlayerbotMgr identifies as random bots and that have bot AI are included.
++Cheap filters precede security evaluation. Selection/sorting runs on value rows. The global enable switch
++is cached at configuration load/reload.
++
++Preflight uses the native PlayerbotSecurity INVITE level, current groups, faction rules, pending invites,
++battleground and teleport state. It is advisory: core script hooks, trial restrictions, ignore lists,
++instance constraints and changes after the snapshot are finally checked by the native invitation path.
++No directory RUN command, GM command, master mutation, group mutation, login or teleport command exists.
++
++The addon calls `InviteUnit(name)` from a button click outside combat. Core `HandleGroupInviteOpcode` and
++Playerbots `AcceptInvitationAction` retain all final authorization and acceptance logic. That existing action
++sets master/follow and applies configured summon behavior. Once the UI observes membership, it requests
++normal `GET~ROSTER`. It never inserts directory rows into the normal roster. Native localized group errors
++are shown while an invite is pending. After 20 seconds without confirmed membership, the UI reports that
++no join was confirmed; it does not claim the server has revoked or expired the invitation.
++
++## Offline and role limits
++
++No offline catalogue or offline invitations are implemented in V1. Database feasibility was checked:
++`characters` has the identity/account/class/race/level fields, and PlayerbotAIConfig exposes RandomBotAccounts.
++CharacterCache supports individual lookups, but not public enumeration. The existing prepared
++CHAR_SEL_CHARS_BY_ACCOUNT_ID selects GUIDs only and is registered SYNCH. A complete catalogue should
++use a separately prepared asynchronous query and bounded cached snapshots for configured random accounts,
++excluding deleted characters. It must reconcile online state from live server objects; `characters.online`
++is not authoritative. No schema or additional database is needed. Do not reuse the synchronous alt-roster
++query for global catalogue searches.
++
++Roles remain UNKNOWN. Class or talent labels alone do not prove the active tank/healer/DPS role; even
++some native class strategy type labels differ from the role implied by their names. No role is invented.
++
++## Validation
++
++`tests/random_bot_directory_test.cpp` compiles the actual directory implementation against fake native
++adapters. It covers 2500 online bots, first/next pages, empty/offline responses, combined filters, all sort
++keys/directions, invalid/oversized fields, replay/rate/queue limits, permissions, group/faction/battleground
++preflight and account changes while queued. The 100 x 2500 load benchmark measures value filtering/sorting,
++not native security evaluation or live-server CPU impact.
++
++Build the real worldserver against the pinned Playerbot core to validate native API compatibility.
++No live in-game acceptance or full existing-feature regression is claimed by these isolated tests.
+diff --git a/src/MultiBotBridge.cpp b/src/MultiBotBridge.cpp
+index d22f352..3d33734 100644
+--- a/src/MultiBotBridge.cpp
++++ b/src/MultiBotBridge.cpp
+@@ -1,3 +1,4 @@
++#include "RandomBotDirectory.h"
+ #include "Bag.h"
+ #include "Chat.h"
+ #include "CharacterCache.h"
+@@ -489,6 +490,7 @@ bool SendCapabilitiesPackets(Player* player, ChatMsg chatType)
+         kSelfStrategyCapability,
+         kSelfActionCapability,
+         kAltRosterCapability,
++        "RANDOMBOT_DIRECTORY_V1",
+         kBotLifecycleCapability,
+         kBotGroupRemoveCapability,
+         kBotGroupLifecycleCapability,
+@@ -20872,6 +20874,8 @@ void ClearEquipEventState(Player* player)
+ // MB_R7_EVENT_EQUIP_V1_END
+ // MB_INVENTORY_H1B1A_EQUIP_OBSERVE_V1_END
+ 
++#include "RandomBotDirectory.inc"
++
+ bool HandleBridgeOpcode(Player* player, ChatMsg replyType, std::string const& opcode, std::string const& payload)
+ {
+     std::string const trimmedOpcode = Trim(opcode);
+@@ -20930,6 +20934,9 @@ bool HandleBridgeOpcode(Player* player, ChatMsg replyType, std::string const& op
+         }
+         // MB_INVENTORY_H1B1A_GET_EQUIP_OBSERVE_V1_END
+ 
++        if (requestType == "RANDOMBOT_DIRECTORY")
++            return QueueRandomBotDirectory(player, fields);
++
+         if (requestType == "ROSTER")
+         {
+             if (fields.size() != 1)
+@@ -23063,4 +23070,5 @@ void AddSC_multibot_bridge()
+         LOG_INFO("server.loading", "mod-multibot-bridge loaded");
+     WriteBridgeFileLog("STARTUP mod-multibot-bridge loaded");
+     new MultiBotBridgePlayerScript();
++    new RandomBotDirectoryWorldScript();
+ }
+diff --git a/src/RandomBotDirectory.h b/src/RandomBotDirectory.h
+new file mode 100644
+index 0000000..9016512
+--- /dev/null
++++ b/src/RandomBotDirectory.h
+@@ -0,0 +1,74 @@
++#ifndef MULTIBOT_RANDOM_BOT_DIRECTORY_H
++#define MULTIBOT_RANDOM_BOT_DIRECTORY_H
++
++#include <algorithm>
++#include <cstdint>
++#include <string>
++#include <vector>
++
++namespace RandomBotDirectory
++{
++constexpr std::size_t PageSize = 25;
++
++struct Row
++{
++    uint32_t guid = 0;
++    std::string name;
++    std::string key;
++    uint32_t level = 0;
++    uint32_t playerClass = 0;
++    uint32_t race = 0;
++    uint32_t faction = 0; // 1 Alliance, 2 Horde
++    uint32_t zone = 0;
++    std::string zoneName;
++    bool grouped = false;
++    bool controlled = false;
++    std::string reason;
++};
++
++struct Query
++{
++    std::string name;
++    uint32_t playerClass = 0;
++    uint32_t minLevel = 1;
++    uint32_t maxLevel = 80;
++    uint32_t faction = 0;
++    uint32_t status = 0; // 0 all available, 1 online, 2 offline (empty in V1)
++    uint32_t invite = 0; // 0 all, 1 eligible, 2 ineligible
++    uint32_t page = 0;
++    std::string sort = "NAME";
++    bool descending = false;
++};
++
++inline bool MatchesBase(Row const& row, Query const& query)
++{
++    return query.status != 2 && row.key.find(query.name) != std::string::npos &&
++        (!query.playerClass || row.playerClass == query.playerClass) &&
++        row.level >= query.minLevel && row.level <= query.maxLevel &&
++        (!query.faction || row.faction == query.faction);
++}
++
++inline std::vector<Row> Select(std::vector<Row> rows, Query const& query)
++{
++    rows.erase(std::remove_if(rows.begin(), rows.end(), [&query](Row const& row)
++    {
++        return !MatchesBase(row, query) || (query.invite == 1 && row.reason != "OK") ||
++            (query.invite == 2 && row.reason == "OK");
++    }), rows.end());
++    std::sort(rows.begin(), rows.end(), [&query](Row const& left, Row const& right)
++    {
++        int order = 0;
++        if (query.sort == "LEVEL" && left.level != right.level)
++            order = left.level < right.level ? -1 : 1;
++        else if (query.sort == "CLASS" && left.playerClass != right.playerClass)
++            order = left.playerClass < right.playerClass ? -1 : 1;
++        else if (left.key != right.key)
++            order = left.key < right.key ? -1 : 1;
++        else if (left.guid != right.guid)
++            order = left.guid < right.guid ? -1 : 1;
++        return query.descending ? order > 0 : order < 0;
++    });
++    return rows;
++}
++}
++#endif
+diff --git a/src/RandomBotDirectory.inc b/src/RandomBotDirectory.inc
+new file mode 100644
+index 0000000..9cce482
+--- /dev/null
++++ b/src/RandomBotDirectory.inc
+@@ -0,0 +1,228 @@
++// Included inside the bridge namespace: reuse strict fields, framing and error helpers.
++// Only value data crosses from chat handlers to the world-thread request processor.
++std::atomic<bool> gRandomBotDirectoryEnabled{false};
++std::mutex gRandomBotDirectoryMutex;
++struct RandomBotDirectoryRequest
++{
++    ObjectGuid requester;
++    uint32 account = 0;
++    std::string token;
++    RandomBotDirectory::Query query;
++};
++struct RandomBotDirectoryRate
++{
++    std::chrono::steady_clock::time_point last;
++    std::deque<std::pair<std::string, std::chrono::steady_clock::time_point>> tokens;
++};
++std::deque<RandomBotDirectoryRequest> gRandomBotDirectoryQueue;
++std::map<ObjectGuid, RandomBotDirectoryRate> gRandomBotDirectoryRates;
++
++bool QueueRandomBotDirectory(Player* player, std::vector<std::string> const& fields)
++{
++    std::string const token = GetSafeErrorToken(fields, 1);
++    auto fail = [&](std::string const& reason)
++    {
++        // Directory data is private even when the request arrived on PARTY/RAID.
++        return SendProtocolError(player, CHAT_MSG_WHISPER, "GET", "RANDOMBOT_DIRECTORY", token, reason);
++    };
++    if (!gRandomBotDirectoryEnabled.load())
++        return fail("DISABLED");
++    if (fields.size() != 13)
++        return fail("BAD_FIELD_COUNT");
++    if (!IsValidRequestToken(fields[1]))
++        return fail("BAD_TOKEN");
++    RandomBotDirectory::Query query;
++    uint32 descending = 0;
++    if (!TryUrlDecodeField(fields[2], query.name, 48, true) ||
++        !TryParseUint32Field(fields[3], 0, 11, query.playerClass) || query.playerClass == 10 ||
++        !TryParseUint32Field(fields[4], 1, 80, query.minLevel) ||
++        !TryParseUint32Field(fields[5], query.minLevel, 80, query.maxLevel) ||
++        !TryParseUint32Field(fields[6], 0, 2, query.faction) ||
++        !TryParseUint32Field(fields[7], 0, 2, query.status) ||
++        !TryParseUint32Field(fields[8], 0, 2, query.invite) ||
++        !TryParseUint32Field(fields[9], 0, 100000, query.page) ||
++        (fields[10] != "NAME" && fields[10] != "LEVEL" && fields[10] != "CLASS") ||
++        !TryParseUint32Field(fields[11], 0, 1, descending) || fields[12] != "ANY")
++        return fail("BAD_FILTER");
++    if (!player || !player->GetSession() || !player->IsInWorld())
++        return fail("NO_SESSION");
++    query.name = ToLower(query.name);
++    query.sort = fields[10];
++    query.descending = descending != 0;
++    std::string rejection;
++    {
++        std::lock_guard<std::mutex> guard(gRandomBotDirectoryMutex);
++        auto const now = std::chrono::steady_clock::now();
++        for (auto it = gRandomBotDirectoryRates.begin(); it != gRandomBotDirectoryRates.end();)
++        {
++            if (now - it->second.last >= std::chrono::seconds(60))
++                it = gRandomBotDirectoryRates.erase(it);
++            else
++                ++it;
++        }
++        auto it = gRandomBotDirectoryRates.find(player->GetGUID());
++        if (it == gRandomBotDirectoryRates.end() && gRandomBotDirectoryRates.size() >= 512)
++            rejection = "BUSY";
++        else
++        {
++            auto& rate = gRandomBotDirectoryRates[player->GetGUID()];
++            while (!rate.tokens.empty() && now - rate.tokens.front().second >= std::chrono::seconds(60))
++                rate.tokens.pop_front();
++            bool const replay = std::any_of(rate.tokens.begin(), rate.tokens.end(), [&](auto const& entry)
++            {
++                return entry.first == token;
++            });
++            if (replay)
++                rejection = "TOKEN_USED";
++            else if (now - rate.last < std::chrono::seconds(3))
++                rejection = "RATE_LIMIT";
++            else if (gRandomBotDirectoryQueue.size() >= 16)
++                rejection = "BUSY";
++            else
++            {
++                rate.last = now;
++                rate.tokens.emplace_back(token, now);
++                gRandomBotDirectoryQueue.push_back(
++                    {player->GetGUID(), player->GetSession()->GetAccountId(), token, query});
++            }
++        }
++    }
++    return rejection.empty() ? true : fail(rejection);
++}
++
++std::string RandomBotInviteReason(Player* requester, Player* bot)
++{
++    if (bot->InBattleground() || requester->InBattleground())
++        return "BATTLEGROUND";
++    if (bot->IsBeingTeleported())
++        return "BUSY";
++    if (bot->GetGroup())
++        return bot->GetGroup() == requester->GetGroup() ? "IN_YOUR_GROUP" : "OTHER_GROUP";
++    if (bot->GetGroupInvite())
++        return "PENDING_INVITE";
++    Group* group = requester->GetGroup();
++    if (!group)
++        group = requester->GetGroupInvite();
++    if (group && group->IsFull())
++        return "GROUP_FULL";
++    if (group && !group->IsLeader(requester->GetGUID()) && !group->IsAssistant(requester->GetGUID()))
++        return "NOT_LEADER";
++    if (!requester->IsGameMaster() && !sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP) &&
++        requester->GetTeamId() != bot->GetTeamId())
++        return "WRONG_FACTION";
++    PlayerbotAI* ai = GetBotAI(bot);
++    if (!ai || !ai->GetSecurity())
++        return "PERMISSION_DENIED";
++    DenyReason deny = PLAYERBOT_DENY_NONE;
++    if (ai->GetSecurity()->LevelFor(requester, &deny) < PLAYERBOT_SECURITY_INVITE)
++    {
++        switch (deny)
++        {
++            case PLAYERBOT_DENY_LOW_LEVEL: return "LOW_LEVEL";
++            case PLAYERBOT_DENY_GEARSCORE: return "GEARSCORE";
++            case PLAYERBOT_DENY_OPPOSING: return "WRONG_FACTION";
++            case PLAYERBOT_DENY_BG: return "BG_QUEUE";
++            default: return "PERMISSION_DENIED";
++        }
++    }
++    return "OK"; // Preflight only: InviteUnit invokes all native core/hooks/accept checks again.
++}
++
++void SendRandomBotDirectory(RandomBotDirectoryRequest const& request, Player* player)
++{
++    std::vector<RandomBotDirectory::Row> rows;
++    // WorldScript::OnUpdate is after MapMgr::Update's worker wait. No Player* retained.
++    for (auto const& entry : ObjectAccessor::GetPlayers())
++    {
++        Player* bot = entry.second;
++        if (!bot || bot == player || !bot->IsInWorld() || !sRandomPlayerbotMgr.IsRandomBot(bot) || !GetBotAI(bot))
++            continue;
++        RandomBotDirectory::Row row;
++        row.guid = bot->GetGUID().GetCounter();
++        row.name = bot->GetName();
++        row.key = ToLower(row.name);
++        row.level = bot->GetLevel();
++        row.playerClass = bot->getClass();
++        row.race = bot->getRace();
++        row.faction = bot->GetTeamId() == TEAM_ALLIANCE ? 1 : 2;
++        if (!RandomBotDirectory::MatchesBase(row, request.query))
++            continue;
++        row.zone = bot->GetZoneId();
++        if (AreaTableEntry const* area = sAreaTableStore.LookupEntry(row.zone))
++            row.zoneName = area->area_name[LOCALE_enUS];
++        row.grouped = bot->GetGroup() != nullptr;
++        row.controlled = IsBotMasteredByRequester(player, bot);
++        row.reason = RandomBotInviteReason(player, bot);
++        rows.push_back(std::move(row));
++    }
++    rows = RandomBotDirectory::Select(std::move(rows), request.query);
++    std::size_t const first = std::min(rows.size(), request.query.page * RandomBotDirectory::PageSize);
++    std::size_t const count = std::min(RandomBotDirectory::PageSize, rows.size() - first);
++    std::vector<std::string> packets;
++    for (std::size_t i = first; i < first + count; ++i)
++    {
++        auto const& row = rows[i];
++        std::ostringstream out;
++        out << request.token << '~' << row.guid << '~' << UrlEncodeField(row.name) << '~'
++            << row.playerClass << '~' << row.level << '~' << row.race << '~' << row.faction
++            << "~UNKNOWN~ONLINE~" << row.zone << '~' << row.grouped << '~' << row.controlled << '~' << row.reason;
++        if (!IsAddonPacketWithinBudget("RBD_ENTRY", out.str() + '~'))
++        {
++            SendProtocolError(player, CHAT_MSG_WHISPER, "GET", "RANDOMBOT_DIRECTORY", request.token, "TOO_LARGE");
++            return;
++        }
++        // Area display names may expand substantially under percent encoding.
++        // Keep numeric zone truth even if the optional display label will not fit.
++        std::string named = out.str() + '~' + UrlEncodeField(row.zoneName);
++        if (row.zoneName.size() > 128 || !IsAddonPacketWithinBudget("RBD_ENTRY", named))
++            named = out.str() + '~';
++        packets.push_back(std::move(named));
++    }
++    std::ostringstream framing;
++    framing << request.token << '~' << request.query.page << '~' << rows.size() << '~' << count << "~ONLINE_ONLY";
++    SendAddonPacket(player, CHAT_MSG_WHISPER, "RBD_BEGIN", framing.str());
++    for (auto const& packet : packets)
++        SendAddonPacket(player, CHAT_MSG_WHISPER, "RBD_ENTRY", packet);
++    SendAddonPacket(player, CHAT_MSG_WHISPER, "RBD_END", framing.str());
++}
++
++class RandomBotDirectoryWorldScript final : public WorldScript
++{
++public:
++    RandomBotDirectoryWorldScript() : WorldScript("RandomBotDirectoryWorldScript") { }
++
++    void OnAfterConfigLoad(bool /*reload*/) override
++    {
++        gRandomBotDirectoryEnabled.store(
++            sConfigMgr->GetOption<bool>("MultiBotBridge.RandomBotDirectory.Enable", false));
++    }
++
++    void OnUpdate(uint32 diff) override
++    {
++        // Global work/output budget: at most one page every 500 ms, no background scans.
++        elapsed = std::min<uint32>(elapsed + diff, 500);
++        if (elapsed < 500)
++            return;
++        RandomBotDirectoryRequest request;
++        {
++            std::lock_guard<std::mutex> guard(gRandomBotDirectoryMutex);
++            if (gRandomBotDirectoryQueue.empty())
++                return;
++            request = std::move(gRandomBotDirectoryQueue.front());
++            gRandomBotDirectoryQueue.pop_front();
++        }
++        elapsed = 0;
++        Player* player = ObjectAccessor::FindPlayer(request.requester);
++        if (!player || !player->GetSession() || player->GetSession()->GetAccountId() != request.account)
++            return;
++        if (!gRandomBotDirectoryEnabled.load())
++        {
++            SendProtocolError(player, CHAT_MSG_WHISPER, "GET", "RANDOMBOT_DIRECTORY", request.token, "DISABLED");
++            return;
++        }
++        SendRandomBotDirectory(request, player);
++    }
++
++private:
++    uint32 elapsed = 0;
++};
+diff --git a/tests/random_bot_directory_test.cpp b/tests/random_bot_directory_test.cpp
+new file mode 100644
+index 0000000..f7fdad0
+--- /dev/null
++++ b/tests/random_bot_directory_test.cpp
+@@ -0,0 +1,325 @@
++// Native dependencies are fakes. The directory implementation itself is included unchanged.
++#include "../src/RandomBotDirectory.h"
++#include <atomic>
++#include <cassert>
++#include <chrono>
++#include <cctype>
++#include <deque>
++#include <iostream>
++#include <map>
++#include <mutex>
++#include <sstream>
++#include <utility>
++
++using uint32 = uint32_t;
++struct ObjectGuid
++{
++    uint32 value = 0;
++    ObjectGuid(uint32 id = 0) : value(id) { }
++    uint32 GetCounter() const { return value; }
++    bool operator<(ObjectGuid const& other) const { return value < other.value; }
++};
++constexpr int CHAT_MSG_WHISPER = 7;
++constexpr int TEAM_ALLIANCE = 0;
++constexpr int LOCALE_enUS = 0;
++constexpr int CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP = 1;
++constexpr int PLAYERBOT_SECURITY_INVITE = 2;
++enum DenyReason
++{
++    PLAYERBOT_DENY_NONE, PLAYERBOT_DENY_LOW_LEVEL, PLAYERBOT_DENY_GEARSCORE,
++    PLAYERBOT_DENY_OPPOSING, PLAYERBOT_DENY_BG
++};
++struct Session
++{
++    uint32 GetAccountId() const { return account; }
++    int GetSessionDbcLocale() const { return 0; }
++    uint32 account = 1;
++};
++struct Group
++{
++    bool IsFull() const { return full; }
++    bool IsLeader(ObjectGuid) const { return leader; }
++    bool IsAssistant(ObjectGuid) const { return false; }
++    bool full = false;
++    bool leader = true;
++};
++struct Player;
++struct Security
++{
++    int LevelFor(Player*, DenyReason* reason) { *reason = deny; return level; }
++    int level = PLAYERBOT_SECURITY_INVITE;
++    DenyReason deny = PLAYERBOT_DENY_NONE;
++};
++struct PlayerbotAI
++{
++    Security* GetSecurity() { return &security; }
++    Security security;
++};
++struct Player
++{
++    Session* GetSession() { return &session; }
++    ObjectGuid GetGUID() const { return guid; }
++    bool IsInWorld() const { return online; }
++    bool InBattleground() const { return bg; }
++    bool IsBeingTeleported() const { return false; }
++    Group* GetGroup() { return group; }
++    Group* GetGroupInvite() { return pending; }
++    int GetTeamId() const { return team; }
++    bool IsGameMaster() const { return false; }
++    std::string GetName() const { return name; }
++    uint32 GetLevel() const { return level; }
++    uint32 getClass() const { return playerClass; }
++    uint32 getRace() const { return 1; }
++    uint32 GetZoneId() const { return 12; }
++    Session session;
++    ObjectGuid guid = 1;
++    std::string name = "Requester";
++    uint32 level = 60;
++    uint32 playerClass = 5;
++    int team = 0;
++    bool online = true;
++    bool bg = false;
++    bool controlled = false;
++    Group* group = nullptr;
++    Group* pending = nullptr;
++    PlayerbotAI ai;
++};
++// Production GUID is strongly typed. Supply the single accessor used by the implementation below.
++struct Config
++{
++    template<class T> T GetOption(char const*, T) { return enabled; }
++    bool enabled = true;
++} config;
++auto* sConfigMgr = &config;
++struct World { bool getBoolConfig(int) { return false; } } world;
++auto* sWorld = &world;
++struct RandomManager { bool IsRandomBot(Player* bot) { return bot->guid.value > 1; } } sRandomPlayerbotMgr;
++struct AreaTableEntry { char const* area_name[1] = {"Elwynn Forest"}; } area;
++struct AreaStore { AreaTableEntry* LookupEntry(uint32) { return &area; } } sAreaTableStore;
++struct WorldScript
++{
++    explicit WorldScript(char const*) { }
++    virtual ~WorldScript() = default;
++    virtual void OnAfterConfigLoad(bool) { }
++    virtual void OnUpdate(uint32) { }
++};
++namespace ObjectAccessor
++{
++std::map<ObjectGuid, Player*> players;
++auto const& GetPlayers() { return players; }
++Player* FindPlayer(ObjectGuid guid)
++{
++    auto it = players.find(guid);
++    return it == players.end() || !it->second->online ? nullptr : it->second;
++}
++}
++PlayerbotAI* GetBotAI(Player* bot) { return &bot->ai; }
++bool IsBotMasteredByRequester(Player*, Player* bot) { return bot->controlled; }
++std::string ToLower(std::string value)
++{
++    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return std::tolower(c); });
++    return value;
++}
++// Communication adapters: strict ASCII inputs in these tests; integration uses the existing bridge helpers.
++bool IsValidRequestToken(std::string const& value) { return !value.empty() && value.size() <= 64; }
++std::string GetSafeErrorToken(std::vector<std::string> const& fields, std::size_t index)
++{
++    return index < fields.size() && IsValidRequestToken(fields[index]) ? fields[index] : "";
++}
++bool TryParseUint32Field(std::string const& value, uint32 min, uint32 max, uint32& out)
++{
++    if (value.empty() || value.find_first_not_of("0123456789") != std::string::npos || value.size() > 10)
++        return false;
++    auto number = std::stoull(value);
++    if (number < min || number > max)
++        return false;
++    out = number;
++    return true;
++}
++bool TryUrlDecodeField(std::string const& value, std::string& out, std::size_t max, bool empty)
++{
++    out = value;
++    return value.size() <= max && (empty || !value.empty()) && value.find('%') == std::string::npos;
++}
++std::string UrlEncodeField(std::string const& value) { return value; }
++std::vector<std::pair<std::string, std::string>> packets;
++bool IsAddonPacketWithinBudget(std::string const& op, std::string const& value)
++{
++    return 5 + op.size() + 1 + value.size() <= 255;
++}
++void SendAddonPacket(Player*, int type, std::string const& op, std::string const& value)
++{
++    assert(type == CHAT_MSG_WHISPER);
++    assert(IsAddonPacketWithinBudget(op, value));
++    packets.emplace_back(op, value);
++}
++bool SendProtocolError(Player* p, int type, std::string const&, std::string const&, std::string const&, std::string const& reason)
++{
++    SendAddonPacket(p, type, "ERR", reason);
++    return true;
++}
++#include "../src/RandomBotDirectory.inc"
++
++int main()
++{
++    Player requester;
++    ObjectAccessor::players.emplace(requester.guid, &requester);
++    std::vector<Player> bots(2500);
++    for (uint32 i = 0; i < bots.size(); ++i)
++    {
++        auto& bot = bots[i];
++        bot.guid = i + 2;
++        bot.name = "Bot" + std::to_string(10000 + i);
++        bot.level = i % 80 + 1;
++        bot.playerClass = i % 2 ? 5 : 1;
++        ObjectAccessor::players.emplace(bot.guid, &bot);
++    }
++    RandomBotDirectoryWorldScript script;
++    script.OnAfterConfigLoad(false);
++    auto request = std::vector<std::string>{"RANDOMBOT_DIRECTORY", "one", "", "0", "1", "80", "0", "0", "0", "0", "NAME", "0", "ANY"};
++    auto run = [&](std::string token)
++    {
++        request[1] = token;
++        packets.clear();
++        gRandomBotDirectoryRates.clear();
++        QueueRandomBotDirectory(&requester, request);
++        script.OnUpdate(500);
++    };
++    run("first");
++    assert(packets.size() == 27);
++    assert(packets.front().second == "first~0~2500~25~ONLINE_ONLY");
++    assert(packets.back().first == "RBD_END");
++    assert(packets[1].second.find("Bot10000") != std::string::npos);
++    auto firstEntry = packets[1].second;
++    request[9] = "1";
++    run("second");
++    assert(packets.front().second == "second~1~2500~25~ONLINE_ONLY");
++    assert(packets[1].second.find("Bot10025") != std::string::npos);
++    request[9] = "0";
++    request[3] = "5";
++    request[4] = "55";
++    request[5] = "60";
++    request[10] = "LEVEL";
++    run("priests");
++    assert(packets.size() > 2);
++    for (std::size_t i = 1; i + 1 < packets.size(); ++i)
++        assert(packets[i].second.find("~5~56~") != std::string::npos ||
++            packets[i].second.find("~5~58~") != std::string::npos ||
++            packets[i].second.find("~5~60~") != std::string::npos);
++    request[2] = "absent";
++    run("empty");
++    assert(packets.size() == 2 && packets.front().second == "empty~0~0~0~ONLINE_ONLY");
++    request[2] = "";
++    request[7] = "2";
++    run("offline");
++    assert(packets.size() == 2 && packets.front().second == "offline~0~0~0~ONLINE_ONLY");
++    request[7] = "0";
++    run("rate");
++    packets.clear();
++    QueueRandomBotDirectory(&requester, request);
++    assert(packets.back().second == "TOKEN_USED");
++    request[1] = "newtoken";
++    QueueRandomBotDirectory(&requester, request);
++    assert(packets.back().second == "RATE_LIMIT");
++    request[4] = "999999999999999999999";
++    run("invalid");
++    assert(packets.size() == 1 && packets.back().second == "BAD_FILTER");
++    request[4] = "55";
++    request.push_back("extra");
++    run("extra");
++    assert(packets.back().second == "BAD_FIELD_COUNT");
++    request.pop_back();
++    request[2] = std::string(49, 'a');
++    run("oversized");
++    assert(packets.back().second == "BAD_FILTER");
++    request[2] = "";
++    gRandomBotDirectoryEnabled = false;
++    run("disabled");
++    assert(packets.back().second == "DISABLED");
++    gRandomBotDirectoryEnabled = true;
++    Player& target = bots[0];
++    assert(RandomBotInviteReason(&requester, &target) == "OK");
++    Group group;
++    target.group = &group;
++    assert(RandomBotInviteReason(&requester, &target) == "OTHER_GROUP");
++    requester.group = &group;
++    assert(RandomBotInviteReason(&requester, &target) == "IN_YOUR_GROUP");
++    target.group = nullptr;
++    group.full = true;
++    assert(RandomBotInviteReason(&requester, &target) == "GROUP_FULL");
++    group.full = false;
++    group.leader = false;
++    assert(RandomBotInviteReason(&requester, &target) == "NOT_LEADER");
++    requester.group = nullptr;
++    target.team = 1;
++    assert(RandomBotInviteReason(&requester, &target) == "WRONG_FACTION");
++    target.team = 0;
++    target.ai.security.level = 1;
++    assert(RandomBotInviteReason(&requester, &target) == "PERMISSION_DENIED");
++    target.ai.security.deny = PLAYERBOT_DENY_LOW_LEVEL;
++    assert(RandomBotInviteReason(&requester, &target) == "LOW_LEVEL");
++    target.bg = true;
++    assert(RandomBotInviteReason(&requester, &target) == "BATTLEGROUND");
++    target.bg = false;
++    target.online = false;
++    request[3] = "0"; request[4] = "1"; request[5] = "80";
++    run("onlinecount");
++    assert(packets.front().second == "onlinecount~0~2499~25~ONLINE_ONLY");
++    // Cancelled/disconnected request cannot send a response into a later session/account.
++    packets.clear(); gRandomBotDirectoryRates.clear(); request[1] = "logout";
++    QueueRandomBotDirectory(&requester, request);
++    requester.session.account = 2;
++    script.OnUpdate(500);
++    assert(packets.empty());
++    requester.session.account = 1;
++    // Bound queue memory and globally limit directory work, even across many requesters.
++    gRandomBotDirectoryRates.clear(); packets.clear();
++    std::vector<Player> requesters(17);
++    for (uint32 i = 0; i < requesters.size(); ++i)
++    {
++        requesters[i].guid = 9000 + i;
++        ObjectAccessor::players.emplace(requesters[i].guid, &requesters[i]);
++        request[1] = "queue" + std::to_string(i);
++        QueueRandomBotDirectory(&requesters[i], request);
++    }
++    assert(gRandomBotDirectoryQueue.size() == 16 && packets.back().second == "BUSY");
++    script.OnUpdate(499);
++    assert(gRandomBotDirectoryQueue.size() == 16);
++    script.OnUpdate(1);
++    assert(gRandomBotDirectoryQueue.size() == 15);
++    gRandomBotDirectoryQueue.clear();
++    for (auto const& player : requesters) ObjectAccessor::players.erase(player.guid);
++    std::vector<RandomBotDirectory::Row> rows;
++    for (auto const& bot : bots)
++    {
++        RandomBotDirectory::Row row;
++        row.guid = bot.guid.value; row.name = bot.name; row.key = ToLower(bot.name);
++        row.playerClass = bot.playerClass; row.level = bot.level; row.faction = bot.team + 1;
++        row.reason = bot.guid.value % 3 ? "OK" : "OTHER_GROUP";
++        rows.push_back(row);
++    }
++    RandomBotDirectory::Query query;
++    for (std::string sort : {"NAME", "LEVEL", "CLASS"})
++    {
++        query.sort = sort; query.descending = false;
++        auto asc = RandomBotDirectory::Select(rows, query);
++        query.descending = true;
++        auto desc = RandomBotDirectory::Select(rows, query);
++        for (std::size_t i = 0; i < asc.size(); ++i)
++            assert(asc[i].guid == desc[desc.size() - i - 1].guid);
++    }
++    query.invite = 1;
++    auto eligible = RandomBotDirectory::Select(rows, query);
++    for (auto const& row : eligible) assert(row.reason == "OK");
++    query.invite = 2; query.faction = 1; query.name = "bot100";
++    auto filtered = RandomBotDirectory::Select(rows, query);
++    for (auto const& row : filtered) assert(row.reason != "OK" && row.faction == 1 && row.key.find(query.name) != std::string::npos);
++    auto start = std::chrono::steady_clock::now();
++    for (int i = 0; i < 100; ++i)
++    {
++        query = {}; query.sort = i % 2 ? "CLASS" : "LEVEL";
++        assert(RandomBotDirectory::Select(rows, query).size() == 2500);
++    }
++    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
++    std::cout << "PASS: server directory/pagination/filters/sorts/preflight/validation/rate/replay/disconnect; 100 x 2500 select+sort: " << ms << " ms\n";
++}

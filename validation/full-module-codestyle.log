@@ -1,0 +1,72 @@
+Starting AzerothCore CPP Codestyle check...
+ 
+Please read the C++ Code Standards for AzerothCore:
+https://www.azerothcore.org/wiki/cpp-code-standards
+ 
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 1281
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 2696
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 4359
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 4757
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 5678
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 5679
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 6117
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 9253
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 9699
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11814
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11815
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11822
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11823
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11838
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11839
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11854
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11855
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11868
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11869
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11878
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11879
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11888
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11889
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11892
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11893
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11898
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11899
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11912
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11913
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11928
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11929
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11942
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11943
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11956
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11957
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11972
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11973
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11982
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11983
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11992
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 11993
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 12004
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 12005
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 12010
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 12011
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 12018
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 12019
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 12038
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 12039
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 13266
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 14590
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 18596
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 21911
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 22542
+Multiple blank lines found in /home/karsten/azerothcore-wotlk/modules/mod-multibot-bridge/src/MultiBotBridge.cpp at line 22543
+
+Multiple blank lines check : Failed
+Trailing whitespace check : Passed
+GetCounter() check : Passed
+Misc codestyle check : Passed
+GetTypeId() check : Passed
+NpcFlagHelpers check : Passed
+ItemFlagHelpers check : Passed
+ItemTemplateFlagHelpers check : Passed
+Qualifier alignment check : Passed
+
+Please fix the codestyle issues above.

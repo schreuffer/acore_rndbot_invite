@@ -1,0 +1,16101 @@
+local MultiBot = _G.MultiBot
+if not MultiBot then
+  return
+end
+
+MultiBot.bridge = MultiBot.bridge or {}
+
+local Comm = MultiBot.Comm or {}
+MultiBot.Comm = Comm
+
+Comm.prefix = "MBOT"
+Comm.version = "1"
+
+local STATE_FRAMING_CAPABILITY = "STATE_FRAMING_V1"
+local STRATEGY_MUTATION_CAPABILITY = "STRATEGY_MUTATION_V1"
+local SELF_ACTION_CAPABILITY = "SELF_ACTION_V1"
+local OUTFIT_CAPABILITY = "OUTFIT_V1"
+local INVENTORY_CAPABILITY = "INVENTORY_V1"
+local INVENTORY_EXACT_CAPABILITY = "INVENTORY_EXACT_V1"
+local INVENTORY_ITEM_MOVE_CAPABILITY = "ITEM_MOVE_V1"
+local INVENTORY_ITEM_TRADE_CAPABILITY = "ITEM_TRADE_V1"
+local INVENTORY_ITEM_DEPOSIT_EXACT_CAPABILITY = "ITEM_DEPOSIT_EXACT_V1"
+local INVENTORY_ITEM_EQUIP_CAPABILITY = "ITEM_EQUIP_V1"
+local INVENTORY_ITEM_UNEQUIP_CAPABILITY = "ITEM_UNEQUIP_V1"
+local INVENTORY_ITEM_DESTROY_CAPABILITY = "ITEM_DESTROY_V1"
+local INVENTORY_ITEM_USE_CAPABILITY = "ITEM_USE_V1"
+local INVENTORY_ITEM_SELL_CAPABILITY = "ITEM_SELL_SINGLE_V1"
+local INVENTORY_BULK_SELL_CAPABILITY = "INVENTORY_BULK_SELL_V1"
+local INVENTORY_OPEN_CAPABILITY = "INVENTORY_OPEN_V1"
+local GROUP_ROLL_CAPABILITY = "GROUP_ROLL_V1"
+local ENCHANT_TRADE_CAPABILITY = "ENCHANT_TRADE_V1"
+local QUEST_ABANDON_CAPABILITY = "QUEST_ABANDON_V1"
+local TALENT_APPLY_CAPABILITY = "TALENT_APPLY_V1"
+local TALENT_SPEC_APPLY_CAPABILITY = "TALENT_SPEC_APPLY_V1"
+local CRAFT_RECIPE_TARGET_CAPABILITY = "CRAFT_RECIPE_TARGET_V1"
+local LOOT_RULE_ITEM_CAPABILITY = "LOOT_RULE_ITEM_V1"
+local ALT_ROSTER_CAPABILITY = "ALT_ROSTER_V1"
+local BOT_LIFECYCLE_CAPABILITY = "BOT_LIFECYCLE_V1"
+local BOT_TARGET_RESOLVE_CAPABILITY = "BOT_TARGET_RESOLVE_V1"
+-- MB_LUA51_UPVALUE_REFACTOR_V1_BEGIN
+-- Keep capability-to-state mapping outside Comm.HandleAddonMessage so each
+-- capability does not consume a separate Lua 5.1 upvalue in that dispatcher.
+local CAPABILITY_STATE_FIELDS = {
+  [STATE_FRAMING_CAPABILITY] = "stateFramingCapable",
+  [STRATEGY_MUTATION_CAPABILITY] = "strategyMutationCapable",
+  ["SELF_STRATEGY_V1"] = "selfStrategyCapable",
+  [SELF_ACTION_CAPABILITY] = "selfActionCapable",
+  [OUTFIT_CAPABILITY] = "outfitCapable",
+  ["OUTFIT_FRAMING_V1"] = "outfitFramingCapable",
+  [INVENTORY_CAPABILITY] = "inventoryCapable",
+  ["EQUIP_OBSERVE_V1"] = "equipObserveCapable",
+  ["EQUIP_EVENTS_V1"] = "equipEventsCapable",
+  [INVENTORY_EXACT_CAPABILITY] = "inventoryExactCapable",
+  [INVENTORY_ITEM_MOVE_CAPABILITY] = "inventoryItemMoveCapable",
+  [INVENTORY_ITEM_TRADE_CAPABILITY] = "inventoryItemTradeCapable",
+  [INVENTORY_ITEM_DEPOSIT_EXACT_CAPABILITY] = "inventoryItemDepositExactCapable",
+  [INVENTORY_ITEM_EQUIP_CAPABILITY] = "inventoryItemEquipCapable",
+  [INVENTORY_ITEM_UNEQUIP_CAPABILITY] = "inventoryItemUnequipCapable",
+  [INVENTORY_ITEM_DESTROY_CAPABILITY] = "inventoryItemDestroyCapable",
+  [INVENTORY_ITEM_USE_CAPABILITY] = "inventoryItemUseCapable",
+  [INVENTORY_ITEM_SELL_CAPABILITY] = "inventoryItemSellCapable",
+  ["VENDOR_BUYBACK_V1"] = "inventoryBuybackCapable",
+  [INVENTORY_BULK_SELL_CAPABILITY] = "inventoryBulkSellCapable",
+  [INVENTORY_OPEN_CAPABILITY] = "inventoryOpenCapable",
+  [GROUP_ROLL_CAPABILITY] = "groupRollCapable",
+  [ENCHANT_TRADE_CAPABILITY] = "enchantTradeCapable",
+  [QUEST_ABANDON_CAPABILITY] = "questAbandonCapable",
+  ["QUEST_ABANDON_TARGET_V1"] = "questAbandonTargetCapable",
+  [TALENT_APPLY_CAPABILITY] = "talentApplyCapable",
+  [TALENT_SPEC_APPLY_CAPABILITY] = "talentSpecApplyCapable",
+  ["GLYPH_EQUIP_V1"] = "glyphEquipCapable",
+  [CRAFT_RECIPE_TARGET_CAPABILITY] = "craftRecipeTargetCapable",
+  [LOOT_RULE_ITEM_CAPABILITY] = "lootRuleItemCapable",
+  [ALT_ROSTER_CAPABILITY] = "altRosterCapable",
+  ["RANDOMBOT_DIRECTORY_V1"] = "randomBotDirectoryCapable",
+  [BOT_LIFECYCLE_CAPABILITY] = "botLifecycleCapable",
+  ["BOT_GROUP_REMOVE_V1"] = "botGroupRemoveCapable",
+  ["BOT_GROUP_LIFECYCLE_V1"] = "botGroupLifecycleCapable",
+  ["CREATOR_ADDCLASS_V1"] = "creatorAddClassCapable",
+  ["CREATOR_INIT_AUTO_V1"] = "creatorInitAutoCapable",
+  ["CREATOR_INIT_AUTO_FEEDBACK_V1"] = "creatorInitAutoFeedbackCapable",
+  ["FLEE_ORDER_V1"] = "fleeOrderCapable",
+  ["GRIND_ORDER_V1"] = "grindOrderCapable",
+  ["BOT_RESET_V1"] = "botResetCapable",
+  ["GROUP_ACTION_V1"] = "groupActionCapable",
+  ["FORMATION_V1"] = "formationCapable",
+  ["RTSC_ORDER_V1"] = "rtscOrderCapable",
+  ["QUEST_ACCEPT_ALL_V1"] = "questAcceptAllCapable",
+  ["QUEST_TALK_V1"] = "questTalkCapable",
+  ["QUEST_GAMEOBJECT_USE_V1"] = "questGameObjectUseCapable",
+  ["QUEST_REWARD_V1"] = "questRewardCapable",
+  ["QUEST_REWARD_POLICY_V1"] = "questRewardPolicyCapable",
+  ["AUTOGEAR_OPTIONS_V1"] = "autogearOptionsCapable",
+  ["BOT_MAINTENANCE_V1"] = "botMaintenanceCapable",
+  ["BOT_WIPE_V1"] = "botWipeCapable",
+  ["BOT_SUMMON_V1"] = "botSummonCapable",
+  ["BOT_RELEASE_V1"] = "botReleaseCapable",
+  ["SPELLBOOK_CAST_V1"] = "spellbookCastCapable",
+  ["SPELLBOOK_IGNORE_V1"] = "spellbookIgnoreCapable",
+  ["HUNTER_PET_CONTROL_V1"] = "hunterPetControlCapable",
+  ["HUNTER_PET_MANAGE_V1"] = "hunterPetManageCapable",
+  ["HUNTER_PET_LIFECYCLE_V1"] = "hunterPetLifecycleCapable",
+  ["WARLOCK_STONE_STATE_V1"] = "warlockStoneStateCapable",
+  [BOT_TARGET_RESOLVE_CAPABILITY] = "botTargetResolveCapable",
+  ["SELF_BOT_V1"] = "selfBotCapable",
+}
+-- MB_LUA51_UPVALUE_REFACTOR_V1_END
+local SELF_BOT_TIMEOUT_SECONDS = 5.0
+local GROUP_ROLL_TIMEOUT_SECONDS = 5.0
+local ENCHANT_TRADE_TIMEOUT_SECONDS = 5.0
+local QUEST_ABANDON_TIMEOUT_SECONDS = 5.0
+local TALENT_APPLY_TIMEOUT_SECONDS = 5.0
+local TALENT_SPEC_APPLY_TIMEOUT_SECONDS = 5.0
+local CRAFT_RECIPE_TARGET_TIMEOUT_SECONDS = 5.0
+local CRAFT_RECIPE_TARGET_MAX_ACTIVE = 8
+local PROFESSION_RECIPE_CRAFT_TIMEOUT_SECONDS = 5.0
+local PROFESSION_RECIPE_CRAFT_MAX_ACTIVE = 8
+local LOOT_RULE_ITEM_TIMEOUT_SECONDS = 5.0
+local LOOT_RULE_ITEM_MAX_ACTIVE = 32
+local INVENTORY_ITEM_MOVE_TIMEOUT_SECONDS = 5.0
+local INVENTORY_ITEM_TRADE_TIMEOUT_SECONDS = 5.0
+local INVENTORY_ITEM_DEPOSIT_EXACT_TIMEOUT_SECONDS = 5.0
+local INVENTORY_ITEM_EQUIP_TIMEOUT_SECONDS = 5.0
+local INVENTORY_ITEM_UNEQUIP_TIMEOUT_SECONDS = 5.0
+local INVENTORY_ITEM_DESTROY_TIMEOUT_SECONDS = 5.0
+local INVENTORY_ITEM_USE_TIMEOUT_SECONDS = 5.0
+local INVENTORY_ITEM_SELL_TIMEOUT_SECONDS = 5.0
+local INVENTORY_BUYBACK_TIMEOUT_SECONDS = 5.0
+local INVENTORY_ITEM_MOVE_MAX_COUNT = 1000
+local INVENTORY_ITEM_TRADE_MAX_COUNT = 1000
+local INVENTORY_ITEM_DEPOSIT_EXACT_MAX_COUNT = 1000
+local INVENTORY_ITEM_EQUIP_MAX_COUNT = 1000
+local INVENTORY_ITEM_DESTROY_MAX_COUNT = 1000
+local INVENTORY_ITEM_USE_MAX_COUNT = 1000
+local INVENTORY_ITEM_SELL_MAX_COUNT = 1000
+local INVENTORY_BUYBACK_MAX_COUNT = 1000
+local ENCHANT_TRADE_MAX_ACTIVE = 8
+local GROUP_ROLL_MAX_ITEM_LINK_LENGTH = 160
+local STATE_TIMEOUT_SECONDS = 5.0
+local STATES_TIMEOUT_SECONDS = 15.0
+local STRATEGY_MUTATION_TIMEOUT_SECONDS = 12.0
+Comm._GROUP_ORDER_TIMEOUT_SECONDS = 5.0
+Comm._GROUP_ORDER_MAX_ACTIVE = 8
+local SELF_STRATEGY_MUTATION_TIMEOUT_SECONDS = 10.0
+local SELF_ACTION_TIMEOUT_SECONDS = 10.0
+local STRATEGY_MUTATION_MAX_ACTIVE = 32
+local SELF_STRATEGY_MUTATION_MAX_ACTIVE = 1
+local STRATEGY_MUTATION_MAX_CHANGES_LENGTH = 160
+local STRATEGY_MUTATION_MAX_OPERATIONS = 32
+local STRATEGY_MUTATION_MAX_STRATEGY_LENGTH = 96
+local STATE_MAX_ACTIVE = 32
+local STATE_MAX_BOTS = 128
+local STATE_MAX_STRATEGIES_PER_SCOPE = 256
+local STATE_MAX_STRATEGY_LENGTH = 192
+local STATE_MAX_TOTAL_BYTES = 32768
+local STATE_CAPABILITY_FALLBACK_SECONDS = 3.0
+local STATE_BOOTSTRAP_RETRY_SECONDS = 1.0
+local STATE_BOOTSTRAP_MAX_AUTO_ATTEMPTS = 3
+local ALT_ROSTER_MAX_ENTRIES = 128
+local BOT_TARGET_RESOLVE_TIMEOUT_SECONDS = 5.0
+local BOT_TARGET_RESOLVE_MAX_ACTIVE = 64
+local BOT_LIFECYCLE_TIMEOUT_SECONDS = 12.0
+local BOT_LIFECYCLE_POLL_SECONDS = 1.0
+local BOT_LIFECYCLE_MAX_ACTIVE = 64
+
+local requestBootstrapStates
+local flushPendingStateRefreshes
+local armCapabilityFallback
+local maybeResolveCapabilityFallback
+
+local function safeNow()
+  if type(GetTime) == "function" then
+    return GetTime()
+  end
+
+  return 0
+end
+
+local function safeDelay(delaySeconds, callback)
+  if type(callback) ~= "function" then
+    return
+  end
+
+  if MultiBot and type(MultiBot.TimerAfter) == "function" then
+    MultiBot.TimerAfter(delaySeconds or 0, callback)
+    return
+  end
+
+  callback()
+end
+
+local function trim(value)
+  if type(value) ~= "string" then
+    return ""
+  end
+
+  return value:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function isInventoryViewCurrent(name)
+  local inventory = MultiBot and MultiBot.inventory or nil
+  if not inventory or not inventory.IsVisible or not inventory:IsVisible() then
+    return true
+  end
+
+  local activeName = trim(inventory.name)
+  name = trim(name)
+  return activeName == "" or name == "" or string.lower(activeName) == string.lower(name)
+end
+
+local function splitOnce(value, separator)
+  if type(value) ~= "string" or value == "" then
+    return "", ""
+  end
+
+  local startIndex, endIndex = string.find(value, separator, 1, true)
+  if not startIndex then
+    return value, ""
+  end
+
+  return string.sub(value, 1, startIndex - 1), string.sub(value, endIndex + 1)
+end
+
+local function splitFields(value)
+  local fields = {}
+  value = type(value) == "string" and value or ""
+  local startIndex = 1
+
+  while true do
+    local separatorIndex = string.find(value, "~", startIndex, true)
+    if not separatorIndex then
+      fields[#fields + 1] = string.sub(value, startIndex)
+      break
+    end
+
+    fields[#fields + 1] = string.sub(value, startIndex, separatorIndex - 1)
+    startIndex = separatorIndex + 1
+  end
+
+  return fields
+end
+
+local function urlDecodeField(value)
+  if type(value) ~= "string" or value == "" then
+    return ""
+  end
+
+  return (value:gsub("%%(%x%x)", function(hex)
+    return string.char(tonumber(hex, 16) or 0)
+  end))
+end
+
+local function urlEncodeField(value)
+  value = tostring(value or "")
+  return (value:gsub("([%%~\r\n])", function(ch)
+    return string.format("%%%02X", string.byte(ch))
+  end))
+end
+
+local function urlDecodeFieldStrict(value, maxLength, allowEmpty)
+  if type(value) ~= "string" then
+    return nil
+  end
+
+  maxLength = tonumber(maxLength or 0) or 0
+  if maxLength <= 0 or #value > (maxLength * 3) then
+    return nil
+  end
+
+  local output = {}
+  local outputLength = 0
+  local index = 1
+
+  while index <= #value do
+    local byteValue = string.byte(value, index)
+    if byteValue == 37 then
+      if index + 2 > #value then
+        return nil
+      end
+
+      local hex = string.sub(value, index + 1, index + 2)
+      if not string.match(hex, "^%x%x$") then
+        return nil
+      end
+
+      byteValue = tonumber(hex, 16)
+      index = index + 3
+    else
+      index = index + 1
+    end
+
+    if not byteValue or byteValue < 32 or byteValue == 127 then
+      return nil
+    end
+
+    outputLength = outputLength + 1
+    if outputLength > maxLength then
+      return nil
+    end
+
+    output[#output + 1] = string.char(byteValue)
+  end
+
+  local decoded = table.concat(output)
+  if decoded == "" and not allowEmpty then
+    return nil
+  end
+
+  return decoded
+end
+
+local function parseBoundedInteger(value, minimum, maximum)
+  value = trim(value)
+  if value == "" or not string.match(value, "^%d+$") then
+    return nil
+  end
+
+  local number = tonumber(value)
+  if not number or number < minimum or number > maximum or math.floor(number) ~= number then
+    return nil
+  end
+
+  return number
+end
+
+local function isValidStateToken(token)
+  token = trim(token)
+  return token ~= "" and #token <= 64 and string.match(token, "^[%w%-%_%.:]+$") ~= nil
+end
+
+local function getPlayerName()
+  if type(UnitName) ~= "function" then
+    return nil
+  end
+
+  local name = UnitName("player")
+  if type(name) ~= "string" or name == "" then
+    return nil
+  end
+
+  return name
+end
+
+local function ensureBridgeState()
+  local state = MultiBot.bridge
+  state.connected = state.connected or false
+  state.protocol = state.protocol or nil
+  state.server = state.server or nil
+  state.lastSendAt = state.lastSendAt or 0
+  state.lastHelloAt = state.lastHelloAt or 0
+  state.lastPingAt = state.lastPingAt or 0
+  state.lastPongAt = state.lastPongAt or 0
+  state.lastPingToken = state.lastPingToken or nil
+  state.lastError = state.lastError or nil
+  state.roster = state.roster or {}
+  state.states = state.states or {}
+  state.stateSeq = state.stateSeq or 0
+  state.stateRequests = state.stateRequests or {}
+  state.stateActive = state.stateActive or {}
+  state.stateLatestByBot = state.stateLatestByBot or {}
+  state.stateLatestOrderByBot = state.stateLatestOrderByBot or {}
+  state.stateGlobalLatestToken = state.stateGlobalLatestToken or nil
+  state.selfStrategyStateToken = state.selfStrategyStateToken or nil
+  state.stateFramingCapable = state.stateFramingCapable or false
+  state.connectionGeneration = tonumber(state.connectionGeneration) or 0
+  state.capabilityFallbackDeadline = tonumber(state.capabilityFallbackDeadline) or 0
+  state.capabilityFallbackGeneration = tonumber(state.capabilityFallbackGeneration) or 0
+  state.capabilitiesResolved = state.capabilitiesResolved or false
+  state.capabilityBatchActive = state.capabilityBatchActive or false
+  state.bootstrapStatePending = state.bootstrapStatePending or false
+  state.bootstrapStateRequested = state.bootstrapStateRequested or false
+  state.bootstrapStateToken = state.bootstrapStateToken or nil
+  state.bootstrapStateAttempts = tonumber(state.bootstrapStateAttempts) or 0
+  state.pendingStateRefreshAll = state.pendingStateRefreshAll or false
+  state.pendingStateRefreshByBot = state.pendingStateRefreshByBot or {}
+  state.strategyMutationCapable = state.strategyMutationCapable or false
+  state.selfStrategyCapable = state.selfStrategyCapable or false
+  state.selfActionCapable = state.selfActionCapable or false
+  state.outfitCapable = state.outfitCapable or false
+  state.outfitFramingCapable = state.outfitFramingCapable or false
+  state.inventoryCapable = state.inventoryCapable or false
+  state.equipObserveCapable = state.equipObserveCapable or false
+  state.equipEventsCapable = state.equipEventsCapable == true
+  state.equipEventBatches = state.equipEventBatches or {}
+  state.equipObserveSequence = tonumber(state.equipObserveSequence) or 0
+  state.equipObserveRosterIndex = tonumber(state.equipObserveRosterIndex) or 0
+  state.equipObservePending = state.equipObservePending or nil
+  state.equipObserveScheduled = state.equipObserveScheduled == true
+  state.inventoryExactCapable = state.inventoryExactCapable or false
+  state.inventoryItemMoveCapable = state.inventoryItemMoveCapable or false
+  state.inventoryItemTradeCapable = state.inventoryItemTradeCapable or false
+  state.inventoryItemDepositExactCapable = state.inventoryItemDepositExactCapable or false
+  state.inventoryItemEquipCapable = state.inventoryItemEquipCapable or false
+  state.inventoryItemUnequipCapable = state.inventoryItemUnequipCapable or false
+  state.inventoryItemDestroyCapable = state.inventoryItemDestroyCapable or false
+  state.inventoryItemUseCapable = state.inventoryItemUseCapable or false
+  state.inventoryItemSellCapable = state.inventoryItemSellCapable or false
+  state.inventoryBuybackCapable = state.inventoryBuybackCapable or false
+  state.inventoryBulkSellCapable = state.inventoryBulkSellCapable or false
+  state.inventoryOpenCapable = state.inventoryOpenCapable or false
+  state.groupRollCapable = state.groupRollCapable or false
+  state.enchantTradeCapable = state.enchantTradeCapable or false
+  state.questAbandonCapable = state.questAbandonCapable or false
+  state.questAbandonTargetCapable = state.questAbandonTargetCapable or false
+  state.talentApplyCapable = state.talentApplyCapable or false
+  state.talentSpecApplyCapable = state.talentSpecApplyCapable or false
+  state.craftRecipeTargetCapable = state.craftRecipeTargetCapable or false
+  state.lootRuleItemCapable = state.lootRuleItemCapable or false
+  state.altRosterCapable = state.altRosterCapable or false
+  state.botLifecycleCapable = state.botLifecycleCapable or false
+  state.botGroupRemoveCapable = state.botGroupRemoveCapable or false
+  state.botGroupLifecycleCapable = state.botGroupLifecycleCapable or false
+  state.creatorAddClassCapable = state.creatorAddClassCapable or false
+  state.creatorInitAutoCapable = state.creatorInitAutoCapable or false
+  state.creatorInitAutoFeedbackCapable = state.creatorInitAutoFeedbackCapable or false
+  state.fleeOrderCapable = state.fleeOrderCapable or false
+  state.grindOrderCapable = state.grindOrderCapable or false
+  state.botResetCapable = state.botResetCapable or false
+  state.groupActionCapable = state.groupActionCapable or false
+  state.formationCapable = state.formationCapable or false
+  state.rtscOrderCapable = state.rtscOrderCapable or false
+  state.questAcceptAllCapable = state.questAcceptAllCapable or false
+  state.botMaintenanceCapable = state.botMaintenanceCapable or false
+  state.botTargetResolveCapable = state.botTargetResolveCapable or false
+  state.botTargetResolveSeq = tonumber(state.botTargetResolveSeq) or 0
+  state.botTargetResolveCommands = type(state.botTargetResolveCommands) == "table" and state.botTargetResolveCommands or {}
+  state.altRoster = type(state.altRoster) == "table" and state.altRoster or {}
+  state.altRosterBatch = type(state.altRosterBatch) == "table" and state.altRosterBatch or nil
+  state.botLifecycleSeq = tonumber(state.botLifecycleSeq) or 0
+  state.botLifecycleCommands = type(state.botLifecycleCommands) == "table" and state.botLifecycleCommands or {}
+  state.creatorAddClassCommands = type(state.creatorAddClassCommands) == "table" and state.creatorAddClassCommands or {}
+  state.creatorInitAutoCommands = type(state.creatorInitAutoCommands) == "table" and state.creatorInitAutoCommands or {}
+  state.creatorInitAutoFeedbackSessions = type(state.creatorInitAutoFeedbackSessions) == "table" and state.creatorInitAutoFeedbackSessions or {}
+  state.botMaintenanceSeq = tonumber(state.botMaintenanceSeq) or 0
+  state.botMaintenanceCommands = type(state.botMaintenanceCommands) == "table" and state.botMaintenanceCommands or {}
+  state.botWipeCapable = state.botWipeCapable or false
+  state.botWipeSeq = tonumber(state.botWipeSeq) or 0
+  state.botWipeCommands = type(state.botWipeCommands) == "table" and state.botWipeCommands or {}
+  state.botSummonCapable = state.botSummonCapable or false
+  state.botSummonSeq = tonumber(state.botSummonSeq) or 0
+  state.botSummonCommands = type(state.botSummonCommands) == "table" and state.botSummonCommands or {}
+  state.botReleaseCapable = state.botReleaseCapable or false
+  state.botReleaseSeq = tonumber(state.botReleaseSeq) or 0
+  state.botReleaseCommands = type(state.botReleaseCommands) == "table" and state.botReleaseCommands or {}
+  state.spellbookCastCapable = state.spellbookCastCapable or false
+  state.spellbookCastSeq = tonumber(state.spellbookCastSeq) or 0
+  state.spellbookCastCommands = type(state.spellbookCastCommands) == "table" and state.spellbookCastCommands or {}
+  state.spellbookIgnoreCapable = state.spellbookIgnoreCapable or false
+  state.spellbookIgnoreSeq = tonumber(state.spellbookIgnoreSeq) or 0
+  state.spellbookIgnoreCommands = type(state.spellbookIgnoreCommands) == "table" and state.spellbookIgnoreCommands or {}
+  state.hunterPetControlCapable = state.hunterPetControlCapable or false
+  state.hunterPetControlSeq = tonumber(state.hunterPetControlSeq) or 0
+  state.hunterPetControlCommands = type(state.hunterPetControlCommands) == "table" and state.hunterPetControlCommands or {}
+  state.hunterPetManageCapable = state.hunterPetManageCapable or false
+  state.hunterPetLifecycleCapable = state.hunterPetLifecycleCapable or false
+  state.warlockStoneStateCapable = state.warlockStoneStateCapable or false
+  state.hunterPetManageSeq = tonumber(state.hunterPetManageSeq) or 0
+  state.hunterPetManageCommands = type(state.hunterPetManageCommands) == "table" and state.hunterPetManageCommands or {}
+  state.selfBotCapable = state.selfBotCapable or false
+  state.selfBotStateSeq = state.selfBotStateSeq or 0
+  state.selfBotStateActive = state.selfBotStateActive or nil
+  state.selfBotCommandSeq = state.selfBotCommandSeq or 0
+  state.selfBotCommandActive = state.selfBotCommandActive or nil
+  state.selfBotMountNormalized = state.selfBotMountNormalized == true
+  state.selfBotMountNormalizePending = state.selfBotMountNormalizePending == true
+  state.selfBotMountNormalizeEpoch = tonumber(state.selfBotMountNormalizeEpoch) or 0
+  state.enchantTradeSeq = state.enchantTradeSeq or 0
+  state.enchantTradeActive = state.enchantTradeActive or nil
+  state.enchantTradeCommands = state.enchantTradeCommands or {}
+  state.enchantTradeLists = state.enchantTradeLists or {}
+  state.groupRollSeq = state.groupRollSeq or 0
+  state.groupRollCommands = state.groupRollCommands or {}
+  state.questAbandonSeq = state.questAbandonSeq or 0
+  state.questAbandonCommands = state.questAbandonCommands or {}
+  state.questAbandonTargetSeq = state.questAbandonTargetSeq or 0
+  state.questAbandonTargetCommands = state.questAbandonTargetCommands or {}
+  state.talentApplySeq = state.talentApplySeq or 0
+  state.talentApplyCommands = state.talentApplyCommands or {}
+  state.talentSpecApplySeq = state.talentSpecApplySeq or 0
+  state.talentSpecApplyCommands = state.talentSpecApplyCommands or {}
+  state.glyphEquipSeq = tonumber(state.glyphEquipSeq) or 0
+  state.glyphEquipCommands = type(state.glyphEquipCommands) == "table" and state.glyphEquipCommands or {}
+  state.strategyMutationSeq = state.strategyMutationSeq or 0
+  state.strategyMutationCommands = state.strategyMutationCommands or {}
+  state.selfStrategySeq = state.selfStrategySeq or 0
+  state.selfStrategyCommands = state.selfStrategyCommands or {}
+  state.selfActionSeq = state.selfActionSeq or 0
+  state.selfActionCommands = state.selfActionCommands or {}
+  state.weaponEnchantDebugSeq = state.weaponEnchantDebugSeq or 0
+  state.warlockStoneStateSeq = state.warlockStoneStateSeq or 0
+  state.warlockStoneStateRequests = type(state.warlockStoneStateRequests) == "table" and state.warlockStoneStateRequests or {}
+  state.details = state.details or {}
+  state.professions = state.professions or {}
+  state.pvpStats = state.pvpStats or {}
+  state.stats = state.stats or {}
+  state.quests = state.quests or {}
+  state.questSeq = state.questSeq or 0
+  state.questActive = state.questActive or {}
+  state.gameObjects = state.gameObjects or {}
+  state.gameObjectSeq = state.gameObjectSeq or 0
+  state.gameObjectActive = state.gameObjectActive or {}
+  state.talentSpecs = state.talentSpecs or {}
+  state.talentSpecSeq = state.talentSpecSeq or 0
+  state.talentSpecActive = state.talentSpecActive or nil
+  state.bootstrapPending = state.bootstrapPending or false
+  state.bootstrapDeadline = state.bootstrapDeadline or 0
+  state.inventorySeq = state.inventorySeq or 0
+  state.inventoryActive = state.inventoryActive or nil
+  state.inventoryExactSeq = state.inventoryExactSeq or 0
+  state.inventoryExactActive = state.inventoryExactActive or nil
+  state.inventoryExactSnapshots = state.inventoryExactSnapshots or {}
+  state.inventoryItemMoveSeq = state.inventoryItemMoveSeq or 0
+  state.inventoryItemMoves = state.inventoryItemMoves or {}
+  state.inventoryItemTradeSeq = state.inventoryItemTradeSeq or 0
+  state.inventoryItemTrades = state.inventoryItemTrades or {}
+  state.inventoryItemDepositExactSeq = state.inventoryItemDepositExactSeq or 0
+  state.inventoryItemDepositExacts = state.inventoryItemDepositExacts or {}
+  state.inventoryItemEquipSeq = state.inventoryItemEquipSeq or 0
+  state.inventoryItemEquips = state.inventoryItemEquips or {}
+  state.inventoryItemUnequipSeq = state.inventoryItemUnequipSeq or 0
+  state.inventoryItemUnequips = state.inventoryItemUnequips or {}
+  state.inventoryItemDestroySeq = state.inventoryItemDestroySeq or 0
+  state.inventoryItemDestroys = state.inventoryItemDestroys or {}
+  state.inventoryItemUseSeq = state.inventoryItemUseSeq or 0
+  state.inventoryItemUses = state.inventoryItemUses or {}
+  state.inventoryItemSellSeq = state.inventoryItemSellSeq or 0
+  state.inventoryItemSells = state.inventoryItemSells or {}
+  state.inventoryBuybackSeq = state.inventoryBuybackSeq or 0
+  state.inventoryBuybackItemSeq = state.inventoryBuybackItemSeq or 0
+  state.inventoryBuybackActive = state.inventoryBuybackActive or nil
+  state.inventoryBuybackCommands = state.inventoryBuybackCommands or {}
+  state.bankItems = state.bankItems or {}
+  state.bankSeq = state.bankSeq or 0
+  state.bankActive = state.bankActive or nil
+  state.guildBankItems = state.guildBankItems or {}
+  state.guildBankSeq = state.guildBankSeq or 0
+  state.guildBankActive = state.guildBankActive or nil
+  state.inventoryItemActionSeq = state.inventoryItemActionSeq or 0
+  state.inventoryItemActions = state.inventoryItemActions or {}
+  state.spellbookSeq = state.spellbookSeq or 0
+  state.spellbookActive = state.spellbookActive or nil
+  state.botSkills = state.botSkills or {}
+  state.botSkillSeq = state.botSkillSeq or 0
+  state.botSkillActive = state.botSkillActive or nil
+  state.botReputations = state.botReputations or {}
+  state.botReputationSeq = state.botReputationSeq or 0
+  state.botReputationActive = state.botReputationActive or nil
+  state.botEmblems = state.botEmblems or {}
+  state.botEmblemMoney = state.botEmblemMoney or {}
+  state.botEmblemSeq = state.botEmblemSeq or 0
+  state.botEmblemActive = state.botEmblemActive or nil
+  state.professionRecipes = state.professionRecipes or {}
+  state.professionRecipeSeq = state.professionRecipeSeq or 0
+  state.professionRecipeActive = state.professionRecipeActive or nil
+  state.professionRecipeCraftSeq = state.professionRecipeCraftSeq or 0
+  state.professionRecipeCrafts = state.professionRecipeCrafts or {}
+  state.professionRecipeTargetSeq = state.professionRecipeTargetSeq or 0
+  state.professionRecipeTargetCommands = state.professionRecipeTargetCommands or {}
+  state.outfitSeq = state.outfitSeq or 0
+  state.outfitActive = state.outfitActive or nil
+  state.outfitCommands = state.outfitCommands or {}
+  state.trainerSeq = state.trainerSeq or 0
+  state.trainerActive = state.trainerActive or nil
+  state.trainerCommands = state.trainerCommands or {}
+  state.trainerSpells = state.trainerSpells or {}
+  state.glyphs = state.glyphs or {}
+  state.glyphSeq = state.glyphSeq or 0
+  state.glyphActive = state.glyphActive or nil
+  state.rtiSeq = state.rtiSeq or 0
+  state.combatSeq = state.combatSeq or 0
+  state.positionSeq = state.positionSeq or 0
+  state.lootRuleItemSeq = state.lootRuleItemSeq or 0
+  state.lootRuleItemCommands = state.lootRuleItemCommands or {}
+  state.lootSeq = state.lootSeq or 0
+  state.formationSeq = state.formationSeq or 0
+  state.formationCommands = state.formationCommands or {}
+  state.formationQuerySeq = state.formationQuerySeq or 0
+  state.formationQueryActive = state.formationQueryActive or nil
+  return state
+end
+
+local function countTableEntries(values)
+  local count = 0
+  for _ in pairs(values or {}) do
+    count = count + 1
+  end
+  return count
+end
+
+local function stateTransactionKey(token, botName)
+  return tostring(token or "") .. "\031" .. string.lower(tostring(botName or ""))
+end
+
+local function clearStateTransactionsForToken(state, token)
+  for key, transaction in pairs(state.stateActive or {}) do
+    if type(transaction) == "table" and transaction.token == token then
+      state.stateActive[key] = nil
+    end
+  end
+end
+
+local function clearStateRequest(state, token)
+  local request = state.stateRequests and state.stateRequests[token] or nil
+  if type(request) == "table" then
+    if request.global then
+      if state.stateGlobalLatestToken == token then
+        state.stateGlobalLatestToken = nil
+      end
+    else
+      local botKey = string.lower(request.botName or "")
+      if state.stateLatestByBot[botKey] == token then
+        state.stateLatestByBot[botKey] = nil
+      end
+    end
+  end
+
+  clearStateTransactionsForToken(state, token)
+  state.stateRequests[token] = nil
+
+  if state.selfStrategyStateToken == token then
+    state.selfStrategyStateToken = nil
+  end
+
+  if state.bootstrapStateToken == token then
+    state.bootstrapStateToken = nil
+  end
+end
+
+local function scheduleBootstrapStateRetry(generation)
+  local state = ensureBridgeState()
+  if state.bootstrapStateAttempts >= STATE_BOOTSTRAP_MAX_AUTO_ATTEMPTS then
+    return
+  end
+
+  if not (MultiBot and type(MultiBot.TimerAfter) == "function") then
+    return
+  end
+
+  MultiBot.TimerAfter(STATE_BOOTSTRAP_RETRY_SECONDS, function()
+    local bridge = ensureBridgeState()
+    if bridge.connectionGeneration ~= generation
+        or not bridge.connected
+        or not bridge.capabilitiesResolved
+        or bridge.bootstrapStateRequested
+        or not bridge.bootstrapStatePending then
+      return
+    end
+
+    requestBootstrapStates()
+  end)
+end
+
+local function failBootstrapStateRequest(state, token)
+  if state.bootstrapStateToken ~= token then
+    return false
+  end
+
+  local generation = state.connectionGeneration
+  state.bootstrapStateToken = nil
+  state.bootstrapStateRequested = false
+  state.bootstrapStatePending = true
+  scheduleBootstrapStateRetry(generation)
+  return true
+end
+
+local function scheduleStateTimeout(token, isGlobal)
+  if not (MultiBot and type(MultiBot.TimerAfter) == "function") then
+    return
+  end
+
+  local timeoutSeconds = isGlobal and STATES_TIMEOUT_SECONDS or STATE_TIMEOUT_SECONDS
+  MultiBot.TimerAfter(timeoutSeconds, function()
+    local state = ensureBridgeState()
+    if not state.stateRequests[token] then
+      return
+    end
+
+    failBootstrapStateRequest(state, token)
+    clearStateRequest(state, token)
+    state.lastError = "STATE_TIMEOUT~" .. token
+  end)
+end
+
+local function beginStateRequest(state, botName, isGlobal)
+  if countTableEntries(state.stateRequests) >= STATE_MAX_ACTIVE then
+    return nil
+  end
+
+  state.stateSeq = (tonumber(state.stateSeq) or 0) + 1
+  local suffix = isGlobal and "states" or "state"
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-" .. suffix .. "-" .. tostring(state.stateSeq)
+
+  state.stateRequests[token] = {
+    token = token,
+    botName = botName or "",
+    global = isGlobal == true,
+    order = state.stateSeq,
+    startedAt = safeNow(),
+    begun = false,
+    expectedBots = 0,
+    completedBots = 0,
+    completedBotKeys = {},
+  }
+
+  if isGlobal then
+    local previous = state.stateGlobalLatestToken
+    local replacesBootstrap = previous and state.bootstrapStateToken == previous
+    if previous and previous ~= token then
+      clearStateRequest(state, previous)
+    end
+    state.stateGlobalLatestToken = token
+    if replacesBootstrap then
+      state.bootstrapStateToken = token
+    end
+  else
+    local botKey = string.lower(botName or "")
+    local previous = state.stateLatestByBot[botKey]
+    if previous and previous ~= token then
+      clearStateRequest(state, previous)
+    end
+    state.stateLatestByBot[botKey] = token
+  end
+
+  scheduleStateTimeout(token, isGlobal)
+  return token
+end
+
+local function debugPrint(...)
+  if MultiBot and MultiBot.dprint then
+    MultiBot.dprint(...)
+  end
+end
+
+local function L(key, fallback)
+  if MultiBot and type(MultiBot.L) == "function" then
+    return MultiBot.L(key, fallback)
+  end
+
+  return fallback or key
+end
+
+local function systemMessage(message, color)
+  message = trim(message)
+  if message == "" then
+    return
+  end
+
+  if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+    if color == true or color == "yellow" then
+      DEFAULT_CHAT_FRAME:AddMessage(message, 1.0, 1.0, 0.0)
+    elseif color == "green" then
+      DEFAULT_CHAT_FRAME:AddMessage(message, 0.2, 1.0, 0.2)
+    elseif color == "red" then
+      DEFAULT_CHAT_FRAME:AddMessage(message, 1.0, 0.25, 0.25)
+    else
+      DEFAULT_CHAT_FRAME:AddMessage(message)
+    end
+  elseif type(print) == "function" then
+    print(message)
+  end
+end
+
+-- MB_SYSTEM_FEEDBACK_COLORED_V2_BEGIN
+function Comm.ShowSystemMessage(message, color)
+  message = trim(message)
+  if message == "" then
+    return
+  end
+
+  if color ~= true and color ~= "yellow" and color ~= "green" and color ~= "red"
+      and string.sub(message, 1, 10) == "[MultiBot]"
+      and DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+    DEFAULT_CHAT_FRAME:AddMessage("|cffffff00[MultiBot]|r" .. string.sub(message, 11))
+    return
+  end
+
+  systemMessage(message, color)
+end
+-- MB_SYSTEM_FEEDBACK_COLORED_V2_END
+
+-- MB_W3A_ADDON_FEEDBACK_I18N_V1_BEGIN
+function Comm._ShowW3ASummary(key, matched, succeeded, reason)
+  matched = tonumber(matched) or 0
+  succeeded = tonumber(succeeded) or 0
+  reason = trim(reason or "OK")
+
+  if matched <= 0 or succeeded < 0 or succeeded > matched then
+    return
+  end
+
+  local suffix = ""
+  if reason ~= "" and reason ~= "OK" then
+    suffix = L("w3a.feedback.reason." .. reason, "")
+  end
+
+  systemMessage(string.format(L(key), succeeded, matched, suffix), true)
+end
+
+function Comm._ShowW3AExecutionAck(key, payload)
+  local fields = splitFields(payload or "")
+  if #fields ~= 5 then
+    return
+  end
+
+  local executed = parseBoundedInteger(fields[4], 0, 40)
+  if executed == nil or executed <= 0 then
+    return
+  end
+
+  Comm._ShowW3ASummary(key, executed, executed, "OK")
+end
+-- MB_W3A_ADDON_FEEDBACK_I18N_V1_END
+
+local function buildMessage(opcode, payload)
+  local message = trim(opcode)
+  if payload ~= nil and payload ~= "" then
+    message = message .. "~" .. tostring(payload)
+  end
+  return message
+end
+
+function Comm.Send(opcode, payload)
+  local state = ensureBridgeState()
+  local playerName = getPlayerName()
+  if not playerName or type(SendAddonMessage) ~= "function" then
+    return false
+  end
+
+  local channel = "WHISPER"
+  if type(GetNumRaidMembers) == "function" and GetNumRaidMembers() and GetNumRaidMembers() > 0 then
+    channel = "RAID"
+  elseif type(GetNumPartyMembers) == "function" and GetNumPartyMembers() and GetNumPartyMembers() > 0 then
+    channel = "PARTY"
+  end
+
+  local message = buildMessage(opcode, payload)
+  if channel == "WHISPER" then
+    SendAddonMessage(Comm.prefix, message, channel, playerName)
+  else
+    SendAddonMessage(Comm.prefix, message, channel)
+  end
+
+  state.lastSendAt = safeNow()
+  debugPrint("ADDON:TX", channel, opcode, payload or "")
+  return true
+end
+
+function Comm.SendHello()
+  local state = ensureBridgeState()
+  state.lastHelloAt = safeNow()
+  return Comm.Send("HELLO", Comm.version)
+end
+
+function Comm.SendPing()
+  local state = ensureBridgeState()
+  local token = tostring(math.floor(safeNow() * 1000))
+  state.lastPingToken = token
+  state.lastPingAt = safeNow()
+  return Comm.Send("PING", token)
+end
+
+function Comm.RequestRoster()
+  return Comm.Send("GET", "ROSTER")
+end
+-- MB_ADDON_ALT_ROSTER_LIFECYCLE_V1_BEGIN
+function Comm.RequestAltRoster()
+  local state = ensureBridgeState()
+  if state.connected ~= true or state.altRosterCapable ~= true then
+    return false
+  end
+  return Comm.Send("GET", "ALT_ROSTER")
+end
+
+local function findAltRosterEntryByGuid(state, guid)
+  local roster = state and state.altRoster or nil
+  if type(roster) ~= "table" then
+    return nil
+  end
+
+  guid = tonumber(guid)
+  for index = 1, #roster do
+    local entry = roster[index]
+    if type(entry) == "table" and tonumber(entry.guid) == guid then
+      return entry
+    end
+  end
+  return nil
+end
+
+local function updateAltRosterEntryState(state, guid, lifecycleState)
+  local entry = findAltRosterEntryByGuid(state, guid)
+  if entry and type(lifecycleState) == "string" and lifecycleState ~= "" then
+    entry.state = string.upper(lifecycleState)
+  end
+  return entry
+end
+
+local function notifyAltLifecycleResult(result)
+  if MultiBot and type(MultiBot.OnBridgeAltLifecycleResult) == "function" then
+    MultiBot.OnBridgeAltLifecycleResult(result)
+  end
+end
+
+local function finishBotLifecycleCommand(state, token, result)
+  local command = state.botLifecycleCommands[token]
+  state.botLifecycleCommands[token] = nil
+  notifyAltLifecycleResult(result)
+
+  if type(command) == "table" and type(command.callback) == "function" then
+    command.callback(result)
+  end
+
+  if result and result.final == true then
+    safeDelay(0.10, function()
+      local live = ensureBridgeState()
+      if live.connected and Comm.RequestRoster then
+        Comm.RequestRoster()
+      end
+    end)
+    safeDelay(0.20, function()
+      local live = ensureBridgeState()
+      if live.connected and live.altRosterCapable and Comm.RequestAltRoster then
+        Comm.RequestAltRoster()
+      end
+    end)
+  end
+end
+
+local function nextBotLifecycleToken(state, action)
+  state.botLifecycleSeq = (tonumber(state.botLifecycleSeq) or 0) + 1
+  if state.botLifecycleSeq > 1000000000 then
+    state.botLifecycleSeq = 1
+  end
+  local prefix = action == "DISCONNECT" and "bd" or "bc"
+  return string.format("%s%d%d", prefix, state.botLifecycleSeq, math.floor(safeNow() * 1000))
+end
+
+local function countBotLifecycleCommands(state)
+  local count = 0
+  for _ in pairs(state.botLifecycleCommands or {}) do
+    count = count + 1
+  end
+  return count
+end
+
+local function pollBotLifecycleCommand(token)
+  safeDelay(BOT_LIFECYCLE_POLL_SECONDS, function()
+    local state = ensureBridgeState()
+    local command = state.botLifecycleCommands[token]
+    if type(command) ~= "table" then
+      return
+    end
+
+    if state.connected ~= true then
+      finishBotLifecycleCommand(state, token, {
+        token = token,
+        guid = command.guid,
+        action = command.action,
+        status = "ERR",
+        reason = "BRIDGE_DISCONNECTED",
+        lifecycleState = command.action == "CONNECT" and "OFFLINE" or "ONLINE",
+        final = true,
+      })
+      return
+    end
+
+    if safeNow() - (tonumber(command.startedAt) or 0) >= BOT_LIFECYCLE_TIMEOUT_SECONDS then
+      local lifecycleState = command.action == "CONNECT" and "OFFLINE" or "ONLINE"
+      updateAltRosterEntryState(state, command.guid, lifecycleState)
+      finishBotLifecycleCommand(state, token, {
+        token = token,
+        guid = command.guid,
+        action = command.action,
+        status = "ERR",
+        reason = "CLIENT_TIMEOUT",
+        lifecycleState = lifecycleState,
+        final = true,
+      })
+      return
+    end
+
+    Comm.Send("GET", "BOT_LIFECYCLE_STATE~" .. tostring(command.guid) .. "~" .. token)
+    pollBotLifecycleCommand(token)
+  end)
+end
+
+-- MB_D2B_GUILD_TARGET_RESOLVE_V1_BEGIN
+local function nextBotTargetResolveToken(state)
+  state.botTargetResolveSeq = (tonumber(state.botTargetResolveSeq) or 0) + 1
+  if state.botTargetResolveSeq > 1000000000 then
+    state.botTargetResolveSeq = 1
+  end
+  return string.format("br%d%d", state.botTargetResolveSeq, math.floor(safeNow() * 1000))
+end
+
+local function countBotTargetResolveCommands(state)
+  local count = 0
+  for _ in pairs(state.botTargetResolveCommands or {}) do
+    count = count + 1
+  end
+  return count
+end
+
+local function finishBotTargetResolveCommand(state, token, result)
+  local command = state.botTargetResolveCommands[token]
+  state.botTargetResolveCommands[token] = nil
+
+  if type(command) == "table" and type(command.callback) == "function" then
+    command.callback(result)
+  end
+end
+
+function Comm.ResolveBotTarget(name, callback)
+  local state = ensureBridgeState()
+  if state.connected ~= true or state.botTargetResolveCapable ~= true then
+    return nil
+  end
+
+  name = trim(name)
+  if name == "" or #name > 64 then
+    return nil
+  end
+  if countBotTargetResolveCommands(state) >= BOT_TARGET_RESOLVE_MAX_ACTIVE then
+    return nil
+  end
+
+  local token = nextBotTargetResolveToken(state)
+  if not isValidStateToken(token) then
+    return nil
+  end
+
+  state.botTargetResolveCommands[token] = {
+    token = token,
+    requestedName = name,
+    requestedNameKey = string.lower(name),
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("GET", "BOT_TARGET_RESOLVE~" .. urlEncodeField(name) .. "~" .. token) then
+    state.botTargetResolveCommands[token] = nil
+    return nil
+  end
+
+  safeDelay(BOT_TARGET_RESOLVE_TIMEOUT_SECONDS, function()
+    local live = ensureBridgeState()
+    local pending = live.botTargetResolveCommands[token]
+    if type(pending) ~= "table" then
+      return
+    end
+
+    local timeoutReason = live.connected == true and "CLIENT_TIMEOUT" or "BRIDGE_DISCONNECTED"
+    live.lastError = "BOT_TARGET_RESOLVE_" .. timeoutReason
+    finishBotTargetResolveCommand(live, token, {
+      token = token,
+      status = "ERR",
+      reason = timeoutReason,
+      name = "",
+      guid = 0,
+      lifecycleState = "UNKNOWN",
+      final = true,
+    })
+  end)
+
+  return token
+end
+
+local function handleBotTargetResolve(payload, state)
+  local fields = splitFields(payload or "")
+  if #fields ~= 6 then
+    state.lastError = "BOT_TARGET_RESOLVE_BAD_FIELD_COUNT"
+    local possibleToken = trim(fields[1] or "")
+    if isValidStateToken(possibleToken)
+        and type(state.botTargetResolveCommands[possibleToken]) == "table" then
+      finishBotTargetResolveCommand(state, possibleToken, {
+        token = possibleToken,
+        status = "ERR",
+        reason = "BAD_RESPONSE",
+        name = "",
+        guid = 0,
+        lifecycleState = "UNKNOWN",
+        final = true,
+      })
+    end
+    return true
+  end
+
+  local token = trim(fields[1])
+  local status = string.upper(trim(fields[2]))
+  local reason = trim(fields[3])
+  local canonicalName = urlDecodeFieldStrict(fields[4], 64, true)
+  local guid = parseBoundedInteger(fields[5], 0, 4294967295)
+  local lifecycleState = string.upper(trim(fields[6]))
+
+  if not isValidStateToken(token) then
+    state.lastError = "BOT_TARGET_RESOLVE_BAD_TOKEN"
+    return true
+  end
+
+  local command = state.botTargetResolveCommands[token]
+  if type(command) ~= "table" then
+    return true
+  end
+
+  local commonValid = canonicalName ~= nil
+      and guid ~= nil
+      and reason ~= ""
+      and #reason <= 64
+  local okValid = status == "OK"
+      and commonValid
+      and guid > 0
+      and canonicalName ~= ""
+      and string.lower(canonicalName) == command.requestedNameKey
+      and (lifecycleState == "ONLINE"
+          or lifecycleState == "CONNECTING"
+          or lifecycleState == "OFFLINE")
+  local errValid = status == "ERR"
+      and commonValid
+      and guid == 0
+      and canonicalName == ""
+      and lifecycleState == "UNKNOWN"
+
+  if not okValid and not errValid then
+    state.lastError = "BOT_TARGET_RESOLVE_BAD_RESPONSE"
+    finishBotTargetResolveCommand(state, token, {
+      token = token,
+      status = "ERR",
+      reason = "BAD_RESPONSE",
+      name = "",
+      guid = 0,
+      lifecycleState = "UNKNOWN",
+      final = true,
+    })
+    return true
+  end
+
+  state.connected = true
+  state.lastError = status == "OK" and nil or ("BOT_TARGET_RESOLVE_" .. reason)
+  finishBotTargetResolveCommand(state, token, {
+    token = token,
+    status = status,
+    reason = reason,
+    name = canonicalName,
+    guid = guid,
+    lifecycleState = lifecycleState,
+    final = true,
+  })
+  return true
+end
+-- MB_D2B_GUILD_TARGET_RESOLVE_V1_END
+function Comm.RunBotLifecycle(action, guid, callback)
+  local state = ensureBridgeState()
+  if state.connected ~= true
+      or state.botLifecycleCapable ~= true then
+    return nil
+  end
+
+  action = string.upper(trim(action))
+  if action ~= "CONNECT" and action ~= "DISCONNECT" and action ~= "DISCONNECT_GROUP" then
+    return nil
+  end
+  if action == "DISCONNECT_GROUP" and state.botGroupRemoveCapable ~= true then
+    state.lastError = "BOT_LIFECYCLE_GROUP_REMOVE_UNAVAILABLE"
+    return nil
+  end
+
+  guid = parseBoundedInteger(tostring(guid or ""), 1, 4294967295)
+  if not guid or countBotLifecycleCommands(state) >= BOT_LIFECYCLE_MAX_ACTIVE then
+    return nil
+  end
+
+  local token = nextBotLifecycleToken(state, action)
+  if not isValidStateToken(token) then
+    return nil
+  end
+
+  state.botLifecycleCommands[token] = {
+    token = token,
+    guid = guid,
+    action = action,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+    polling = false,
+  }
+
+  local requestType = action == "CONNECT" and "BOT_CONNECT" or (action == "DISCONNECT_GROUP" and "BOT_DISCONNECT_GROUP" or "BOT_DISCONNECT")
+  if not Comm.Send("RUN", requestType .. "~" .. tostring(guid) .. "~" .. token) then
+    state.botLifecycleCommands[token] = nil
+    return nil
+  end
+
+  -- MB_BOT_LIFECYCLE_INITIAL_TIMEOUT_V1_BEGIN
+  -- Arm the final client timeout as soon as the RUN request is accepted.
+  -- Polling still starts only after a Bridge PENDING reply; this timer exists
+  -- solely so a lost initial reply cannot leave the lifecycle token pending.
+  safeDelay(BOT_LIFECYCLE_TIMEOUT_SECONDS, function()
+    local live = ensureBridgeState()
+    local pending = live.botLifecycleCommands[token]
+    if type(pending) ~= "table" then
+      return
+    end
+
+    if live.connected ~= true then
+      finishBotLifecycleCommand(live, token, {
+        token = token,
+        guid = pending.guid,
+        action = pending.action,
+        status = "ERR",
+        reason = "BRIDGE_DISCONNECTED",
+        lifecycleState = pending.action == "CONNECT" and "OFFLINE" or "ONLINE",
+        final = true,
+      })
+      return
+    end
+
+    local lifecycleState = pending.action == "CONNECT" and "OFFLINE" or "ONLINE"
+    updateAltRosterEntryState(live, pending.guid, lifecycleState)
+    finishBotLifecycleCommand(live, token, {
+      token = token,
+      guid = pending.guid,
+      action = pending.action,
+      status = "ERR",
+      reason = "CLIENT_TIMEOUT",
+      lifecycleState = lifecycleState,
+      final = true,
+    })
+  end)
+  -- MB_BOT_LIFECYCLE_INITIAL_TIMEOUT_V1_END
+
+  return token
+end
+
+-- MB_BOT_GROUP_LIFECYCLE_V1_BEGIN
+function Comm.RunBotGroupLifecycle(action)
+  local state = ensureBridgeState()
+  if state.connected ~= true
+      or state.botGroupLifecycleCapable ~= true then
+    return nil
+  end
+
+  action = string.upper(trim(action))
+  if action ~= "CONNECT" and action ~= "DISCONNECT" then
+    return nil
+  end
+
+  local token = nextBotLifecycleToken(state, action)
+  if not isValidStateToken(token) then
+    return nil
+  end
+
+  if not Comm.Send("RUN", "BOT_GROUP_LIFECYCLE~" .. token .. "~" .. action) then
+    return nil
+  end
+
+  return token
+end
+
+function Comm.ApplyBotGroupLifecycleResultPayload(payload, state)
+  state = type(state) == "table" and state or ensureBridgeState()
+
+  local fields = splitFields(payload or "")
+  if #fields ~= 9 then
+    state.lastError = "BOT_GROUP_LIFECYCLE_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = trim(fields[1])
+  local action = string.upper(trim(fields[2]))
+  local status = string.upper(trim(fields[3]))
+  local matched = parseBoundedInteger(fields[4], 0, 39)
+  local succeeded = parseBoundedInteger(fields[5], 0, 39)
+  local pending = parseBoundedInteger(fields[6], 0, 39)
+  local skipped = parseBoundedInteger(fields[7], 0, 39)
+  local failed = parseBoundedInteger(fields[8], 0, 39)
+  local reason = urlDecodeFieldStrict(fields[9], 64, false)
+
+  if not isValidStateToken(token)
+      or (action ~= "CONNECT" and action ~= "DISCONNECT")
+      or (status ~= "OK" and status ~= "ERR")
+      or matched == nil
+      or succeeded == nil
+      or pending == nil
+      or skipped == nil
+      or failed == nil
+      or reason == nil
+      or succeeded + pending + skipped + failed ~= matched then
+    state.lastError = "BOT_GROUP_LIFECYCLE_BAD_PAYLOAD"
+    return true
+  end
+
+  state.connected = true
+  state.lastError = status == "ERR"
+      and ("BOT_GROUP_LIFECYCLE_" .. reason)
+      or nil
+  state.lastBotGroupLifecycleResult = {
+    token = token,
+    action = action,
+    status = status,
+    matched = matched,
+    succeeded = succeeded,
+    pending = pending,
+    skipped = skipped,
+    failed = failed,
+    reason = reason,
+  }
+
+  safeDelay(0.10, function()
+    if MultiBot and type(MultiBot.RequestBridgeRosterRefresh) == "function" then
+      MultiBot.RequestBridgeRosterRefresh()
+    elseif Comm.RequestRoster then
+      Comm.RequestRoster()
+    end
+  end)
+
+  return true
+end
+-- MB_BOT_GROUP_LIFECYCLE_V1_END
+-- MB_CREATOR_ADDCLASS_V1_BEGIN
+function Comm.RunCreatorAddClass(classCmd, gender)
+  local state = ensureBridgeState()
+  if state.connected ~= true
+      or state.creatorAddClassCapable ~= true then
+    return nil
+  end
+
+  classCmd = string.lower(trim(tostring(classCmd or "")))
+  if classCmd ~= "warrior"
+      and classCmd ~= "paladin"
+      and classCmd ~= "hunter"
+      and classCmd ~= "rogue"
+      and classCmd ~= "priest"
+      and classCmd ~= "shaman"
+      and classCmd ~= "mage"
+      and classCmd ~= "warlock"
+      and classCmd ~= "druid"
+      and classCmd ~= "dk" then
+    return nil
+  end
+
+  gender = string.lower(trim(tostring(gender or "random")))
+  if gender == "" then
+    gender = "random"
+  elseif gender == "0" then
+    gender = "male"
+  elseif gender == "1" then
+    gender = "female"
+  end
+  if gender ~= "random" and gender ~= "male" and gender ~= "female" then
+    return nil
+  end
+
+  local activeCount = 0
+  for _ in pairs(state.creatorAddClassCommands or {}) do
+    activeCount = activeCount + 1
+  end
+  if activeCount >= 8 then
+    state.lastError = "CREATOR_ADDCLASS_TOO_MANY_ACTIVE"
+    return nil
+  end
+
+  local token = nextBotLifecycleToken(state, "CONNECT")
+  if not isValidStateToken(token) then
+    return nil
+  end
+
+  state.creatorAddClassCommands[token] = {
+    token = token,
+    classCmd = classCmd,
+    gender = gender,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send(
+      "RUN",
+      "CREATOR_ADDCLASS~" .. token .. "~" .. classCmd .. "~" .. gender) then
+    state.creatorAddClassCommands[token] = nil
+    return nil
+  end
+
+  safeDelay(8.0, function()
+    local live = ensureBridgeState()
+    local pending = live.creatorAddClassCommands[token]
+    if type(pending) ~= "table" then
+      return
+    end
+
+    live.creatorAddClassCommands[token] = nil
+    local reason = live.connected == true and "CLIENT_TIMEOUT" or "BRIDGE_DISCONNECTED"
+    live.lastError = "CREATOR_ADDCLASS_" .. reason
+    live.lastCreatorAddClassResult = {
+      token = token,
+      classCmd = pending.classCmd,
+      gender = pending.gender,
+      status = "ERR",
+      reason = reason,
+    }
+  end)
+
+  return token
+end
+
+function Comm.ApplyCreatorAddClassResultPayload(payload, state)
+  state = type(state) == "table" and state or ensureBridgeState()
+
+  local fields = splitFields(payload or "")
+  if #fields ~= 5 then
+    state.lastError = "CREATOR_ADDCLASS_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = trim(fields[1])
+  local classCmd = string.lower(trim(fields[2]))
+  local gender = string.lower(trim(fields[3]))
+  local status = string.upper(trim(fields[4]))
+  local reason = urlDecodeFieldStrict(fields[5], 64, false)
+
+  if not isValidStateToken(token) then
+    state.lastError = "CREATOR_ADDCLASS_BAD_TOKEN"
+    return true
+  end
+
+  local command = state.creatorAddClassCommands[token]
+  if type(command) ~= "table" then
+    return true
+  end
+
+  if classCmd ~= command.classCmd
+      or gender ~= command.gender
+      or (status ~= "OK" and status ~= "ERR")
+      or reason == nil
+      or reason == "" then
+    state.creatorAddClassCommands[token] = nil
+    state.lastError = "CREATOR_ADDCLASS_BAD_RESPONSE"
+    return true
+  end
+
+  state.creatorAddClassCommands[token] = nil
+  state.connected = true
+  state.lastError = status == "ERR"
+      and ("CREATOR_ADDCLASS_" .. reason)
+      or nil
+  state.lastCreatorAddClassResult = {
+    token = token,
+    classCmd = classCmd,
+    gender = gender,
+    status = status,
+    reason = reason,
+  }
+  return true
+end
+-- MB_CREATOR_ADDCLASS_V1_END
+-- MB_CREATOR_INIT_AUTO_V1_BEGIN
+-- MB_CREATOR_INIT_AUTO_CHATLESS_FEEDBACK_V2_BEGIN
+local CREATOR_INIT_AUTO_WHISPER_TAIL_SECONDS = 8.0
+
+function Comm._CreatorInitAutoFeedbackBuildAllowedNames(mode, botName, state)
+  state = type(state) == "table" and state or ensureBridgeState()
+  local rosterNames = {}
+  local allowedNames = {}
+
+  for _, entry in ipairs(state.roster or {}) do
+    if type(entry) == "table" then
+      local displayName = trim(entry.name or "")
+      local key = Comm._NormalizeFleeWhisperName(displayName)
+      if key ~= "" and displayName ~= "" then
+        rosterNames[key] = displayName
+      end
+    end
+  end
+
+  mode = string.upper(trim(tostring(mode or "")))
+  if mode == "TARGET" then
+    local targetKey = Comm._NormalizeFleeWhisperName(botName)
+    if targetKey ~= "" and rosterNames[targetKey] then
+      allowedNames[targetKey] = rosterNames[targetKey]
+    end
+    return allowedNames
+  end
+
+  if mode ~= "GROUP" then
+    return allowedNames
+  end
+
+  local raidCount = type(GetNumRaidMembers) == "function"
+      and (tonumber(GetNumRaidMembers()) or 0)
+      or 0
+  if raidCount > 0 and type(GetRaidRosterInfo) == "function" then
+    for index = 1, raidCount do
+      local raidName = GetRaidRosterInfo(index)
+      local key = Comm._NormalizeFleeWhisperName(raidName)
+      if key ~= "" and rosterNames[key] then
+        allowedNames[key] = rosterNames[key]
+      end
+    end
+    return allowedNames
+  end
+
+  local partyCount = type(GetNumPartyMembers) == "function"
+      and (tonumber(GetNumPartyMembers()) or 0)
+      or 0
+  if type(UnitName) == "function" then
+    for index = 1, partyCount do
+      local partyName = UnitName("party" .. tostring(index))
+      local key = Comm._NormalizeFleeWhisperName(partyName)
+      if key ~= "" and rosterNames[key] then
+        allowedNames[key] = rosterNames[key]
+      end
+    end
+  end
+
+  return allowedNames
+end
+
+function Comm._FlushCreatorInitAutoFeedbackSession(token, state)
+  state = type(state) == "table" and state or ensureBridgeState()
+  local sessions = state.creatorInitAutoFeedbackSessions
+  if type(sessions) ~= "table" then
+    return
+  end
+
+  local session = sessions[token]
+  if type(session) ~= "table" then
+    return
+  end
+
+  -- Keep only a brief, per-bot mask after the structured SYSTEM summary.
+  -- This does not capture WHISPERs or populate the feedback: it merely hides
+  -- late technical EquipAction messages from bots in this Creator session.
+  if session.structuredFeedback == true then
+    local now = safeNow()
+    if now > 0 then
+      local recent = type(state.creatorInitAutoWhisperMaskUntilByBot) == "table"
+          and state.creatorInitAutoWhisperMaskUntilByBot or {}
+      local expiresAt = now + CREATOR_INIT_AUTO_WHISPER_TAIL_SECONDS
+
+      -- Prune expired entries on every Creator flush to avoid stale bot keys.
+      for botKey, untilAt in pairs(recent) do
+        if type(untilAt) ~= "number" or untilAt <= now then
+          recent[botKey] = nil
+        end
+      end
+
+      for botKey in pairs(session.allowedNames or {}) do
+        if type(botKey) == "string" and botKey ~= "" then
+          recent[botKey] = math.max(tonumber(recent[botKey]) or 0, expiresAt)
+        end
+      end
+      state.creatorInitAutoWhisperMaskUntilByBot = recent
+    end
+  end
+
+  sessions[token] = nil
+  local rows = {}
+  for _, entry in pairs(session.itemsByBot or {}) do
+    if type(entry) == "table"
+        and trim(tostring(entry.name or "")) ~= ""
+        and type(entry.items) == "table"
+        and #entry.items > 0 then
+      rows[#rows + 1] = entry
+    end
+  end
+
+  table.sort(rows, function(left, right)
+    return string.lower(tostring(left.name or "")) < string.lower(tostring(right.name or ""))
+  end)
+
+  for _, entry in ipairs(rows) do
+    local itemList = table.concat(entry.items, " ")
+    if itemList ~= "" then
+      Comm.ShowSystemMessage(string.format(
+        L("creator.init_auto.feedback.equipped", "[MultiBot] %s equips: %s"),
+        entry.name,
+        itemList
+      ))
+    end
+  end
+end
+
+function Comm._ScheduleCreatorInitAutoFeedbackFlush(token, state, delaySeconds)
+  state = type(state) == "table" and state or ensureBridgeState()
+  local sessions = state.creatorInitAutoFeedbackSessions
+  if type(sessions) ~= "table" then
+    return
+  end
+
+  local session = sessions[token]
+  if type(session) ~= "table" then
+    return
+  end
+
+  session.flushEpoch = (tonumber(session.flushEpoch) or 0) + 1
+  local epoch = session.flushEpoch
+  safeDelay(delaySeconds or 1.5, function()
+    local live = ensureBridgeState()
+    local liveSessions = live.creatorInitAutoFeedbackSessions
+    local current = type(liveSessions) == "table" and liveSessions[token] or nil
+    if current ~= session or tonumber(current.flushEpoch) ~= epoch then
+      return
+    end
+    Comm._FlushCreatorInitAutoFeedbackSession(token, live)
+  end)
+end
+
+function Comm._CompleteCreatorInitAutoFeedbackSession(token, state)
+  state = type(state) == "table" and state or ensureBridgeState()
+  local sessions = state.creatorInitAutoFeedbackSessions
+  if type(sessions) ~= "table" then
+    return
+  end
+
+  local session = sessions[token]
+  if type(session) ~= "table" then
+    return
+  end
+
+  if session.completed ~= true then
+    session.completed = true
+    session.completedAt = safeNow()
+  end
+  Comm._ScheduleCreatorInitAutoFeedbackFlush(token, state, 1.5)
+end
+
+function Comm._ClearCreatorInitAutoFeedbackSession(token, state)
+  state = type(state) == "table" and state or ensureBridgeState()
+  if type(state.creatorInitAutoFeedbackSessions) == "table" then
+    state.creatorInitAutoFeedbackSessions[token] = nil
+  end
+end
+
+function Comm._StartCreatorInitAutoFeedbackSession(token, mode, botName, state)
+  state = type(state) == "table" and state or ensureBridgeState()
+  token = trim(tostring(token or ""))
+  mode = string.upper(trim(tostring(mode or "")))
+  botName = trim(tostring(botName or ""))
+  if token == "" or (mode ~= "TARGET" and mode ~= "GROUP") then
+    return false
+  end
+
+  state.creatorInitAutoFeedbackSessions =
+      type(state.creatorInitAutoFeedbackSessions) == "table"
+      and state.creatorInitAutoFeedbackSessions
+      or {}
+
+  local allowedNames = Comm._CreatorInitAutoFeedbackBuildAllowedNames(mode, botName, state)
+  local allowedCount = 0
+  for _ in pairs(allowedNames) do
+    allowedCount = allowedCount + 1
+  end
+  if allowedCount == 0 then
+    return false
+  end
+
+  local session = {
+    token = token,
+    mode = mode,
+    botName = botName,
+    startedAt = safeNow(),
+    completed = false,
+    completedAt = 0,
+    flushEpoch = 0,
+    allowedNames = allowedNames,
+    itemsByBot = {},
+    structuredFeedback = state.creatorInitAutoFeedbackCapable == true,
+  }
+  state.creatorInitAutoFeedbackSessions[token] = session
+
+  if session.structuredFeedback == true and type(Comm._ArmFleeWhisperFilter) == "function" then
+    Comm._ArmFleeWhisperFilter()
+  end
+
+  local safetyDelay = mode == "GROUP" and 64.0 or 24.0
+  safeDelay(safetyDelay, function()
+    local live = ensureBridgeState()
+    local liveSessions = live.creatorInitAutoFeedbackSessions
+    local current = type(liveSessions) == "table" and liveSessions[token] or nil
+    if current ~= session then
+      return
+    end
+    Comm._FlushCreatorInitAutoFeedbackSession(token, live)
+  end)
+
+  return true
+end
+
+function Comm._SuppressCreatorInitAutoTechnicalWhisper(message, sender, state)
+  if type(state) ~= "table" or state.creatorInitAutoFeedbackCapable ~= true
+      or type(message) ~= "string" then
+    return false
+  end
+
+  -- Only the known technical EquipAction message shapes are eligible.
+  local lowerMessage = string.lower(message)
+  local equipPrefix = "equipping "
+  local movePrefix = "main hand upgrade found. moving "
+  local isEquip = string.sub(lowerMessage, 1, #equipPrefix) == equipPrefix
+  local isMove = string.sub(lowerMessage, 1, #movePrefix) == movePrefix
+  if not isEquip and not isMove then
+    return false
+  end
+
+  local itemMarker = string.find(message, "|Hitem:", 1, true)
+  local linkStart = itemMarker and string.find(message, "|h", itemMarker, true) or nil
+  if not linkStart then
+    return false
+  end
+
+  local resetStart = string.find(message, "|r", linkStart, true)
+  local secondLinkEnd = string.find(message, "|h", linkStart + 2, true)
+  local suffixStart = resetStart and (resetStart + 2)
+      or (secondLinkEnd and (secondLinkEnd + 2))
+  if not suffixStart then
+    return false
+  end
+
+  local suffix = string.lower(trim(string.sub(message, suffixStart)))
+  if isEquip then
+    if suffix ~= "" and suffix ~= "in ranged slot"
+        and suffix ~= "in main hand" and suffix ~= "in offhand" then
+      return false
+    end
+  elseif suffix ~= "to offhand" then
+    return false
+  end
+
+  local botKey = Comm._NormalizeFleeWhisperName(sender)
+  if botKey == "" then
+    return false
+  end
+
+  local sessions = state.creatorInitAutoFeedbackSessions
+  if type(sessions) == "table" then
+    for _, session in pairs(sessions) do
+      if type(session) == "table" and session.structuredFeedback == true
+          and type(session.allowedNames) == "table" and session.allowedNames[botKey] then
+        return true
+      end
+    end
+  end
+
+  -- A bounded 8-second tail covers late WHISPER events after the result/flush.
+  local recent = state.creatorInitAutoWhisperMaskUntilByBot
+  if type(recent) ~= "table" then
+    return false
+  end
+  local expiresAt = tonumber(recent[botKey]) or 0
+  local now = safeNow()
+  if now > 0 and expiresAt > now then
+    return true
+  end
+  recent[botKey] = nil
+  return false
+end
+
+-- MB_CREATOR_INIT_AUTO_CHATLESS_FEEDBACK_V2_END
+-- MB_CREATOR_INIT_AUTO_FEEDBACK_V1_BEGIN
+function Comm.ApplyCreatorInitAutoFeedbackItemPayload(payload, state)
+  state = type(state) == "table" and state or ensureBridgeState()
+  if state.creatorInitAutoFeedbackCapable ~= true then
+    return true
+  end
+
+  local fields = splitFields(payload or "")
+  if #fields ~= 4 then
+    state.lastError = "CREATOR_INIT_AUTO_FEEDBACK_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = trim(fields[1])
+  local botName = urlDecodeFieldStrict(fields[2], 64, false)
+  local kind = string.upper(trim(fields[3]))
+  local itemLink = urlDecodeFieldStrict(fields[4], 192, false)
+
+  if not isValidStateToken(token)
+      or not botName or botName == ""
+      or (kind ~= "EQUIP" and kind ~= "BAG" and kind ~= "AMMO")
+      or not itemLink or itemLink == ""
+      or string.find(itemLink, "|Hitem:", 1, true) == nil
+      or string.find(itemLink, "|h", 1, true) == nil then
+    state.lastError = "CREATOR_INIT_AUTO_FEEDBACK_BAD_ITEM"
+    return true
+  end
+
+  local sessions = state.creatorInitAutoFeedbackSessions
+  local session = type(sessions) == "table" and sessions[token] or nil
+  if type(session) ~= "table" or session.structuredFeedback ~= true then
+    return true
+  end
+
+  local botKey = Comm._NormalizeFleeWhisperName(botName)
+  local displayName = botKey ~= ""
+      and type(session.allowedNames) == "table"
+      and session.allowedNames[botKey]
+      or nil
+  if not displayName then
+    state.lastError = "CREATOR_INIT_AUTO_FEEDBACK_BAD_BOT"
+    return true
+  end
+
+  session.itemsByBot = type(session.itemsByBot) == "table" and session.itemsByBot or {}
+  local entry = session.itemsByBot[botKey]
+  if type(entry) ~= "table" then
+    entry = {
+      name = displayName,
+      items = {},
+    }
+    session.itemsByBot[botKey] = entry
+  end
+
+  entry.items = type(entry.items) == "table" and entry.items or {}
+  if #entry.items >= 40 then
+    state.lastError = "CREATOR_INIT_AUTO_FEEDBACK_ITEM_LIMIT"
+    return true
+  end
+
+  entry.items[#entry.items + 1] = itemLink
+  if session.completed == true then
+    Comm._ScheduleCreatorInitAutoFeedbackFlush(session.token, state, 1.5)
+  end
+  return true
+end
+-- MB_CREATOR_INIT_AUTO_FEEDBACK_V1_END
+
+function Comm.RunCreatorInitAuto(mode, botName)
+  local state = ensureBridgeState()
+  if state.connected ~= true
+      or state.creatorInitAutoCapable ~= true then
+    return nil
+  end
+
+  mode = string.upper(trim(tostring(mode or "")))
+  if mode ~= "TARGET" and mode ~= "GROUP" then
+    state.lastError = "CREATOR_INIT_AUTO_BAD_MODE"
+    return nil
+  end
+
+  botName = trim(tostring(botName or ""))
+  if mode == "TARGET" then
+    if botName == "" or #botName > 64
+        or string.find(botName, "~", 1, true)
+        or string.find(botName, "\r", 1, true)
+        or string.find(botName, "\n", 1, true) then
+      state.lastError = "CREATOR_INIT_AUTO_BAD_TARGET"
+      return nil
+    end
+  else
+    botName = ""
+  end
+
+  local activeCount = 0
+  for _ in pairs(state.creatorInitAutoCommands or {}) do
+    activeCount = activeCount + 1
+  end
+  if activeCount >= 4 then
+    state.lastError = "CREATOR_INIT_AUTO_TOO_MANY_ACTIVE"
+    return nil
+  end
+
+  local token = nextBotLifecycleToken(state, "INIT")
+  if not isValidStateToken(token) then
+    return nil
+  end
+
+  state.creatorInitAutoCommands[token] = {
+    token = token,
+    mode = mode,
+    botName = botName,
+    startedAt = safeNow(),
+  }
+
+  Comm._StartCreatorInitAutoFeedbackSession(token, mode, botName, state)
+
+  local encodedTarget = urlEncodeField(botName)
+  if not Comm.Send(
+      "RUN",
+      "CREATOR_INIT_AUTO~" .. token .. "~" .. mode .. "~" .. encodedTarget) then
+    state.creatorInitAutoCommands[token] = nil
+    Comm._ClearCreatorInitAutoFeedbackSession(token, state)
+    return nil
+  end
+
+  local timeoutSeconds = mode == "GROUP" and 60.0 or 20.0
+  safeDelay(timeoutSeconds, function()
+    local live = ensureBridgeState()
+    local pending = live.creatorInitAutoCommands[token]
+    if type(pending) ~= "table" then
+      return
+    end
+
+    live.creatorInitAutoCommands[token] = nil
+    Comm._CompleteCreatorInitAutoFeedbackSession(token, live)
+    local reason = live.connected == true and "CLIENT_TIMEOUT" or "BRIDGE_DISCONNECTED"
+    live.lastError = "CREATOR_INIT_AUTO_" .. reason
+    live.lastCreatorInitAutoResult = {
+      token = token,
+      mode = pending.mode,
+      botName = pending.botName,
+      status = "ERR",
+      reason = reason,
+      total = 0,
+      initialized = 0,
+      skipped = 0,
+      failed = 0,
+    }
+  end)
+
+  return token
+end
+
+function Comm.ApplyCreatorInitAutoResultPayload(payload, state)
+  state = type(state) == "table" and state or ensureBridgeState()
+
+  local fields = splitFields(payload or "")
+  if #fields ~= 8 then
+    state.lastError = "CREATOR_INIT_AUTO_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = trim(fields[1])
+  local mode = string.upper(trim(fields[2]))
+  local status = string.upper(trim(fields[3]))
+  local reason = urlDecodeFieldStrict(fields[4], 64, false)
+  local total = parseBoundedInteger(fields[5], 0, 40)
+  local initialized = parseBoundedInteger(fields[6], 0, 40)
+  local skipped = parseBoundedInteger(fields[7], 0, 40)
+  local failed = parseBoundedInteger(fields[8], 0, 40)
+
+  if not isValidStateToken(token) then
+    state.lastError = "CREATOR_INIT_AUTO_BAD_TOKEN"
+    return true
+  end
+
+  local command = state.creatorInitAutoCommands[token]
+  if type(command) ~= "table" then
+    return true
+  end
+
+  if mode ~= command.mode
+      or (status ~= "OK" and status ~= "ERR")
+      or reason == nil or reason == ""
+      or total == nil or initialized == nil or skipped == nil or failed == nil
+      or total ~= initialized + skipped + failed
+      or (mode == "TARGET" and total > 1) then
+    state.creatorInitAutoCommands[token] = nil
+    Comm._CompleteCreatorInitAutoFeedbackSession(token, state)
+    state.lastError = "CREATOR_INIT_AUTO_BAD_RESPONSE"
+    return true
+  end
+
+  state.creatorInitAutoCommands[token] = nil
+  Comm._CompleteCreatorInitAutoFeedbackSession(token, state)
+  state.connected = true
+  state.lastError = status == "ERR"
+      and ("CREATOR_INIT_AUTO_" .. reason)
+      or nil
+  state.lastCreatorInitAutoResult = {
+    token = token,
+    mode = mode,
+    botName = command.botName,
+    status = status,
+    reason = reason,
+    total = total,
+    initialized = initialized,
+    skipped = skipped,
+    failed = failed,
+  }
+  return true
+end
+-- MB_CREATOR_INIT_AUTO_V1_END
+
+local function failAltRosterBatch(state, reason)
+  state.altRosterBatch = nil
+  state.lastError = "ALT_ROSTER_" .. tostring(reason or "INVALID")
+  return true
+end
+
+local function handleAltRosterBegin(payload, state)
+  local fields = splitFields(payload or "")
+  if #fields ~= 2 then
+    return failAltRosterBatch(state, "BEGIN_BAD_FIELD_COUNT")
+  end
+
+  local expectedCount = parseBoundedInteger(fields[1], 0, ALT_ROSTER_MAX_ENTRIES)
+  local truncated = parseBoundedInteger(fields[2], 0, 1)
+  if expectedCount == nil or truncated == nil then
+    return failAltRosterBatch(state, "BEGIN_BAD_PAYLOAD")
+  end
+
+  state.connected = true
+  state.lastError = nil
+  state.altRosterBatch = {
+    expectedCount = expectedCount,
+    truncated = truncated,
+    items = {},
+    seenGuids = {},
+    seenNames = {},
+  }
+  return true
+end
+
+local function handleAltRosterEntry(payload, state)
+  local batch = state.altRosterBatch
+  if type(batch) ~= "table" then
+    state.lastError = "ALT_ROSTER_ENTRY_WITHOUT_BEGIN"
+    return true
+  end
+
+  local fields = splitFields(payload or "")
+  if #fields ~= 5 then
+    return failAltRosterBatch(state, "ENTRY_BAD_FIELD_COUNT")
+  end
+
+  local guid = parseBoundedInteger(fields[1], 1, 4294967295)
+  local name = urlDecodeFieldStrict(fields[2], 64, false)
+  local classId = parseBoundedInteger(fields[3], 1, 11)
+  local level = parseBoundedInteger(fields[4], 1, 255)
+  local lifecycleState = string.upper(trim(fields[5]))
+
+  if guid == nil
+      or name == nil
+      or classId == nil
+      or level == nil
+      or (lifecycleState ~= "ONLINE" and lifecycleState ~= "OFFLINE") then
+    return failAltRosterBatch(state, "ENTRY_BAD_PAYLOAD")
+  end
+
+  local nameKey = string.lower(name)
+  if batch.seenGuids[guid] or batch.seenNames[nameKey] then
+    return failAltRosterBatch(state, "ENTRY_DUPLICATE")
+  end
+
+  if #batch.items >= ALT_ROSTER_MAX_ENTRIES or #batch.items >= batch.expectedCount then
+    return failAltRosterBatch(state, "ENTRY_OVERFLOW")
+  end
+
+  batch.seenGuids[guid] = true
+  batch.seenNames[nameKey] = true
+  batch.items[#batch.items + 1] = {
+    guid = guid,
+    name = name,
+    classId = classId,
+    level = level,
+    state = lifecycleState,
+  }
+  return true
+end
+
+local function handleAltRosterEnd(payload, state)
+  local batch = state.altRosterBatch
+  if type(batch) ~= "table" then
+    state.lastError = "ALT_ROSTER_END_WITHOUT_BEGIN"
+    return true
+  end
+
+  local fields = splitFields(payload or "")
+  if #fields ~= 2 then
+    return failAltRosterBatch(state, "END_BAD_FIELD_COUNT")
+  end
+
+  local count = parseBoundedInteger(fields[1], 0, ALT_ROSTER_MAX_ENTRIES)
+  local truncated = parseBoundedInteger(fields[2], 0, 1)
+  if count == nil
+      or truncated == nil
+      or count ~= batch.expectedCount
+      or count ~= #batch.items
+      or truncated ~= batch.truncated then
+    return failAltRosterBatch(state, "END_MISMATCH")
+  end
+
+  state.altRoster = batch.items
+  state.altRosterBatch = nil
+  state.connected = true
+  state.lastError = nil
+
+  if MultiBot and type(MultiBot.ApplyBridgeAltRosterToPlayers) == "function" then
+    MultiBot.ApplyBridgeAltRosterToPlayers(state.altRoster)
+  end
+  return true
+end
+
+local function handleBotLifecycleResult(payload, state)
+  local fields = splitFields(payload or "")
+  if #fields ~= 6 then
+    state.lastError = "BOT_LIFECYCLE_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = trim(fields[1])
+  local guid = parseBoundedInteger(fields[2], 1, 4294967295)
+  local name = urlDecodeFieldStrict(fields[3], 64, true)
+  local action = string.upper(trim(fields[4]))
+  local status = string.upper(trim(fields[5]))
+  local reason = urlDecodeFieldStrict(fields[6], 64, false)
+
+  if not isValidStateToken(token)
+      or guid == nil
+      or name == nil
+      or (action ~= "CONNECT" and action ~= "DISCONNECT" and action ~= "DISCONNECT_GROUP")
+      or (status ~= "OK" and status ~= "PENDING" and status ~= "ERR")
+      or reason == nil then
+    state.lastError = "BOT_LIFECYCLE_BAD_PAYLOAD"
+    return true
+  end
+
+  local command = state.botLifecycleCommands[token]
+  if type(command) ~= "table" then
+    return true
+  end
+
+  if command.guid ~= guid or command.action ~= action then
+    state.lastError = "BOT_LIFECYCLE_RESPONSE_MISMATCH"
+    return true
+  end
+
+  state.connected = true
+  state.lastError = status == "ERR" and ("BOT_LIFECYCLE_" .. reason) or nil
+
+  local lifecycleState
+  if action == "CONNECT" then
+    lifecycleState = status == "PENDING" and "CONNECTING"
+        or (status == "OK" and "ONLINE" or "OFFLINE")
+  else
+    lifecycleState = status == "OK" and "OFFLINE"
+        or (status == "PENDING" and "DISCONNECTING" or "ONLINE")
+  end
+
+  updateAltRosterEntryState(state, guid, lifecycleState)
+  local result = {
+    token = token,
+    guid = guid,
+    name = name,
+    action = action,
+    status = status,
+    reason = reason,
+    lifecycleState = lifecycleState,
+    final = status ~= "PENDING",
+  }
+
+  if status == "PENDING" then
+    notifyAltLifecycleResult(result)
+    if command.polling ~= true then
+      command.polling = true
+      pollBotLifecycleCommand(token)
+    end
+    return true
+  end
+
+  finishBotLifecycleCommand(state, token, result)
+  return true
+end
+
+local function handleBotLifecycleState(payload, state)
+  local fields = splitFields(payload or "")
+  if #fields ~= 5 then
+    state.lastError = "BOT_LIFECYCLE_STATE_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = trim(fields[1])
+  local guid = parseBoundedInteger(fields[2], 1, 4294967295)
+  local name = urlDecodeFieldStrict(fields[3], 64, true)
+  local lifecycleState = string.upper(trim(fields[4]))
+  local reason = urlDecodeFieldStrict(fields[5], 64, false)
+
+  if not isValidStateToken(token)
+      or guid == nil
+      or name == nil
+      or (lifecycleState ~= "ONLINE"
+          and lifecycleState ~= "CONNECTING"
+          and lifecycleState ~= "OFFLINE")
+      or reason == nil then
+    state.lastError = "BOT_LIFECYCLE_STATE_BAD_PAYLOAD"
+    return true
+  end
+
+  local command = state.botLifecycleCommands[token]
+  if type(command) == "table" and command.guid ~= guid then
+    state.lastError = "BOT_LIFECYCLE_STATE_MISMATCH"
+    return true
+  end
+
+  state.connected = true
+  updateAltRosterEntryState(state, guid, lifecycleState)
+
+  local result = {
+    token = token,
+    guid = guid,
+    name = name,
+    action = type(command) == "table" and command.action or nil,
+    status = lifecycleState == "CONNECTING" and "PENDING" or "OK",
+    reason = reason,
+    lifecycleState = lifecycleState,
+    final = lifecycleState ~= "CONNECTING",
+  }
+
+  if type(command) ~= "table" then
+    notifyAltLifecycleResult(result)
+    return true
+  end
+
+  if lifecycleState == "CONNECTING" then
+    notifyAltLifecycleResult(result)
+    return true
+  end
+
+  if command.action == "CONNECT" and lifecycleState ~= "ONLINE" then
+    result.status = "ERR"
+  elseif (command.action == "DISCONNECT" or command.action == "DISCONNECT_GROUP") and lifecycleState ~= "OFFLINE" then
+    result.status = "ERR"
+  end
+
+  finishBotLifecycleCommand(state, token, result)
+  return true
+end
+
+function Comm.HandleAltBotLifecycleAddonMessage(opcode, payload, state)
+  state = type(state) == "table" and state or ensureBridgeState()
+
+  if opcode == "ALT_ROSTER_BEGIN" then
+    return handleAltRosterBegin(payload, state)
+  elseif opcode == "ALT_ROSTER_ENTRY" then
+    return handleAltRosterEntry(payload, state)
+  elseif opcode == "ALT_ROSTER_END" then
+    return handleAltRosterEnd(payload, state)
+  elseif opcode == "BOT_TARGET_RESOLVE" then
+    return handleBotTargetResolve(payload, state)
+  elseif opcode == "BOT_LIFECYCLE" then
+    return handleBotLifecycleResult(payload, state)
+  elseif opcode == "BOT_LIFECYCLE_STATE" then
+    return handleBotLifecycleState(payload, state)
+  elseif opcode == "BOT_GROUP_LIFECYCLE" then
+    return Comm.ApplyBotGroupLifecycleResultPayload(payload, state)
+  elseif opcode == "CREATOR_ADDCLASS" then
+    return Comm.ApplyCreatorAddClassResultPayload(payload, state)
+  elseif opcode == "CREATOR_INIT_AUTO_ITEM" then
+    return Comm.ApplyCreatorInitAutoFeedbackItemPayload(payload, state)
+  elseif opcode == "CREATOR_INIT_AUTO" then
+    return Comm.ApplyCreatorInitAutoResultPayload(payload, state)
+  end
+  return false
+end
+
+function Comm.HandleAltBotLifecycleProtocolError(requestType, token, reason, state)
+  requestType = string.upper(trim(requestType))
+  if requestType == "BOT_TARGET_RESOLVE" then
+    state = type(state) == "table" and state or ensureBridgeState()
+    token = trim(token)
+    reason = trim(reason)
+    if reason == "" then
+      reason = "PROTOCOL_ERROR"
+    end
+
+    local command = state.botTargetResolveCommands[token]
+    if type(command) == "table" then
+      state.lastError = "BOT_TARGET_RESOLVE_" .. reason
+      finishBotTargetResolveCommand(state, token, {
+        token = token,
+        status = "ERR",
+        reason = reason,
+        name = "",
+        guid = 0,
+        lifecycleState = "UNKNOWN",
+        final = true,
+      })
+    end
+    return true
+  end
+
+  if requestType == "CREATOR_ADDCLASS" then
+    state = type(state) == "table" and state or ensureBridgeState()
+    token = trim(token or "")
+    reason = trim(reason or "PROTOCOL_ERROR")
+    if reason == "" then
+      reason = "PROTOCOL_ERROR"
+    end
+
+    local command = state.creatorAddClassCommands[token]
+    if type(command) == "table" then
+      state.creatorAddClassCommands[token] = nil
+      state.lastCreatorAddClassResult = {
+        token = token,
+        classCmd = command.classCmd,
+        gender = command.gender,
+        status = "ERR",
+        reason = reason,
+      }
+    end
+    state.lastError = "CREATOR_ADDCLASS_" .. reason
+    return true
+  end
+  if requestType == "CREATOR_INIT_AUTO" then
+    state = type(state) == "table" and state or ensureBridgeState()
+    reason = trim(reason or "PROTOCOL_ERROR")
+    if reason == "" then
+      reason = "PROTOCOL_ERROR"
+    end
+
+    local command = state.creatorInitAutoCommands[token]
+    if type(command) == "table" then
+      state.creatorInitAutoCommands[token] = nil
+      Comm._CompleteCreatorInitAutoFeedbackSession(token, state)
+      state.lastCreatorInitAutoResult = {
+        token = token,
+        mode = command.mode,
+        botName = command.botName,
+        status = "ERR",
+        reason = reason,
+        total = 0,
+        initialized = 0,
+        skipped = 0,
+        failed = 0,
+      }
+    end
+    state.lastError = "CREATOR_INIT_AUTO_" .. reason
+    return true
+  end
+  if requestType == "BOT_GROUP_LIFECYCLE" then
+    state = type(state) == "table" and state or ensureBridgeState()
+    reason = trim(reason or "PROTOCOL_ERROR")
+    if reason == "" then
+      reason = "PROTOCOL_ERROR"
+    end
+    state.lastError = "BOT_GROUP_LIFECYCLE_" .. reason
+    return true
+  end
+
+  if requestType ~= "BOT_CONNECT"
+      and requestType ~= "BOT_DISCONNECT"
+      and requestType ~= "BOT_DISCONNECT_GROUP"
+      and requestType ~= "BOT_LIFECYCLE_STATE" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  token = trim(token)
+  reason = reason or "PROTOCOL_ERROR"
+
+  local command = state.botLifecycleCommands[token]
+  if type(command) ~= "table" then
+    return true
+  end
+
+  if requestType == "BOT_LIFECYCLE_STATE" and reason == "RATE_LIMIT" then
+    return true
+  end
+
+  local lifecycleState = command.action == "CONNECT" and "OFFLINE" or "ONLINE"
+  updateAltRosterEntryState(state, command.guid, lifecycleState)
+  state.lastError = "BOT_LIFECYCLE_" .. reason
+
+  finishBotLifecycleCommand(state, token, {
+    token = token,
+    guid = command.guid,
+    action = command.action,
+    status = "ERR",
+    reason = reason,
+    lifecycleState = lifecycleState,
+    final = true,
+  })
+  return true
+end
+-- MB_ADDON_ALT_ROSTER_LIFECYCLE_V1_END
+
+local function queuePendingStateRefresh(state, name, isGlobal)
+  if isGlobal then
+    state.pendingStateRefreshAll = true
+    state.pendingStateRefreshByBot = {}
+    return true
+  end
+
+  if state.pendingStateRefreshAll then
+    return true
+  end
+
+  local key = string.lower(name or "")
+  if key == "" then
+    return false
+  end
+
+  if countTableEntries(state.pendingStateRefreshByBot) >= STATE_MAX_BOTS
+      and state.pendingStateRefreshByBot[key] == nil then
+    state.pendingStateRefreshAll = true
+    state.pendingStateRefreshByBot = {}
+    return true
+  end
+
+  state.pendingStateRefreshByBot[key] = name
+  return true
+end
+
+function Comm.RequestState(name)
+  local state = ensureBridgeState()
+  name = trim(name)
+  if name == "" then
+    return false
+  end
+
+  if not state.capabilitiesResolved then
+    local queued = queuePendingStateRefresh(state, name, false)
+    armCapabilityFallback(state.connectionGeneration)
+    maybeResolveCapabilityFallback(state.connectionGeneration)
+    return queued
+  end
+
+  if not state.stateFramingCapable then
+    return Comm.Send("GET", "STATE~" .. name)
+  end
+
+  local token = beginStateRequest(state, name, false)
+  if not token then
+    state.lastError = "STATE_TOO_MANY_REQUESTS"
+    return false
+  end
+  if not Comm.Send("GET", "STATE~" .. urlEncodeField(name) .. "~" .. token) then
+    clearStateRequest(state, token)
+    return false
+  end
+
+  local request = state.stateRequests[token]
+  if type(request) == "table" then
+    local botKey = string.lower(name)
+    local requestOrder = tonumber(request.order) or 0
+    local latestOrder = tonumber(state.stateLatestOrderByBot[botKey]) or 0
+    if requestOrder > latestOrder then
+      state.stateLatestOrderByBot[botKey] = requestOrder
+    end
+  end
+
+  return token
+end
+
+function Comm.RequestSelfStrategyState()
+  local state = ensureBridgeState()
+  local name = getPlayerName()
+
+  if not name
+      or not state.connected
+      or state.selfStrategyCapable ~= true
+      or state.selfBotLastActive ~= true
+      or state.stateFramingCapable ~= true then
+    state.lastError = "SELF_STRATEGY_STATE_UNAVAILABLE"
+    return false
+  end
+
+  local token = beginStateRequest(state, name, false)
+  if not token then
+    state.lastError = "SELF_STRATEGY_STATE_TOO_MANY_REQUESTS"
+    return false
+  end
+
+  if not Comm.Send("GET", "SELF_STRATEGY_STATE~" .. token) then
+    clearStateRequest(state, token)
+    state.lastError = "SELF_STRATEGY_STATE_SEND_FAILED"
+    return false
+  end
+
+  state.selfStrategyStateToken = token
+
+  local request = state.stateRequests[token]
+  if type(request) == "table" then
+    local botKey = string.lower(name)
+    local requestOrder = tonumber(request.order) or 0
+    local latestOrder = tonumber(state.stateLatestOrderByBot[botKey]) or 0
+    if requestOrder > latestOrder then
+      state.stateLatestOrderByBot[botKey] = requestOrder
+    end
+  end
+
+  return token
+end
+function Comm.RequestStates()
+  local state = ensureBridgeState()
+  if not state.capabilitiesResolved then
+    local queued = queuePendingStateRefresh(state, "", true)
+    armCapabilityFallback(state.connectionGeneration)
+    maybeResolveCapabilityFallback(state.connectionGeneration)
+    return queued
+  end
+
+  if not state.stateFramingCapable then
+    return Comm.Send("GET", "STATES")
+  end
+
+  local token = beginStateRequest(state, "", true)
+  if not token then
+    state.lastError = "STATE_TOO_MANY_REQUESTS"
+    return false
+  end
+  if not Comm.Send("GET", "STATES~" .. token) then
+    clearStateRequest(state, token)
+    return false
+  end
+
+  return token
+end
+
+requestBootstrapStates = function()
+  local state = ensureBridgeState()
+  if state.bootstrapStateRequested then
+    return false
+  end
+
+  if not state.capabilitiesResolved then
+    state.bootstrapStatePending = true
+    return true
+  end
+
+  if not Comm.RequestStates then
+    return false
+  end
+
+  local request = Comm.RequestStates()
+  if not request then
+    state.bootstrapStatePending = true
+    return false
+  end
+
+  state.bootstrapStatePending = false
+  state.bootstrapStateRequested = true
+  state.bootstrapStateAttempts = state.bootstrapStateAttempts + 1
+  state.bootstrapStateToken = type(request) == "string" and request or nil
+  return request
+end
+
+flushPendingStateRefreshes = function()
+  local state = ensureBridgeState()
+  if not state.capabilitiesResolved then
+    return false
+  end
+
+  if state.bootstrapStatePending and not state.bootstrapStateRequested then
+    if requestBootstrapStates() then
+      state.pendingStateRefreshAll = false
+      state.pendingStateRefreshByBot = {}
+      return true
+    end
+  elseif state.bootstrapStateRequested then
+    state.pendingStateRefreshAll = false
+    state.pendingStateRefreshByBot = {}
+    return true
+  end
+
+  if state.pendingStateRefreshAll then
+    state.pendingStateRefreshAll = false
+    state.pendingStateRefreshByBot = {}
+    if not Comm.RequestStates() then
+      state.pendingStateRefreshAll = true
+      return false
+    end
+    return true
+  end
+
+  local pending = state.pendingStateRefreshByBot
+  state.pendingStateRefreshByBot = {}
+  local sent = false
+  for key, name in pairs(pending or {}) do
+    if Comm.RequestState(name) then
+      sent = true
+    else
+      state.pendingStateRefreshByBot[key] = name
+    end
+  end
+
+  return sent
+end
+
+armCapabilityFallback = function(generation)
+  local state = ensureBridgeState()
+  if state.connectionGeneration ~= generation or state.capabilitiesResolved then
+    return false
+  end
+
+  if state.capabilityFallbackGeneration == generation
+      and state.capabilityFallbackDeadline > 0 then
+    return true
+  end
+
+  state.capabilityFallbackGeneration = generation
+  state.capabilityFallbackDeadline = safeNow() + STATE_CAPABILITY_FALLBACK_SECONDS
+
+  if MultiBot and type(MultiBot.TimerAfter) == "function" then
+    MultiBot.TimerAfter(STATE_CAPABILITY_FALLBACK_SECONDS, function()
+      maybeResolveCapabilityFallback(generation)
+    end)
+  end
+
+  return true
+end
+
+maybeResolveCapabilityFallback = function(generation)
+  local state = ensureBridgeState()
+  if state.connectionGeneration ~= generation
+      or state.capabilityFallbackGeneration ~= generation
+      or state.capabilitiesResolved
+      or not state.connected
+      or state.capabilityFallbackDeadline <= 0
+      or safeNow() < state.capabilityFallbackDeadline then
+    return false
+  end
+
+  if state.capabilityBatchActive then
+    state.capabilityBatchActive = false
+    state.stateFramingCapable = false
+    state.strategyMutationCapable = false
+state.selfStrategyCapable = false
+state.selfActionCapable = false
+state.botMaintenanceCapable = false
+state.botWipeCapable = false
+state.botSummonCapable = false
+state.spellbookCastCapable = false
+state.spellbookIgnoreCapable = false
+    state.outfitCapable = false
+    state.outfitFramingCapable = false
+    state.inventoryCapable = false
+    state.inventoryExactCapable = false
+    state.inventoryItemMoveCapable = false
+    state.inventoryItemTradeCapable = false
+    state.inventoryItemDepositExactCapable = false
+    state.inventoryItemEquipCapable = false
+    state.inventoryItemUnequipCapable = false
+    state.inventoryItemDestroyCapable = false
+    state.inventoryItemUseCapable = false
+    state.inventoryItemSellCapable = false
+    state.inventoryBuybackCapable = false
+    state.inventoryBulkSellCapable = false
+    state.inventoryOpenCapable = false
+    state.lootRuleItemCapable = false
+    state.groupRollCapable = false
+    state.groupActionCapable = false
+    state.botResetCapable = false
+    state.formationCapable = false
+    state.rtscOrderCapable = false
+    state.questAcceptAllCapable = false
+    state.enchantTradeCapable = false
+    state.questAbandonCapable = false
+    state.talentApplyCapable = false
+    state.talentSpecApplyCapable = false
+    state.craftRecipeTargetCapable = false
+    state.selfBotCapable = false
+  end
+
+  state.capabilityFallbackDeadline = 0
+  state.capabilityFallbackGeneration = 0
+  state.stateFramingCapable = false
+  state.capabilitiesResolved = true
+  flushPendingStateRefreshes()
+  if MultiBot and type(MultiBot.rewardOnBridgeCapabilityReady) == "function" then
+    MultiBot.rewardOnBridgeCapabilityReady()
+  end
+  return true
+end
+
+function Comm.RequestBotDetail(name)
+  name = trim(name)
+  if name == "" then
+    return false
+  end
+
+  return Comm.Send("GET", "DETAIL~" .. name)
+end
+
+function Comm.RequestBotDetails()
+  return Comm.Send("GET", "DETAILS")
+end
+
+function Comm.RequestStats(name)
+  ensureBridgeState()
+
+  name = trim(name)
+  if name ~= "" then
+    return Comm.Send("GET", "STATS~" .. name)
+  end
+
+  return Comm.Send("GET", "STATS")
+end
+
+function Comm.RequestWeaponEnchantDebug(name)
+  local state = ensureBridgeState()
+  if not state.connected then
+    state.lastError = "WEAPON_ENCHANT_NOT_CONNECTED"
+    return false
+  end
+
+  name = trim(name)
+  if name == "" or #name > 64 then
+    state.lastError = "WEAPON_ENCHANT_BAD_BOT_NAME"
+    return false
+  end
+
+  state.weaponEnchantDebugSeq = (tonumber(state.weaponEnchantDebugSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-enchant-" .. tostring(state.weaponEnchantDebugSeq)
+
+  if not Comm.Send("GET", "WEAPON_ENCHANT~" .. urlEncodeField(name) .. "~" .. token) then
+    state.lastError = "WEAPON_ENCHANT_SEND_FAILED"
+    return false
+  end
+
+  return token
+end
+
+function Comm.RequestWarlockStoneState(name, callback)
+  local state = ensureBridgeState()
+  if not state.connected then
+    state.lastError = "WARLOCK_STONE_STATE_NOT_CONNECTED"
+    return false
+  end
+  if state.warlockStoneStateCapable ~= true then
+    state.lastError = "WARLOCK_STONE_STATE_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  name = trim(name)
+  if name == "" or #name > 64 then
+    state.lastError = "WARLOCK_STONE_STATE_BAD_BOT_NAME"
+    return false
+  end
+  if countTableEntries(state.warlockStoneStateRequests) >= 8 then
+    state.lastError = "WARLOCK_STONE_STATE_TOO_MANY_REQUESTS"
+    return false
+  end
+
+  state.warlockStoneStateSeq = (tonumber(state.warlockStoneStateSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-warlock-stone-" .. tostring(state.warlockStoneStateSeq)
+  state.warlockStoneStateRequests[token] = {
+    botName = name,
+    botNameKey = string.lower(name),
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("GET", "WARLOCK_STONE_STATE~" .. urlEncodeField(name) .. "~" .. token) then
+    state.warlockStoneStateRequests[token] = nil
+    state.lastError = "WARLOCK_STONE_STATE_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(5.0, function()
+    local bridge = ensureBridgeState()
+    local pending = bridge.warlockStoneStateRequests[token]
+    if type(pending) ~= "table" then
+      return
+    end
+
+    bridge.warlockStoneStateRequests[token] = nil
+    bridge.lastError = "WARLOCK_STONE_STATE_TIMEOUT"
+    if type(pending.callback) == "function" then
+      pending.callback(false, {
+        token = token,
+        botName = pending.botName,
+        status = "TIMEOUT",
+        kind = "NONE",
+        enchantId = 0,
+        duration = 0,
+      })
+    end
+  end)
+
+  return token
+end
+
+function Comm.RequestTalentSpecList(name)
+  local state = ensureBridgeState()
+  if not state.connected and not state.bootstrapPending then
+    return false
+  end
+
+  name = trim(name)
+  if name == "" then
+    return false
+  end
+
+  state.talentSpecSeq = (tonumber(state.talentSpecSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-" .. tostring(state.talentSpecSeq)
+  state.talentSpecActive = {
+    botName = name,
+    botNameKey = string.lower(name),
+    token = token,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("GET", "TALENT_SPEC_LIST~" .. name .. "~" .. token) then
+    state.talentSpecActive = nil
+    return false
+  end
+
+  return token
+end
+
+function Comm.RunRtiCommand(scope, target, command)
+  local state = ensureBridgeState()
+
+  if not state.connected then
+    return false
+  end
+
+  command = trim(command or "")
+  if command == "" then
+    return false
+  end
+
+  scope = string.upper(trim(scope or "ALL"))
+  target = trim(target or "")
+
+  if scope ~= "ALL" and scope ~= "GROUP" and scope ~= "BOT" then
+    return false
+  end
+
+  state.rtiSeq = (tonumber(state.rtiSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-" .. tostring(state.rtiSeq)
+
+  return Comm.Send("RUN", "RTI~" .. scope .. "~" .. urlEncodeField(target) .. "~" .. token .. "~" .. urlEncodeField(command))
+end
+
+function Comm.RunCombatCommand(scope, target, command)
+  local state = ensureBridgeState()
+
+  if not state.connected then
+    return false
+  end
+
+  command = trim(command or "")
+  if command == "" then
+    return false
+  end
+
+  scope = string.upper(trim(scope or "BOT"))
+  target = trim(target or "")
+
+  if scope ~= "ALL" and scope ~= "GROUP" and scope ~= "BOT" then
+    return false
+  end
+
+  state.combatSeq = (tonumber(state.combatSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-" .. tostring(state.combatSeq)
+
+  return Comm.Send("RUN", "COMBAT~" .. scope .. "~" .. urlEncodeField(target) .. "~" .. token .. "~" .. urlEncodeField(command))
+end
+
+local function validateStrategyMutationChanges(changes)
+  changes = trim(changes or "")
+  if changes == "" or #changes > STRATEGY_MUTATION_MAX_CHANGES_LENGTH then
+    return nil
+  end
+
+  local normalized = {}
+  local startIndex = 1
+
+  while true do
+    local separatorIndex = string.find(changes, ",", startIndex, true)
+    local operation
+    if separatorIndex then
+      operation = string.sub(changes, startIndex, separatorIndex - 1)
+    else
+      operation = string.sub(changes, startIndex)
+    end
+
+    operation = trim(operation)
+    local prefix = string.sub(operation, 1, 1)
+    local strategy = string.lower(trim(string.sub(operation, 2)))
+
+    if (prefix ~= "+" and prefix ~= "-")
+        or strategy == ""
+        or #strategy > STRATEGY_MUTATION_MAX_STRATEGY_LENGTH
+        or string.find(strategy, "[^%w%s%-%_']") then
+      return nil
+    end
+
+    normalized[#normalized + 1] = prefix .. strategy
+    if #normalized > STRATEGY_MUTATION_MAX_OPERATIONS then
+      return nil
+    end
+
+    if not separatorIndex then
+      break
+    end
+    startIndex = separatorIndex + 1
+  end
+
+  if #normalized == 0 then
+    return nil
+  end
+
+  return table.concat(normalized, ",")
+end
+
+-- MB_HUNTER_PET_CONTROL_V1_TX_BEGIN
+function Comm._FinishHunterPetControlCommand(token, result)
+  local state = ensureBridgeState()
+  state.hunterPetControlCommands = state.hunterPetControlCommands or {}
+
+  local pending = state.hunterPetControlCommands[token]
+  if type(pending) ~= "table" then
+    return false
+  end
+
+  state.hunterPetControlCommands[token] = nil
+  result = type(result) == "table" and result or {}
+  result.token = token
+  result.botName = result.botName or pending.botName
+  result.action = result.action or pending.action
+
+  if type(pending.callback) == "function" then
+    pending.callback(result)
+  end
+
+  return true
+end
+
+function Comm._HandleHunterPetControlAck(payload)
+  local state = ensureBridgeState()
+  local fields = splitFields(payload or "")
+  if #fields ~= 5 then
+    state.lastError = "HUNTER_PET_CONTROL_ACK_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = fields[1]
+  local botName = urlDecodeFieldStrict(fields[2], 64, false)
+  local action = fields[3]
+  local stance = fields[4]
+  local reason = fields[5]
+  state.hunterPetControlCommands = state.hunterPetControlCommands or {}
+  local pending = state.hunterPetControlCommands[token]
+
+  local actionValid = action == "AGGRESSIVE"
+    or action == "DEFENSIVE"
+    or action == "PASSIVE"
+    or action == "STANCE"
+    or action == "ATTACK"
+    or action == "FOLLOW"
+    or action == "STAY"
+
+  local stanceValid = stance == "AGGRESSIVE"
+    or stance == "DEFENSIVE"
+    or stance == "PASSIVE"
+    or stance == "MIXED"
+    or stance == "UNKNOWN"
+    or stance == "NONE"
+
+  local reasonValid = reason == "OK"
+    or reason == "BAD_ACTION"
+    or reason == "BAD_BOT"
+    or reason == "NO_BOT"
+    or reason == "NOT_ALLOWED"
+    or reason == "NOT_IN_WORLD"
+    or reason == "NOT_HUNTER"
+    or reason == "NO_AI"
+    or reason == "NO_PET"
+    or reason == "PET_DEAD"
+    or reason == "NO_TARGET"
+    or reason == "TARGET_DEAD"
+    or reason == "INVALID_TARGET"
+    or reason == "PVP_PROHIBITED"
+    or reason == "MAP_MISMATCH"
+    or reason == "BAD_TOKEN"
+    or reason == "RATE_LIMIT"
+    or reason == "REPLAY"
+    or reason == "FAILED"
+
+  if not isValidStateToken(token)
+      or not botName
+      or botName == ""
+      or not actionValid
+      or not stanceValid
+      or not reasonValid
+      or type(pending) ~= "table"
+      or string.lower(pending.botName or "") ~= string.lower(botName)
+      or pending.action ~= action then
+    state.lastError = "HUNTER_PET_CONTROL_ACK_INVALID"
+    return true
+  end
+
+  state.connected = true
+  state.lastError = reason == "OK" and nil or ("HUNTER_PET_CONTROL_" .. reason)
+  debugPrint("ADDON:RX", "HUNTER_PET_CONTROL_ACK", payload or "")
+
+  Comm._FinishHunterPetControlCommand(token, {
+    status = reason == "OK" and "ok" or "error",
+    botName = botName,
+    action = action,
+    stance = stance,
+    reason = reason,
+  })
+  return true
+end
+
+function Comm.RunHunterPetControl(botName, action, callback)
+  local state = ensureBridgeState()
+  if not state.connected then
+    state.lastError = "HUNTER_PET_CONTROL_NOT_CONNECTED"
+    return false
+  end
+  if state.hunterPetControlCapable ~= true then
+    state.lastError = "HUNTER_PET_CONTROL_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  botName = trim(tostring(botName or ""))
+  if botName == "" or string.len(botName) > 64 then
+    state.lastError = "HUNTER_PET_CONTROL_BAD_BOT"
+    return false
+  end
+
+  action = string.upper(trim(tostring(action or "")))
+  if action ~= "AGGRESSIVE"
+      and action ~= "DEFENSIVE"
+      and action ~= "PASSIVE"
+      and action ~= "STANCE"
+      and action ~= "ATTACK"
+      and action ~= "FOLLOW"
+      and action ~= "STAY" then
+    state.lastError = "HUNTER_PET_CONTROL_BAD_ACTION"
+    return false
+  end
+
+  state.hunterPetControlCommands = state.hunterPetControlCommands or {}
+  if countTableEntries(state.hunterPetControlCommands) >= 8 then
+    state.lastError = "HUNTER_PET_CONTROL_BUSY"
+    return false
+  end
+
+  state.hunterPetControlSeq = (tonumber(state.hunterPetControlSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000))
+    .. "-hunter-pet-" .. tostring(state.hunterPetControlSeq)
+
+  state.hunterPetControlCommands[token] = {
+    botName = botName,
+    action = action,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "HUNTER_PET_CONTROL~"
+    .. urlEncodeField(botName)
+    .. "~" .. token
+    .. "~" .. action
+
+  if not Comm.Send("RUN", payload) then
+    state.hunterPetControlCommands[token] = nil
+    state.lastError = "HUNTER_PET_CONTROL_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(5.0, function()
+    local bridge = ensureBridgeState()
+    bridge.hunterPetControlCommands = bridge.hunterPetControlCommands or {}
+    local pending = bridge.hunterPetControlCommands[token]
+    if type(pending) ~= "table" then
+      return
+    end
+
+    bridge.lastError = "HUNTER_PET_CONTROL_TIMEOUT~" .. token
+    Comm._FinishHunterPetControlCommand(token, {
+      status = "timeout",
+      botName = botName,
+      action = action,
+      stance = "UNKNOWN",
+      reason = "TIMEOUT",
+    })
+  end)
+
+  return token
+end
+-- MB_HUNTER_PET_CONTROL_V1_TX_END
+-- MB_HUNTER_PET_MANAGE_V1_TX_BEGIN
+function Comm._FinishHunterPetManageCommand(token, result)
+  local state = ensureBridgeState()
+  state.hunterPetManageCommands = state.hunterPetManageCommands or {}
+
+  local pending = state.hunterPetManageCommands[token]
+  if type(pending) ~= "table" then
+    return false
+  end
+
+  state.hunterPetManageCommands[token] = nil
+  result = type(result) == "table" and result or {}
+  result.token = token
+  result.botName = result.botName or pending.botName
+  result.action = result.action or pending.action
+
+  if type(pending.callback) == "function" then
+    pending.callback(result)
+  end
+
+  return true
+end
+
+function Comm._HandleHunterPetManageAck(payload)
+  local state = ensureBridgeState()
+  local fields = splitFields(payload or "")
+  if #fields ~= 6 then
+    state.lastError = "HUNTER_PET_MANAGE_ACK_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = fields[1]
+  local botName = urlDecodeFieldStrict(fields[2], 64, false)
+  local action = fields[3]
+  local resultEntry = parseBoundedInteger(fields[4], 0, 4294967295)
+  local resultName = urlDecodeFieldStrict(fields[5], 96, true)
+  local reason = fields[6]
+  state.hunterPetManageCommands = state.hunterPetManageCommands or {}
+  local pending = state.hunterPetManageCommands[token]
+
+  local actionValid = action == "TAME_ID"
+    or action == "TAME_FAMILY"
+    or action == "RENAME"
+    or action == "ABANDON"
+    or action == "DISMISS"
+    or action == "CALL"
+
+  local reasonValid = reason == "OK"
+    or reason == "BAD_ACTION"
+    or reason == "BAD_BOT"
+    or reason == "BAD_ARGUMENT"
+    or reason == "NO_BOT"
+    or reason == "NOT_ALLOWED"
+    or reason == "NOT_IN_WORLD"
+    or reason == "NOT_HUNTER"
+    or reason == "NO_AI"
+    or reason == "MAP_MISMATCH"
+    or reason == "BAD_TOKEN"
+    or reason == "RATE_LIMIT"
+    or reason == "REPLAY"
+    or reason == "LEVEL_TOO_LOW"
+    or reason == "CREATURE_NOT_FOUND"
+    or reason == "NOT_TAMEABLE"
+    or reason == "EXOTIC_REQUIRES_BEAST_MASTERY"
+    or reason == "FAMILY_NOT_FOUND"
+    or reason == "CREATE_FAILED"
+    or reason == "NO_PET"
+    or reason == "NOT_HUNTER_PET"
+    or reason == "BAD_NAME"
+    or reason == "RESERVED_NAME"
+    or reason == "FAILED"
+
+  if not isValidStateToken(token)
+      or not botName
+      or botName == ""
+      or not actionValid
+      or resultEntry == nil
+      or resultName == nil
+      or not reasonValid
+      or type(pending) ~= "table"
+      or string.lower(pending.botName or "") ~= string.lower(botName)
+      or pending.action ~= action then
+    state.lastError = "HUNTER_PET_MANAGE_ACK_INVALID"
+    return true
+  end
+
+  state.connected = true
+  state.lastError = reason == "OK" and nil or ("HUNTER_PET_MANAGE_" .. reason)
+  debugPrint("ADDON:RX", "HUNTER_PET_MANAGE_ACK", payload or "")
+
+  Comm._FinishHunterPetManageCommand(token, {
+    status = reason == "OK" and "ok" or "error",
+    botName = botName,
+    action = action,
+    resultEntry = resultEntry,
+    resultName = resultName,
+    reason = reason,
+  })
+  return true
+end
+
+function Comm.IsHunterPetLifecycleCapable()
+  local state = ensureBridgeState()
+  return state.connected == true
+    and state.hunterPetManageCapable == true
+    and state.hunterPetLifecycleCapable == true
+end
+
+function Comm.RunHunterPetManage(botName, action, argument, callback)
+  local state = ensureBridgeState()
+  if not state.connected then
+    state.lastError = "HUNTER_PET_MANAGE_NOT_CONNECTED"
+    return false
+  end
+  if state.hunterPetManageCapable ~= true then
+    state.lastError = "HUNTER_PET_MANAGE_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  botName = trim(tostring(botName or ""))
+  if botName == "" or string.len(botName) > 64 then
+    state.lastError = "HUNTER_PET_MANAGE_BAD_BOT"
+    return false
+  end
+
+  action = string.upper(trim(tostring(action or "")))
+  if action ~= "TAME_ID"
+      and action ~= "TAME_FAMILY"
+      and action ~= "RENAME"
+      and action ~= "ABANDON"
+      and action ~= "DISMISS"
+      and action ~= "CALL" then
+    state.lastError = "HUNTER_PET_MANAGE_BAD_ACTION"
+    return false
+  end
+
+  if (action == "DISMISS" or action == "CALL")
+      and state.hunterPetLifecycleCapable ~= true then
+    state.lastError = "HUNTER_PET_LIFECYCLE_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  argument = tostring(argument or "")
+  if action == "TAME_ID" or action == "TAME_FAMILY" then
+    local numericArgument = parseBoundedInteger(trim(argument), 1, 4294967295)
+    if numericArgument == nil then
+      state.lastError = "HUNTER_PET_MANAGE_BAD_ARGUMENT"
+      return false
+    end
+    argument = tostring(numericArgument)
+  elseif action == "RENAME" then
+    if argument == "" or string.len(argument) > 12 then
+      state.lastError = "HUNTER_PET_MANAGE_BAD_ARGUMENT"
+      return false
+    end
+  elseif argument ~= "" then
+    state.lastError = "HUNTER_PET_MANAGE_BAD_ARGUMENT"
+    return false
+  end
+
+  state.hunterPetManageCommands = state.hunterPetManageCommands or {}
+  if countTableEntries(state.hunterPetManageCommands) >= 8 then
+    state.lastError = "HUNTER_PET_MANAGE_BUSY"
+    return false
+  end
+
+  state.hunterPetManageSeq = (tonumber(state.hunterPetManageSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000))
+    .. "-hunter-pet-manage-" .. tostring(state.hunterPetManageSeq)
+
+  state.hunterPetManageCommands[token] = {
+    botName = botName,
+    action = action,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "HUNTER_PET_MANAGE~"
+    .. urlEncodeField(botName)
+    .. "~" .. token
+    .. "~" .. action
+    .. "~" .. urlEncodeField(argument)
+
+  if not Comm.Send("RUN", payload) then
+    state.hunterPetManageCommands[token] = nil
+    state.lastError = "HUNTER_PET_MANAGE_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(5.0, function()
+    local bridge = ensureBridgeState()
+    bridge.hunterPetManageCommands = bridge.hunterPetManageCommands or {}
+    local pending = bridge.hunterPetManageCommands[token]
+    if type(pending) ~= "table" then
+      return
+    end
+
+    bridge.lastError = "HUNTER_PET_MANAGE_TIMEOUT~" .. token
+    Comm._FinishHunterPetManageCommand(token, {
+      status = "timeout",
+      botName = botName,
+      action = action,
+      resultEntry = 0,
+      resultName = "",
+      reason = "TIMEOUT",
+    })
+  end)
+
+  return token
+end
+-- MB_HUNTER_PET_MANAGE_V1_TX_END
+-- MB_FOLLOW_STAY_ORDER_V1_TX_BEGIN
+function Comm._FinishGroupOrderCommand(token, result)
+  local state = ensureBridgeState()
+  state.groupOrderCommands = state.groupOrderCommands or {}
+
+  local pending = state.groupOrderCommands[token]
+  if type(pending) ~= "table" then
+    return false
+  end
+
+  state.groupOrderCommands[token] = nil
+  result = type(result) == "table" and result or {}
+  result.token = token
+  result.order = result.order or pending.order
+
+  if type(pending.callback) == "function" then
+    pending.callback(result)
+  end
+
+  if MultiBot.OnGroupOrderApplied then
+    MultiBot.OnGroupOrderApplied(result.order, result)
+  end
+
+  return true
+end
+
+function Comm.RunGroupOrderCommand(order, callback)
+  local state = ensureBridgeState()
+  if not state.connected then
+    state.lastError = "GROUP_ORDER_NOT_CONNECTED"
+    return false
+  end
+
+  order = string.upper(trim(order or ""))
+  if order ~= "FOLLOW" and order ~= "STAY" and order ~= "GRIND" then
+    state.lastError = "GROUP_ORDER_INVALID"
+    return false
+  end
+  if order == "GRIND" and state.grindOrderCapable ~= true then
+    state.lastError = "GRIND_ORDER_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  state.groupOrderCommands = state.groupOrderCommands or {}
+  local active = 0
+  for _ in pairs(state.groupOrderCommands) do
+    active = active + 1
+  end
+  if active >= Comm._GROUP_ORDER_MAX_ACTIVE then
+    state.lastError = "GROUP_ORDER_BUSY"
+    return false
+  end
+
+  state.groupOrderSeq = (tonumber(state.groupOrderSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-group-order-" .. tostring(state.groupOrderSeq)
+  state.groupOrderCommands[token] = {
+    order = order,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("RUN", order .. "_ORDER~" .. token) then
+    state.groupOrderCommands[token] = nil
+    state.lastError = "GROUP_ORDER_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(Comm._GROUP_ORDER_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    bridge.groupOrderCommands = bridge.groupOrderCommands or {}
+    if not bridge.groupOrderCommands[token] then
+      return
+    end
+
+    bridge.lastError = "GROUP_ORDER_TIMEOUT~" .. token
+    Comm._FinishGroupOrderCommand(token, {
+      status = "timeout",
+      matched = 0,
+      succeeded = 0,
+      failed = 0,
+      reason = "TIMEOUT",
+    })
+  end)
+
+  return token
+end
+-- MB_FOLLOW_STAY_ORDER_V1_TX_END
+
+-- MB_GROUP_ACTION_V1_TX_BEGIN
+function Comm.RunGroupActionCommand(action, callback)
+  local state = ensureBridgeState()
+  if not state.connected then
+    state.lastError = "GROUP_ACTION_NOT_CONNECTED"
+    return false
+  end
+  if state.groupActionCapable ~= true then
+    state.lastError = "GROUP_ACTION_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  action = string.upper(trim(action or ""))
+  if action ~= "DRINK"
+      and action ~= "RELEASE"
+      and action ~= "REVIVE"
+      and action ~= "SUMMON" then
+    state.lastError = "GROUP_ACTION_BAD_ACTION"
+    return false
+  end
+
+  state.groupOrderCommands = state.groupOrderCommands or {}
+  local active = 0
+  for _ in pairs(state.groupOrderCommands) do
+    active = active + 1
+  end
+  if active >= Comm._GROUP_ORDER_MAX_ACTIVE then
+    state.lastError = "GROUP_ACTION_BUSY"
+    return false
+  end
+
+  state.groupOrderSeq = (tonumber(state.groupOrderSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-group-action-" .. tostring(state.groupOrderSeq)
+  state.groupOrderCommands[token] = {
+    order = "GROUP_ACTION",
+    action = action,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("RUN", "GROUP_ACTION~" .. token .. "~" .. action) then
+    state.groupOrderCommands[token] = nil
+    state.lastError = "GROUP_ACTION_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(Comm._GROUP_ORDER_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    bridge.groupOrderCommands = bridge.groupOrderCommands or {}
+    local pending = bridge.groupOrderCommands[token]
+    if type(pending) ~= "table"
+        or pending.order ~= "GROUP_ACTION"
+        or pending.action ~= action then
+      return
+    end
+
+    bridge.lastError = "GROUP_ACTION_TIMEOUT~" .. token
+    Comm._FinishGroupOrderCommand(token, {
+      status = "timeout",
+      action = action,
+      matched = 0,
+      succeeded = 0,
+      failed = 0,
+      reason = "TIMEOUT",
+    })
+  end)
+
+  return token
+end
+-- MB_GROUP_ACTION_V1_TX_END
+-- MB_QUEST_ACCEPT_ALL_V1_TX_BEGIN
+function Comm.RunQuestAcceptAllCommand(callback)
+  local state = ensureBridgeState()
+  if not state.connected then
+    state.lastError = "QUEST_ACCEPT_ALL_NOT_CONNECTED"
+    return false
+  end
+  if state.questAcceptAllCapable ~= true then
+    state.lastError = "QUEST_ACCEPT_ALL_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  state.groupOrderCommands = state.groupOrderCommands or {}
+  local active = 0
+  for _ in pairs(state.groupOrderCommands) do
+    active = active + 1
+  end
+  if active >= Comm._GROUP_ORDER_MAX_ACTIVE then
+    state.lastError = "QUEST_ACCEPT_ALL_BUSY"
+    return false
+  end
+
+  state.groupOrderSeq = (tonumber(state.groupOrderSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000))
+    .. "-quest-accept-all-" .. tostring(state.groupOrderSeq)
+  local feedbackNames = Comm._BuildFleeWhisperSuppressNames("ALL", "", state)
+
+  state.groupOrderCommands[token] = {
+    order = "QUEST_ACCEPT_ALL",
+    feedbackNames = feedbackNames,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("RUN", "QUEST_ACCEPT_ALL~" .. token) then
+    state.groupOrderCommands[token] = nil
+    state.lastError = "QUEST_ACCEPT_ALL_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(Comm._GROUP_ORDER_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    bridge.groupOrderCommands = bridge.groupOrderCommands or {}
+    local pending = bridge.groupOrderCommands[token]
+    if type(pending) ~= "table" or pending.order ~= "QUEST_ACCEPT_ALL" then
+      return
+    end
+
+    bridge.lastError = "QUEST_ACCEPT_ALL_TIMEOUT~" .. token
+    Comm._FinishGroupOrderCommand(token, {
+      status = "timeout",
+      matched = 0,
+      processed = 0,
+      accepted = 0,
+      reason = "TIMEOUT",
+    })
+  end)
+
+  return token
+end
+-- MB_QUEST_ACCEPT_ALL_V1_TX_END
+-- MB_QUEST_TALK_V1_TX_BEGIN
+
+function Comm.RunQuestTalkCommand(callback)
+
+  local state = ensureBridgeState()
+
+  if not state.connected then
+
+    state.lastError = "QUEST_TALK_NOT_CONNECTED"
+
+    return false
+
+  end
+
+  if state.questTalkCapable ~= true then
+
+    state.lastError = "QUEST_TALK_CAPABILITY_UNAVAILABLE"
+
+    return false
+
+  end
+
+
+
+  state.groupOrderCommands = state.groupOrderCommands or {}
+
+  local active = 0
+
+  for _ in pairs(state.groupOrderCommands) do
+
+    active = active + 1
+
+  end
+
+  if active >= Comm._GROUP_ORDER_MAX_ACTIVE then
+
+    state.lastError = "QUEST_TALK_BUSY"
+
+    return false
+
+  end
+
+
+
+  state.groupOrderSeq = (tonumber(state.groupOrderSeq) or 0) + 1
+
+  local token = tostring(math.floor(safeNow() * 1000))
+
+    .. "-quest-talk-" .. tostring(state.groupOrderSeq)
+
+  local feedbackNames = Comm._BuildFleeWhisperSuppressNames("ALL", "", state)
+
+
+
+  state.groupOrderCommands[token] = {
+
+    order = "QUEST_TALK",
+
+    feedbackNames = feedbackNames,
+
+    callback = type(callback) == "function" and callback or nil,
+
+    startedAt = safeNow(),
+
+  }
+
+
+
+  if not Comm.Send("RUN", "QUEST_TALK~" .. token) then
+
+    state.groupOrderCommands[token] = nil
+
+    state.lastError = "QUEST_TALK_SEND_FAILED"
+
+    return false
+
+  end
+
+
+
+  safeDelay(Comm._GROUP_ORDER_TIMEOUT_SECONDS, function()
+
+    local bridge = ensureBridgeState()
+
+    bridge.groupOrderCommands = bridge.groupOrderCommands or {}
+
+    local pending = bridge.groupOrderCommands[token]
+
+    if type(pending) ~= "table" or pending.order ~= "QUEST_TALK" then
+
+      return
+
+    end
+
+
+
+    bridge.lastError = "QUEST_TALK_TIMEOUT~" .. token
+
+    Comm._FinishGroupOrderCommand(token, {
+
+      status = "timeout",
+
+      matched = 0,
+
+      processed = 0,
+
+      interacted = 0,
+
+      reason = "TIMEOUT",
+
+    })
+
+  end)
+
+
+
+  return token
+
+end
+
+-- MB_QUEST_TALK_V1_TX_END
+-- MB_QUEST_GAMEOBJECT_USE_V1_TX_BEGIN
+function Comm.RunQuestGameObjectUseCommand(botName, gameObjectName, callback)
+  local state = ensureBridgeState()
+  if not state.connected then
+    state.lastError = "QUEST_GAMEOBJECT_USE_NOT_CONNECTED"
+    return false
+  end
+  if state.questGameObjectUseCapable ~= true then
+    state.lastError = "QUEST_GAMEOBJECT_USE_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  botName = trim(tostring(botName or ""))
+  gameObjectName = trim(tostring(gameObjectName or ""))
+  if botName == "" or gameObjectName == "" then
+    state.lastError = "QUEST_GAMEOBJECT_USE_BAD_REQUEST"
+    return false
+  end
+
+  state.groupOrderCommands = state.groupOrderCommands or {}
+  local active = 0
+  for _ in pairs(state.groupOrderCommands) do
+    active = active + 1
+  end
+  if active >= Comm._GROUP_ORDER_MAX_ACTIVE then
+    state.lastError = "QUEST_GAMEOBJECT_USE_BUSY"
+    return false
+  end
+
+  local feedbackName = Comm._NormalizeFleeWhisperName(botName)
+  if feedbackName == "" then
+    state.lastError = "QUEST_GAMEOBJECT_USE_BAD_BOT"
+    return false
+  end
+
+  state.groupOrderSeq = (tonumber(state.groupOrderSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000))
+    .. "-quest-gameobject-use-" .. tostring(state.groupOrderSeq)
+
+  state.groupOrderCommands[token] = {
+    order = "QUEST_GAMEOBJECT_USE",
+    botName = botName,
+    gameObjectName = gameObjectName,
+    feedbackName = feedbackName,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "QUEST_GAMEOBJECT_USE~"
+    .. token .. "~"
+    .. urlEncodeField(botName) .. "~"
+    .. urlEncodeField(gameObjectName)
+
+  if not Comm.Send("RUN", payload) then
+    state.groupOrderCommands[token] = nil
+    state.lastError = "QUEST_GAMEOBJECT_USE_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(Comm._GROUP_ORDER_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    bridge.groupOrderCommands = bridge.groupOrderCommands or {}
+    local pending = bridge.groupOrderCommands[token]
+    if type(pending) ~= "table" or pending.order ~= "QUEST_GAMEOBJECT_USE" then
+      return
+    end
+
+    bridge.lastError = "QUEST_GAMEOBJECT_USE_TIMEOUT~" .. token
+    Comm._FinishGroupOrderCommand(token, {
+      status = "timeout",
+      botName = botName,
+      used = 0,
+      reason = "TIMEOUT",
+    })
+  end)
+
+  return token
+end
+-- MB_QUEST_GAMEOBJECT_USE_V1_TX_END
+-- MB_QUEST_REWARD_V1_TX_BEGIN
+function Comm.RunQuestRewardCommand(botName, itemLink, callback)
+  local state = ensureBridgeState()
+  if not state.connected then
+    state.lastError = "QUEST_REWARD_NOT_CONNECTED"
+    return false
+  end
+  if state.questRewardCapable ~= true then
+    state.lastError = "QUEST_REWARD_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  botName = trim(tostring(botName or ""))
+  itemLink = trim(tostring(itemLink or ""))
+  if botName == "" or itemLink == "" then
+    state.lastError = "QUEST_REWARD_BAD_REQUEST"
+    return false
+  end
+
+  state.groupOrderCommands = state.groupOrderCommands or {}
+  local active = 0
+  for _ in pairs(state.groupOrderCommands) do
+    active = active + 1
+  end
+  if active >= Comm._GROUP_ORDER_MAX_ACTIVE then
+    state.lastError = "QUEST_REWARD_BUSY"
+    return false
+  end
+
+  local feedbackName = Comm._NormalizeFleeWhisperName(botName)
+  if feedbackName == "" then
+    state.lastError = "QUEST_REWARD_BAD_BOT"
+    return false
+  end
+
+  state.groupOrderSeq = (tonumber(state.groupOrderSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000))
+    .. "-quest-reward-" .. tostring(state.groupOrderSeq)
+
+  state.groupOrderCommands[token] = {
+    order = "QUEST_REWARD",
+    botName = botName,
+    itemLink = itemLink,
+    feedbackName = feedbackName,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "QUEST_REWARD~"
+    .. token .. "~"
+    .. urlEncodeField(botName) .. "~"
+    .. urlEncodeField(itemLink)
+
+  if not Comm.Send("RUN", payload) then
+    state.groupOrderCommands[token] = nil
+    state.lastError = "QUEST_REWARD_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(Comm._GROUP_ORDER_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    bridge.groupOrderCommands = bridge.groupOrderCommands or {}
+    local pending = bridge.groupOrderCommands[token]
+    if type(pending) ~= "table" or pending.order ~= "QUEST_REWARD" then
+      return
+    end
+
+    bridge.lastError = "QUEST_REWARD_TIMEOUT~" .. token
+    Comm._FinishGroupOrderCommand(token, {
+      status = "timeout",
+      botName = botName,
+      rewarded = 0,
+      reason = "TIMEOUT",
+    })
+  end)
+
+  return token
+end
+-- MB_QUEST_REWARD_V1_TX_END
+-- MB_RTSC_ORDER_V1_TX_BEGIN
+function Comm.RunRtscOrderCommand(operation, audience, groupMask, slot, callback)
+  local state = ensureBridgeState()
+  if not state.connected then
+    state.lastError = "RTSC_ORDER_NOT_CONNECTED"
+    return false
+  end
+  if state.rtscOrderCapable ~= true then
+    state.lastError = "RTSC_ORDER_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  operation = string.upper(trim(operation or ""))
+  audience = string.upper(trim(audience or ""))
+  groupMask = parseBoundedInteger(tostring(groupMask or ""), 0, 31)
+  slot = parseBoundedInteger(tostring(slot or ""), 0, 9)
+
+  local operationValid = operation == "ENABLE"
+    or operation == "RESET"
+    or operation == "SELECT"
+    or operation == "CANCEL"
+    or operation == "SAVE"
+    or operation == "UNSAVE"
+    or operation == "GO"
+
+  local audienceValid = audience == "ALL"
+    or audience == "TANK"
+    or audience == "HEALER"
+    or audience == "DPS"
+    or audience == "MELEE"
+    or audience == "RANGED"
+    or audience == "MELEE_DPS"
+    or audience == "RANGED_DPS"
+    or audience == "GROUPS"
+
+  if not operationValid then
+    state.lastError = "RTSC_ORDER_BAD_OP"
+    return false
+  end
+  if not audienceValid then
+    state.lastError = "RTSC_ORDER_BAD_AUDIENCE"
+    return false
+  end
+  if groupMask == nil then
+    state.lastError = "RTSC_ORDER_BAD_GROUP_MASK"
+    return false
+  end
+  if slot == nil then
+    state.lastError = "RTSC_ORDER_BAD_SLOT"
+    return false
+  end
+
+  local targeted = operation == "SELECT" or operation == "GO"
+  if targeted then
+    if audience == "GROUPS" then
+      if groupMask < 1 or groupMask > 31 then
+        state.lastError = "RTSC_ORDER_BAD_GROUP_MASK"
+        return false
+      end
+    elseif groupMask ~= 0 then
+      state.lastError = "RTSC_ORDER_BAD_GROUP_MASK"
+      return false
+    end
+  else
+    if audience ~= "ALL" then
+      state.lastError = "RTSC_ORDER_BAD_COMBINATION"
+      return false
+    end
+    if groupMask ~= 0 then
+      state.lastError = "RTSC_ORDER_BAD_GROUP_MASK"
+      return false
+    end
+  end
+
+  local slotRequired = operation == "SAVE" or operation == "UNSAVE" or operation == "GO"
+  if slotRequired then
+    if slot < 1 or slot > 9 then
+      state.lastError = "RTSC_ORDER_BAD_SLOT"
+      return false
+    end
+  elseif slot ~= 0 then
+    state.lastError = "RTSC_ORDER_BAD_SLOT"
+    return false
+  end
+
+  state.groupOrderCommands = state.groupOrderCommands or {}
+  local active = 0
+  for _ in pairs(state.groupOrderCommands) do
+    active = active + 1
+  end
+  if active >= Comm._GROUP_ORDER_MAX_ACTIVE then
+    state.lastError = "RTSC_ORDER_BUSY"
+    return false
+  end
+
+  state.groupOrderSeq = (tonumber(state.groupOrderSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-rtsc-order-" .. tostring(state.groupOrderSeq)
+  state.groupOrderCommands[token] = {
+    order = "RTSC",
+    operation = operation,
+    audience = audience,
+    groupMask = groupMask,
+    slot = slot,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "RTSC_ORDER~" .. token
+    .. "~" .. operation
+    .. "~" .. audience
+    .. "~" .. tostring(groupMask)
+    .. "~" .. tostring(slot)
+
+  if not Comm.Send("RUN", payload) then
+    state.groupOrderCommands[token] = nil
+    state.lastError = "RTSC_ORDER_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(Comm._GROUP_ORDER_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    bridge.groupOrderCommands = bridge.groupOrderCommands or {}
+    local pending = bridge.groupOrderCommands[token]
+    if type(pending) ~= "table"
+        or pending.order ~= "RTSC"
+        or pending.operation ~= operation
+        or pending.audience ~= audience
+        or pending.groupMask ~= groupMask
+        or pending.slot ~= slot then
+      return
+    end
+
+    bridge.lastError = "RTSC_ORDER_TIMEOUT~" .. token
+    Comm._FinishGroupOrderCommand(token, {
+      status = "timeout",
+      reason = "TIMEOUT",
+      operation = operation,
+      audience = audience,
+      groupMask = groupMask,
+      slot = slot,
+    })
+  end)
+
+  return token
+end
+-- MB_RTSC_ORDER_V1_TX_END
+-- MB_ATTACK_ORDER_V1_TX_BEGIN
+function Comm.RunAttackOrderCommand(audience, callback)
+  local state = ensureBridgeState()
+  if not state.connected then
+    state.lastError = "ATTACK_ORDER_NOT_CONNECTED"
+    return false
+  end
+
+  audience = string.upper(trim(audience or ""))
+  if audience ~= "ALL"
+      and audience ~= "TANK"
+      and audience ~= "HEALER"
+      and audience ~= "DPS"
+      and audience ~= "MELEE"
+      and audience ~= "RANGED" then
+    state.lastError = "ATTACK_ORDER_BAD_AUDIENCE"
+    return false
+  end
+
+  state.groupOrderCommands = state.groupOrderCommands or {}
+  local active = 0
+  for _ in pairs(state.groupOrderCommands) do
+    active = active + 1
+  end
+  if active >= Comm._GROUP_ORDER_MAX_ACTIVE then
+    state.lastError = "ATTACK_ORDER_BUSY"
+    return false
+  end
+
+  state.groupOrderSeq = (tonumber(state.groupOrderSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-attack-order-" .. tostring(state.groupOrderSeq)
+  state.groupOrderCommands[token] = {
+    order = "ATTACK",
+    audience = audience,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("RUN", "ATTACK_ORDER~" .. token .. "~" .. audience) then
+    state.groupOrderCommands[token] = nil
+    state.lastError = "ATTACK_ORDER_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(Comm._GROUP_ORDER_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    bridge.groupOrderCommands = bridge.groupOrderCommands or {}
+    if not bridge.groupOrderCommands[token] then
+      return
+    end
+
+    bridge.lastError = "ATTACK_ORDER_TIMEOUT~" .. token
+    Comm._FinishGroupOrderCommand(token, {
+      status = "timeout",
+      audience = audience,
+      matched = 0,
+      succeeded = 0,
+      failed = 0,
+      reason = "TIMEOUT",
+    })
+  end)
+
+  return token
+end
+-- MB_ATTACK_ORDER_V1_TX_END
+
+-- MB_FLEE_ORDER_V1_TX_BEGIN
+-- MB_FLEE_CHAT_FEEDBACK_CHATLESS_V1_BEGIN
+-- MB_FLEE_FEEDBACK_DISPLAY_NAMES_V1_BEGIN
+-- MB_FLEE_ROLE_NAMES_AUTHORITATIVE_V1_BEGIN
+function Comm._NormalizeFleeWhisperName(name)
+  name = trim(tostring(name or ""))
+  if name == "" then
+    return ""
+  end
+
+  local dash = string.find(name, "-", 1, true)
+  if dash and dash > 1 then
+    name = string.sub(name, 1, dash - 1)
+  end
+
+  return string.lower(name)
+end
+
+function Comm._BuildFleeWhisperSuppressNames(audience, target, state)
+  local names = {}
+  local displayNames = {}
+  local rosterNames = {}
+  state = type(state) == "table" and state or ensureBridgeState()
+
+  for _, entry in ipairs(state.roster or {}) do
+    if type(entry) == "table" then
+      local key = Comm._NormalizeFleeWhisperName(entry.name)
+      local displayName = trim(entry.name or "")
+      if key ~= "" and displayName ~= "" then
+        rosterNames[key] = displayName
+      end
+    end
+  end
+
+  audience = string.upper(trim(audience or ""))
+  if audience == "TARGET" then
+    local targetKey = Comm._NormalizeFleeWhisperName(target)
+    if targetKey ~= "" and rosterNames[targetKey] then
+      names[targetKey] = true
+      displayNames[1] = rosterNames[targetKey]
+    end
+    return names, displayNames
+  end
+
+  local raidCount = type(GetNumRaidMembers) == "function" and (tonumber(GetNumRaidMembers()) or 0) or 0
+  if raidCount > 0 and type(GetRaidRosterInfo) == "function" then
+    for index = 1, raidCount do
+      local raidName = GetRaidRosterInfo(index)
+      local key = Comm._NormalizeFleeWhisperName(raidName)
+      if key ~= "" and rosterNames[key] and not names[key] then
+        names[key] = true
+        displayNames[#displayNames + 1] = rosterNames[key]
+      end
+    end
+    return names, displayNames
+  end
+
+  local partyCount = type(GetNumPartyMembers) == "function" and (tonumber(GetNumPartyMembers()) or 0) or 0
+  if type(UnitName) == "function" then
+    for index = 1, partyCount do
+      local partyName = UnitName("party" .. tostring(index))
+      local key = Comm._NormalizeFleeWhisperName(partyName)
+      if key ~= "" and rosterNames[key] and not names[key] then
+        names[key] = true
+        displayNames[#displayNames + 1] = rosterNames[key]
+      end
+    end
+  end
+
+  return names, displayNames
+end
+-- MB_QUEST_ACCEPT_ALL_FEEDBACK_ADDON_V2_BEGIN
+function Comm._QuestAcceptAllFeedbackDisplayName(name)
+  name = trim(tostring(name or ""))
+  if name == "" then
+    return ""
+  end
+
+  local dash = string.find(name, "-", 1, true)
+  if dash and dash > 1 then
+    name = string.sub(name, 1, dash - 1)
+  end
+
+  return name
+end
+
+function Comm._QuestAcceptAllFeedbackPrefix(message)
+  message = tostring(message or "")
+  local prefixes = {
+    { "Quest Available: ", "quest.feedback.available", "green" },
+    { "Accepted ", "quest.feedback.accepted", "green" },
+    { "Already completed ", "quest.feedback.already_completed", "yellow" },
+    { "Already on ", "quest.feedback.already_on", "yellow" },
+    { "Can't take ", "quest.feedback.cant_take", "red" },
+    { "Quest log is full ", "quest.feedback.quest_log_full", "red" },
+    { "Bags are full ", "quest.feedback.bags_full", "red" },
+    { "Cannot accept ", "quest.feedback.cannot_accept", "red" },
+  }
+
+  for _, pair in ipairs(prefixes) do
+    local sourcePrefix = pair[1]
+    if string.sub(message, 1, string.len(sourcePrefix)) == sourcePrefix then
+      return sourcePrefix, pair[2], pair[3]
+    end
+  end
+
+  return nil, nil, nil
+end
+
+function Comm.HandleQuestAcceptAllFeedbackAddonMessage(prefix, message, distribution, sender)
+  if type(prefix) ~= "string" or prefix == "" or tostring(message or "") ~= "" then
+    return false
+  end
+
+  if distribution ~= "PARTY" then
+    return false
+  end
+
+  local state = MultiBot and MultiBot.bridge or nil
+  if type(state) ~= "table"
+      or state.connected ~= true
+      or type(state.groupOrderCommands) ~= "table" then
+    return false
+  end
+
+  local senderKey = Comm._NormalizeFleeWhisperName(sender)
+  if senderKey == "" then
+    return false
+  end
+
+  for _, pending in pairs(state.groupOrderCommands) do
+    if type(pending) == "table"
+        and (pending.order == "QUEST_ACCEPT_ALL" or pending.order == "QUEST_TALK")
+        and type(pending.feedbackNames) == "table"
+        and pending.feedbackNames[senderKey] then
+      local sourcePrefix, localeKey, feedbackColor = Comm._QuestAcceptAllFeedbackPrefix(prefix)
+      if sourcePrefix == nil then
+        return false
+      end
+
+      local displayName = Comm._QuestAcceptAllFeedbackDisplayName(sender)
+      if displayName == "" then
+        return false
+      end
+
+      local suffix = string.sub(prefix, string.len(sourcePrefix) + 1)
+      systemMessage("[" .. displayName .. "] " .. L(localeKey) .. suffix, feedbackColor)
+      return true
+    end
+  end
+
+  return false
+end
+-- MB_QUEST_ACCEPT_ALL_FEEDBACK_ADDON_V2_END
+-- MB_P0A_SOULSTONE_WHISPER_FILTER_V1_BEGIN
+-- MB_P0A2_AUTONOMOUS_USEITEM_WHISPER_FILTER_V1_BEGIN
+function Comm._AutonomousUseItemWhisperDisplayName(message, sender, state)
+  message = tostring(message or "")
+  sender = trim(tostring(sender or ""))
+  state = type(state) == "table" and state or nil
+  if message == "" or sender == "" or state == nil or state.connected ~= true then
+    return nil
+  end
+
+  local soulstone = false
+  local targetedUseItem = false
+  local itemLinkCount = 0
+  for itemIdText in string.gmatch(message, "|Hitem:(%d+)") do
+    itemLinkCount = itemLinkCount + 1
+    local itemId = tonumber(itemIdText)
+    if itemId == 5232
+        or itemId == 16892
+        or itemId == 16893
+        or itemId == 16895
+        or itemId == 16896
+        or itemId == 22116
+        or itemId == 36895 then
+      soulstone = true
+    elseif itemId == 40773
+        or itemId == 41169
+        or itemId == 41170
+        or itemId == 41171
+        or itemId == 41172
+        or itemId == 41173
+        or itemId == 41174
+        or itemId == 41191
+        or itemId == 41192
+        or itemId == 41193
+        or itemId == 41194
+        or itemId == 41195
+        or itemId == 41196
+        or itemId == 6947
+        or itemId == 6949
+        or itemId == 6950
+        or itemId == 8926
+        or itemId == 8927
+        or itemId == 8928
+        or itemId == 21927
+        or itemId == 43230
+        or itemId == 43231
+        or itemId == 2892
+        or itemId == 2893
+        or itemId == 8984
+        or itemId == 8985
+        or itemId == 20844
+        or itemId == 22053
+        or itemId == 22054
+        or itemId == 43232
+        or itemId == 43233 then
+      targetedUseItem = true
+    end
+  end
+
+  if not soulstone and not (targetedUseItem and itemLinkCount >= 2) then
+    return nil
+  end
+
+  local senderKey = Comm._NormalizeFleeWhisperName(sender)
+  if senderKey == "" then
+    return nil
+  end
+
+  for _, entry in ipairs(state.roster or {}) do
+    if type(entry) == "table" then
+      local displayName = trim(entry.name or "")
+      if displayName ~= "" and Comm._NormalizeFleeWhisperName(displayName) == senderKey then
+        return displayName
+      end
+    end
+  end
+
+  return nil
+end
+
+function Comm._BridgeRosterBotDisplayName(sender, state)
+  if type(state) ~= "table" or type(state.roster) ~= "table" then
+    return nil
+  end
+  local senderKey = Comm._NormalizeFleeWhisperName(sender)
+  if senderKey == "" then
+    return nil
+  end
+  for _, entry in ipairs(state.roster) do
+    if type(entry) == "table" then
+      local displayName = trim(entry.name or "")
+      if displayName ~= "" and Comm._NormalizeFleeWhisperName(displayName) == senderKey then
+        return displayName
+      end
+    end
+  end
+  return nil
+end
+
+function Comm._FleeWhisperFilter(_, event, message, sender)
+  if event ~= "CHAT_MSG_WHISPER" then
+    return false
+  end
+
+  local state = MultiBot and MultiBot.bridge or nil
+  if type(state) ~= "table" or state.connected ~= true then
+    return false
+  end
+
+  local displayName = Comm._AutonomousUseItemWhisperDisplayName(message, sender, state)
+  if displayName then
+    local dedupeKey = displayName .. "\031" .. tostring(message or "")
+    local now = safeNow()
+    if state.autonomousUseItemWhisperLastKey ~= dedupeKey
+        or now - (tonumber(state.autonomousUseItemWhisperLastAt) or 0) > 0.25 then
+      state.autonomousUseItemWhisperLastKey = dedupeKey
+      state.autonomousUseItemWhisperLastAt = now
+      systemMessage("[" .. displayName .. "] " .. tostring(message or ""), true)
+    end
+    return true
+  end
+
+  if Comm._SuppressCreatorInitAutoTechnicalWhisper(message, sender, state) then
+    return true
+  end
+
+  local questBotDisplayName = Comm._BridgeRosterBotDisplayName(sender, state)
+  if questBotDisplayName and Comm._ShowQuestFeedbackMessage(message, questBotDisplayName) then
+    return true
+  end
+
+  if type(state.groupOrderCommands) ~= "table" then
+    return false
+  end
+
+  local senderKey = Comm._NormalizeFleeWhisperName(sender)
+  if senderKey == "" then
+    return false
+  end
+
+  for _, pending in pairs(state.groupOrderCommands) do
+    if type(pending) == "table"
+        and pending.order == "FLEE"
+        and type(pending.suppressNames) == "table"
+        and pending.suppressNames[senderKey] then
+      return true
+    end
+  end
+
+  return false
+end
+
+function Comm._ArmFleeWhisperFilter()
+  if Comm._fleeWhisperFilterInstalled == true then
+    return true
+  end
+
+  if type(ChatFrame_AddMessageEventFilter) ~= "function" then
+    return false
+  end
+
+  ChatFrame_AddMessageEventFilter("CHAT_MSG_WHISPER", Comm._FleeWhisperFilter)
+  Comm._fleeWhisperFilterInstalled = true
+  return true
+end
+
+function Comm._MaybeDisarmFleeWhisperFilter()
+  -- The shared whisper filter must stay installed for autonomous item-use feedback.
+  return
+end
+-- MB_P0A2_AUTONOMOUS_USEITEM_WHISPER_FILTER_V1_END
+-- MB_P0A_SOULSTONE_WHISPER_FILTER_V1_END
+
+function Comm._ShowFleeOrderFeedback(result)
+  if type(result) ~= "table" then
+    return
+  end
+
+  local audience = string.upper(trim(result.audience or ""))
+  local target = trim(result.target or "")
+  local matched = tonumber(result.matched) or 0
+  local succeeded = tonumber(result.succeeded) or 0
+  local failed = tonumber(result.failed) or 0
+  local reason = trim(result.reason or "")
+  local feedbackNames = type(result.feedbackNames) == "table" and result.feedbackNames or {}
+
+  if audience == "TARGET" then
+    if reason == "OK"
+        and matched == 1
+        and succeeded == 1
+        and failed == 0
+        and target ~= "" then
+      systemMessage(string.format(L("w3a.flee.names"), target), true)
+    end
+    return
+  end
+
+  if audience == "ALL" then
+    if reason == "OK"
+        and matched > 0
+        and succeeded == matched
+        and failed == 0
+        and #feedbackNames == matched then
+      systemMessage(string.format(L("w3a.flee.names"), table.concat(feedbackNames, ", ")), true)
+      return
+    end
+
+    systemMessage(string.format(L("w3a.flee.audience.count"), L("w3a.flee.audience.all"), succeeded, matched), true)
+    return
+  end
+
+  if audience == "TANK"
+      or audience == "HEALER"
+      or audience == "DPS"
+      or audience == "MELEE"
+      or audience == "RANGED" then
+    local roleResultNames = type(result.roleResultNames) == "table" and result.roleResultNames or {}
+    if failed == 0
+        and succeeded == matched
+        and matched > 0
+        and #roleResultNames == matched then
+      systemMessage(string.format(L("w3a.flee.audience.names"), L("w3a.flee.audience." .. string.lower(audience)), table.concat(roleResultNames, ", ")), true)
+    else
+      systemMessage(string.format(L("w3a.flee.audience.count"), L("w3a.flee.audience." .. string.lower(audience)), succeeded, matched), true)
+    end
+  end
+end
+-- MB_FLEE_ROLE_NAMES_AUTHORITATIVE_V1_END
+-- MB_FLEE_FEEDBACK_DISPLAY_NAMES_V1_END
+-- MB_FLEE_CHAT_FEEDBACK_CHATLESS_V1_END
+
+function Comm.RunFleeOrderCommand(audience, target, callback)
+  local state = ensureBridgeState()
+  if not state.connected then
+    state.lastError = "FLEE_ORDER_NOT_CONNECTED"
+    return false
+  end
+  if state.fleeOrderCapable ~= true then
+    state.lastError = "FLEE_ORDER_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  audience = string.upper(trim(audience or ""))
+  local audienceValid = audience == "ALL"
+    or audience == "TANK"
+    or audience == "HEALER"
+    or audience == "DPS"
+    or audience == "MELEE"
+    or audience == "RANGED"
+    or audience == "TARGET"
+  if not audienceValid then
+    state.lastError = "FLEE_ORDER_BAD_AUDIENCE"
+    return false
+  end
+
+  target = trim(tostring(target or ""))
+  if audience == "TARGET" then
+    if target == ""
+        or string.len(target) > 64
+        or string.find(target, "~", 1, true)
+        or string.find(target, "\r", 1, true)
+        or string.find(target, "\n", 1, true) then
+      state.lastError = "FLEE_ORDER_BAD_TARGET"
+      return false
+    end
+  elseif target ~= "" then
+    state.lastError = "FLEE_ORDER_BAD_TARGET"
+    return false
+  end
+
+  state.groupOrderCommands = state.groupOrderCommands or {}
+  local active = 0
+  for _ in pairs(state.groupOrderCommands) do
+    active = active + 1
+  end
+  if active >= Comm._GROUP_ORDER_MAX_ACTIVE then
+    state.lastError = "FLEE_ORDER_BUSY"
+    return false
+  end
+
+  state.groupOrderSeq = (tonumber(state.groupOrderSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-flee-order-" .. tostring(state.groupOrderSeq)
+  local suppressNames, feedbackNames = Comm._BuildFleeWhisperSuppressNames(audience, target, state)
+  state.groupOrderCommands[token] = {
+    order = "FLEE",
+    audience = audience,
+    target = target,
+    suppressNames = suppressNames,
+    feedbackNames = feedbackNames,
+    roleResultNames = {},
+    roleResultSeen = {},
+    roleResultItemCount = 0,
+    roleResultFailedCount = 0,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  Comm._ArmFleeWhisperFilter()
+
+  if not Comm.Send("RUN", "FLEE_ORDER~" .. token .. "~" .. audience .. "~" .. urlEncodeField(target)) then
+    state.groupOrderCommands[token] = nil
+    Comm._MaybeDisarmFleeWhisperFilter()
+    state.lastError = "FLEE_ORDER_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(Comm._GROUP_ORDER_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    bridge.groupOrderCommands = bridge.groupOrderCommands or {}
+    local pending = bridge.groupOrderCommands[token]
+    if type(pending) ~= "table" or pending.order ~= "FLEE" then
+      return
+    end
+
+    bridge.lastError = "FLEE_ORDER_TIMEOUT~" .. token
+    Comm._FinishGroupOrderCommand(token, {
+      status = "timeout",
+      audience = pending.audience,
+      target = pending.target,
+      matched = 0,
+      succeeded = 0,
+      failed = 0,
+      reason = "TIMEOUT",
+    })
+    Comm._MaybeDisarmFleeWhisperFilter()
+  end)
+
+  return token
+end
+
+function Comm.HandleFleeOrderAddonMessage(opcode, payload, state)
+  if opcode ~= "FLEE_ORDER_ITEM" and opcode ~= "FLEE_ORDER_ACK" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  local fields = splitFields(payload or "")
+  state.groupOrderCommands = state.groupOrderCommands or {}
+
+  if opcode == "FLEE_ORDER_ITEM" then
+    if #fields ~= 4 then
+      state.lastError = "FLEE_ORDER_ITEM_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local token = trim(fields[1])
+    local audience = string.upper(trim(fields[2]))
+    local botName = urlDecodeFieldStrict(fields[3], 64, false)
+    local itemStatus = string.upper(trim(fields[4]))
+    local pending = state.groupOrderCommands[token]
+    local roleAudience = audience == "TANK"
+      or audience == "HEALER"
+      or audience == "DPS"
+      or audience == "MELEE"
+      or audience == "RANGED"
+
+    if not isValidStateToken(token)
+        or not roleAudience
+        or botName == nil
+        or (itemStatus ~= "OK" and itemStatus ~= "ERR")
+        or type(pending) ~= "table"
+        or pending.order ~= "FLEE"
+        or pending.audience ~= audience then
+      state.lastError = "FLEE_ORDER_ITEM_INVALID"
+      return true
+    end
+
+    pending.roleResultNames = type(pending.roleResultNames) == "table" and pending.roleResultNames or {}
+    pending.roleResultSeen = type(pending.roleResultSeen) == "table" and pending.roleResultSeen or {}
+    pending.roleResultItemCount = tonumber(pending.roleResultItemCount) or 0
+    pending.roleResultFailedCount = tonumber(pending.roleResultFailedCount) or 0
+
+    local botKey = Comm._NormalizeFleeWhisperName(botName)
+    if botKey == ""
+        or pending.roleResultSeen[botKey]
+        or pending.roleResultItemCount >= 40 then
+      state.lastError = "FLEE_ORDER_ITEM_INVALID"
+      return true
+    end
+
+    pending.roleResultSeen[botKey] = true
+    pending.roleResultItemCount = pending.roleResultItemCount + 1
+    if itemStatus == "OK" then
+      pending.roleResultNames[#pending.roleResultNames + 1] = botName
+    else
+      pending.roleResultFailedCount = pending.roleResultFailedCount + 1
+    end
+
+    state.connected = true
+    debugPrint("ADDON:RX", opcode, payload or "")
+    return true
+  end
+
+  if #fields ~= 6 then
+    state.lastError = "FLEE_ORDER_ACK_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = trim(fields[1])
+  local audience = string.upper(trim(fields[2]))
+  local matched = parseBoundedInteger(fields[3], 0, 40)
+  local succeeded = parseBoundedInteger(fields[4], 0, 40)
+  local failed = parseBoundedInteger(fields[5], 0, 40)
+  local reason = urlDecodeFieldStrict(fields[6], 64, false)
+  local pending = state.groupOrderCommands[token]
+
+  local audienceValid = audience == "ALL"
+    or audience == "TANK"
+    or audience == "HEALER"
+    or audience == "DPS"
+    or audience == "MELEE"
+    or audience == "RANGED"
+    or audience == "TARGET"
+
+  local countsValid = matched ~= nil
+    and succeeded ~= nil
+    and failed ~= nil
+    and succeeded <= matched
+    and failed <= matched
+    and succeeded + failed == matched
+    and (audience ~= "TARGET" or matched <= 1)
+
+  local reasonValid = reason == "OK"
+    or reason == "BAD_AUDIENCE"
+    or reason == "BAD_TARGET"
+    or reason == "RATE_LIMIT"
+    or reason == "REPLAY"
+    or reason == "NO_GROUP"
+    or reason == "NO_BOTS"
+    or reason == "NOT_ALLOWED"
+    or reason == "NOT_CONTROLLED"
+    or reason == "BOT_LIMIT"
+    or reason == "PARTIAL"
+    or reason == "FAILED"
+
+  if not isValidStateToken(token)
+      or not audienceValid
+      or not countsValid
+      or not reasonValid
+      or type(pending) ~= "table"
+      or pending.order ~= "FLEE"
+      or pending.audience ~= audience then
+    state.lastError = "FLEE_ORDER_ACK_INVALID"
+    return true
+  end
+
+  state.connected = true
+  state.lastError = reason == "OK" and nil or ("FLEE_ORDER_" .. reason)
+  debugPrint("ADDON:RX", opcode, payload or "")
+
+  local status = "failed"
+  if reason == "OK" and matched > 0 and failed == 0 and succeeded == matched then
+    status = "ok"
+  elseif reason == "NO_BOTS" and matched == 0 then
+    status = "empty"
+  elseif succeeded > 0 then
+    status = "partial"
+  end
+
+  local roleAudience = audience == "TANK"
+    or audience == "HEALER"
+    or audience == "DPS"
+    or audience == "MELEE"
+    or audience == "RANGED"
+  local roleResultNames = nil
+  if roleAudience then
+    local itemCount = tonumber(pending.roleResultItemCount) or 0
+    local failedItemCount = tonumber(pending.roleResultFailedCount) or 0
+    local names = type(pending.roleResultNames) == "table" and pending.roleResultNames or {}
+    if itemCount == matched
+        and failedItemCount == failed
+        and #names == succeeded then
+      roleResultNames = names
+    end
+  end
+
+  local result = {
+    status = status,
+    audience = audience,
+    target = pending.target,
+    feedbackNames = pending.feedbackNames,
+    roleResultNames = roleResultNames,
+    matched = matched,
+    succeeded = succeeded,
+    failed = failed,
+    reason = reason,
+  }
+
+  Comm._FinishGroupOrderCommand(token, result)
+  Comm._MaybeDisarmFleeWhisperFilter()
+  Comm._ShowFleeOrderFeedback(result)
+  return true
+end
+
+function Comm.HandleFleeOrderProtocolError(requestType, token, reason, state)
+  if requestType ~= "FLEE_ORDER" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  token = trim(token or "")
+  reason = trim(reason or "PROTOCOL_ERROR")
+  if reason == "" then
+    reason = "PROTOCOL_ERROR"
+  end
+
+  state.groupOrderCommands = state.groupOrderCommands or {}
+  local pending = state.groupOrderCommands[token]
+  if type(pending) ~= "table" or pending.order ~= "FLEE" then
+    return true
+  end
+
+  state.lastError = "FLEE_ORDER_" .. reason
+  Comm._FinishGroupOrderCommand(token, {
+    status = "error",
+    audience = pending.audience,
+    target = pending.target,
+    matched = 0,
+    succeeded = 0,
+    failed = 0,
+    reason = reason,
+  })
+  Comm._MaybeDisarmFleeWhisperFilter()
+  return true
+end
+-- MB_FLEE_ORDER_V1_TX_END
+
+-- MB_BOT_RESET_V1_BEGIN
+function Comm.RunBotResetCommand(scope, operation, target, callback)
+  local state = ensureBridgeState()
+  if not state.connected then
+    state.lastError = "BOT_RESET_NOT_CONNECTED"
+    return false
+  end
+  if state.botResetCapable ~= true then
+    state.lastError = "BOT_RESET_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  scope = string.upper(trim(scope or ""))
+  operation = string.upper(trim(operation or ""))
+  target = trim(tostring(target or ""))
+
+  if scope ~= "TARGET" and scope ~= "GROUP" then
+    state.lastError = "BOT_RESET_BAD_SCOPE"
+    return false
+  end
+  if operation ~= "ACTIONS" and operation ~= "AI" then
+    state.lastError = "BOT_RESET_BAD_OPERATION"
+    return false
+  end
+  if scope == "TARGET" then
+    if target == ""
+        or string.len(target) > 64
+        or string.find(target, "~", 1, true)
+        or string.find(target, "\r", 1, true)
+        or string.find(target, "\n", 1, true) then
+      state.lastError = "BOT_RESET_BAD_TARGET"
+      return false
+    end
+  elseif target ~= "" then
+    state.lastError = "BOT_RESET_BAD_TARGET"
+    return false
+  end
+
+  state.groupOrderCommands = state.groupOrderCommands or {}
+  local active = 0
+  for _ in pairs(state.groupOrderCommands) do
+    active = active + 1
+  end
+  if active >= Comm._GROUP_ORDER_MAX_ACTIVE then
+    state.lastError = "BOT_RESET_BUSY"
+    return false
+  end
+
+  state.groupOrderSeq = (tonumber(state.groupOrderSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000))
+    .. "-bot-reset-" .. tostring(state.groupOrderSeq)
+
+  state.groupOrderCommands[token] = {
+    order = "BOT_RESET",
+    scope = scope,
+    operation = operation,
+    target = target,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+    resultNames = {},
+    failedNames = {},
+    resultSeen = {},
+    resultItemCount = 0,
+    resultFailedCount = 0,
+  }
+
+  if not Comm.Send(
+      "RUN",
+      "BOT_RESET~" .. token .. "~" .. scope .. "~" .. operation .. "~" .. urlEncodeField(target)) then
+    state.groupOrderCommands[token] = nil
+    state.lastError = "BOT_RESET_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(Comm._GROUP_ORDER_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    bridge.groupOrderCommands = bridge.groupOrderCommands or {}
+    local pending = bridge.groupOrderCommands[token]
+    if type(pending) ~= "table"
+        or pending.order ~= "BOT_RESET"
+        or pending.scope ~= scope
+        or pending.operation ~= operation then
+      return
+    end
+
+    bridge.lastError = "BOT_RESET_TIMEOUT~" .. token
+    Comm._FinishGroupOrderCommand(token, {
+      status = "timeout",
+      scope = pending.scope,
+      operation = pending.operation,
+      target = pending.target,
+      matched = 0,
+      succeeded = 0,
+      failed = 0,
+      reason = "TIMEOUT",
+    })
+  end)
+
+  return token
+end
+
+-- MB_BOT_RESET_FEEDBACK_V1_BEGIN
+function Comm._ShowBotResetFeedback(operation, pending, reason, succeeded, failed)
+  operation = string.upper(trim(operation or ""))
+  reason = trim(reason or "FAILED")
+  succeeded = tonumber(succeeded) or 0
+  failed = tonumber(failed) or 0
+
+  local successNames = type(pending) == "table" and pending.resultNames or nil
+  local failedNames = type(pending) == "table" and pending.failedNames or nil
+  successNames = type(successNames) == "table" and successNames or {}
+  failedNames = type(failedNames) == "table" and failedNames or {}
+
+  if succeeded > 0 and #successNames > 0 then
+    local key
+    if operation == "AI" then
+      key = #successNames == 1
+        and "reset.feedback.ai.single"
+        or "reset.feedback.ai.multiple"
+    else
+      key = #successNames == 1
+        and "reset.feedback.actions.single"
+        or "reset.feedback.actions.multiple"
+    end
+
+    Comm.ShowSystemMessage(string.format(L(key), table.concat(successNames, ", ")), "green")
+  end
+
+  if failed > 0 and #failedNames > 0 then
+    local key = #failedNames == 1
+      and "reset.feedback.failed.single"
+      or "reset.feedback.failed.multiple"
+    Comm.ShowSystemMessage(string.format(L(key), table.concat(failedNames, ", ")), "red")
+  elseif succeeded <= 0 and reason == "NO_BOTS" then
+    Comm.ShowSystemMessage(L("reset.feedback.no_bots"), "red")
+  elseif succeeded <= 0 and reason ~= "OK" then
+    Comm.ShowSystemMessage(L("reset.feedback.failed.generic"), "red")
+  end
+end
+-- MB_BOT_RESET_FEEDBACK_V1_END
+
+-- MB_BOT_RESET_ITEM_V1_BEGIN
+function Comm.HandleBotResetAddonMessage(opcode, payload, state)
+  if opcode ~= "BOT_RESET_ITEM" and opcode ~= "BOT_RESET_ACK" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  state.groupOrderCommands = state.groupOrderCommands or {}
+  local fields = splitFields(payload or "")
+
+  if opcode == "BOT_RESET_ITEM" then
+    if #fields ~= 4 then
+      state.lastError = "BOT_RESET_ITEM_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local token = trim(fields[1])
+    local operation = string.upper(trim(fields[2]))
+    local botName = urlDecodeFieldStrict(fields[3], 64, false)
+    local itemStatus = string.upper(trim(fields[4]))
+    local pending = state.groupOrderCommands[token]
+
+    if not isValidStateToken(token)
+        or (operation ~= "ACTIONS" and operation ~= "AI")
+        or botName == nil
+        or (itemStatus ~= "OK" and itemStatus ~= "ERR")
+        or type(pending) ~= "table"
+        or pending.order ~= "BOT_RESET"
+        or pending.operation ~= operation then
+      state.lastError = "BOT_RESET_ITEM_INVALID"
+      return true
+    end
+
+    pending.resultNames = type(pending.resultNames) == "table" and pending.resultNames or {}
+    pending.failedNames = type(pending.failedNames) == "table" and pending.failedNames or {}
+    pending.resultSeen = type(pending.resultSeen) == "table" and pending.resultSeen or {}
+    pending.resultItemCount = tonumber(pending.resultItemCount) or 0
+    pending.resultFailedCount = tonumber(pending.resultFailedCount) or 0
+
+    local botKey = string.lower(trim(botName))
+    if botKey == ""
+        or pending.resultSeen[botKey]
+        or pending.resultItemCount >= 40 then
+      state.lastError = "BOT_RESET_ITEM_INVALID"
+      return true
+    end
+
+    pending.resultSeen[botKey] = true
+    pending.resultItemCount = pending.resultItemCount + 1
+    if itemStatus == "OK" then
+      table.insert(pending.resultNames, botName)
+    else
+      table.insert(pending.failedNames, botName)
+      pending.resultFailedCount = pending.resultFailedCount + 1
+    end
+
+    state.connected = true
+    state.lastError = nil
+    debugPrint("ADDON:RX", opcode, payload or "")
+    return true
+  end
+
+  if #fields ~= 7 then
+    state.lastError = "BOT_RESET_ACK_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = trim(fields[1])
+  local scope = string.upper(trim(fields[2]))
+  local operation = string.upper(trim(fields[3]))
+  local matched = parseBoundedInteger(fields[4], 0, 40)
+  local succeeded = parseBoundedInteger(fields[5], 0, 40)
+  local failed = parseBoundedInteger(fields[6], 0, 40)
+  local reason = urlDecodeFieldStrict(fields[7], 64, false)
+  local pending = state.groupOrderCommands[token]
+
+  local scopeValid = scope == "TARGET" or scope == "GROUP"
+  local operationValid = operation == "ACTIONS" or operation == "AI"
+  local countsValid = matched ~= nil
+    and succeeded ~= nil
+    and failed ~= nil
+    and succeeded <= matched
+    and failed <= matched
+    and succeeded + failed == matched
+    and (scope ~= "TARGET" or matched <= 1)
+  local reasonValid = reason == "OK"
+    or reason == "BAD_SCOPE"
+    or reason == "BAD_OPERATION"
+    or reason == "BAD_TARGET"
+    or reason == "RATE_LIMIT"
+    or reason == "REPLAY"
+    or reason == "NO_GROUP"
+    or reason == "NO_BOTS"
+    or reason == "NOT_ALLOWED"
+    or reason == "NOT_CONTROLLED"
+    or reason == "BOT_LIMIT"
+    or reason == "PARTIAL"
+    or reason == "FAILED"
+
+  if not isValidStateToken(token)
+      or not scopeValid
+      or not operationValid
+      or not countsValid
+      or not reasonValid
+      or type(pending) ~= "table"
+      or pending.order ~= "BOT_RESET"
+      or pending.scope ~= scope
+      or pending.operation ~= operation then
+    state.lastError = "BOT_RESET_ACK_INVALID"
+    return true
+  end
+
+  local itemCount = tonumber(pending.resultItemCount) or 0
+  local itemFailedCount = tonumber(pending.resultFailedCount) or 0
+  if itemCount > matched or itemFailedCount > failed then
+    state.lastError = "BOT_RESET_ACK_ITEM_MISMATCH"
+    return true
+  end
+
+  state.connected = true
+  state.lastError = reason == "OK" and nil or ("BOT_RESET_" .. reason)
+  debugPrint("ADDON:RX", opcode, payload or "")
+
+  local status = "failed"
+  if reason == "OK" and matched > 0 and failed == 0 and succeeded == matched then
+    status = "ok"
+  elseif reason == "NO_BOTS" and matched == 0 then
+    status = "empty"
+  elseif succeeded > 0 then
+    status = "partial"
+  end
+
+  Comm._ShowBotResetFeedback(operation, pending, reason, succeeded, failed)
+
+  Comm._FinishGroupOrderCommand(token, {
+    status = status,
+    scope = scope,
+    operation = operation,
+    target = pending.target,
+    matched = matched,
+    succeeded = succeeded,
+    failed = failed,
+    reason = reason,
+    names = pending.resultNames,
+    failedNames = pending.failedNames,
+  })
+  return true
+end
+-- MB_BOT_RESET_ITEM_V1_END
+function Comm.HandleBotResetProtocolError(requestType, token, reason, state)
+  if requestType ~= "BOT_RESET" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  token = trim(token or "")
+  reason = trim(reason or "PROTOCOL_ERROR")
+  if reason == "" then
+    reason = "PROTOCOL_ERROR"
+  end
+
+  state.groupOrderCommands = state.groupOrderCommands or {}
+  local pending = state.groupOrderCommands[token]
+  if type(pending) ~= "table" or pending.order ~= "BOT_RESET" then
+    return true
+  end
+
+  state.lastError = "BOT_RESET_" .. reason
+  Comm._FinishGroupOrderCommand(token, {
+    status = "error",
+    scope = pending.scope,
+    operation = pending.operation,
+    target = pending.target,
+    matched = 0,
+    succeeded = 0,
+    failed = 0,
+    reason = reason,
+  })
+  return true
+end
+-- MB_BOT_RESET_V1_END
+
+local function finishStrategyMutationCommand(token, result)
+  local state = ensureBridgeState()
+  local pending = state.strategyMutationCommands[token]
+  if type(pending) ~= "table" then
+    return false
+  end
+
+  state.strategyMutationCommands[token] = nil
+  result = type(result) == "table" and result or {}
+  result.token = token
+  result.scope = result.scope or pending.scope
+  result.target = result.target or pending.target
+  result.stateScope = result.stateScope or pending.stateScope
+  result.changes = result.changes or pending.changes
+
+  if type(pending.callback) == "function" then
+    pending.callback(result)
+  end
+
+  if MultiBot.OnStrategyMutationApplied then
+    MultiBot.OnStrategyMutationApplied(result)
+  end
+
+  return true
+end
+
+function Comm.RunStrategyCommand(scope, target, stateScope, changes, callback)
+  local state = ensureBridgeState()
+
+  if not state.connected then
+    state.lastError = "STRATEGY_NOT_CONNECTED"
+    return false
+  end
+  if not state.strategyMutationCapable then
+    state.lastError = "STRATEGY_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  scope = string.upper(trim(scope or "BOT"))
+  target = trim(target or "")
+  stateScope = string.upper(trim(stateScope or ""))
+  changes = validateStrategyMutationChanges(changes)
+
+  if scope ~= "ALL" and scope ~= "GROUP" and scope ~= "PARTY" and scope ~= "RAID" and scope ~= "BOT" then
+    state.lastError = "STRATEGY_INVALID_SCOPE"
+    return false
+  end
+  if scope == "BOT" and target == "" then
+    state.lastError = "STRATEGY_TARGET_REQUIRED"
+    return false
+  end
+  if scope ~= "BOT" and target ~= "" then
+    state.lastError = "STRATEGY_TARGET_NOT_ALLOWED"
+    return false
+  end
+  if stateScope ~= "C" and stateScope ~= "N" then
+    state.lastError = "STRATEGY_INVALID_STATE_SCOPE"
+    return false
+  end
+  if not changes then
+    state.lastError = "STRATEGY_INVALID_CHANGES"
+    return false
+  end
+  if countTableEntries(state.strategyMutationCommands) >= STRATEGY_MUTATION_MAX_ACTIVE then
+    state.lastError = "STRATEGY_TOO_MANY_REQUESTS"
+    return false
+  end
+
+  state.strategyMutationSeq = (tonumber(state.strategyMutationSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-strategy-" .. tostring(state.strategyMutationSeq)
+  state.strategyMutationCommands[token] = {
+    scope = scope,
+    target = target,
+    stateScope = stateScope,
+    changes = changes,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "STRATEGY~"
+    .. scope .. "~"
+    .. urlEncodeField(target) .. "~"
+    .. token .. "~"
+    .. stateScope .. "~"
+    .. urlEncodeField(changes)
+
+  if not Comm.Send("RUN", payload) then
+    state.strategyMutationCommands[token] = nil
+    state.lastError = "STRATEGY_SEND_FAILED"
+    return false
+  end
+
+  if MultiBot and type(MultiBot.TimerAfter) == "function" then
+    MultiBot.TimerAfter(STRATEGY_MUTATION_TIMEOUT_SECONDS, function()
+      local bridge = ensureBridgeState()
+      if not bridge.strategyMutationCommands[token] then
+        return
+      end
+
+      bridge.lastError = "STRATEGY_TIMEOUT~" .. token
+      finishStrategyMutationCommand(token, {
+        status = "timeout",
+        matched = 0,
+        succeeded = 0,
+        failed = 0,
+        reason = "TIMEOUT",
+      })
+    end)
+  end
+
+  return token
+end
+
+local function finishSelfStrategyCommand(token, result)
+  local state = ensureBridgeState()
+  local pending = state.selfStrategyCommands[token]
+  if type(pending) ~= "table" then
+    return false
+  end
+
+  state.selfStrategyCommands[token] = nil
+  result = type(result) == "table" and result or {}
+  result.token = token
+  result.stateScope = result.stateScope or pending.stateScope
+  result.changes = result.changes or pending.changes
+
+  if type(pending.callback) == "function" then
+    pending.callback(result)
+  end
+
+  if MultiBot.OnSelfStrategyMutationApplied then
+    MultiBot.OnSelfStrategyMutationApplied(result)
+  end
+
+  return true
+end
+
+local function invalidateInactiveSelfBotWork(state)
+  state = type(state) == "table" and state or ensureBridgeState()
+
+  local strategyStateToken = state.selfStrategyStateToken
+  if type(strategyStateToken) == "string" and strategyStateToken ~= "" then
+    clearStateRequest(state, strategyStateToken)
+  end
+  state.selfStrategyStateToken = nil
+
+  local pendingSelfStrategyTokens = {}
+  for token in pairs(state.selfStrategyCommands or {}) do
+    pendingSelfStrategyTokens[#pendingSelfStrategyTokens + 1] = token
+  end
+  for _, token in ipairs(pendingSelfStrategyTokens) do
+    finishSelfStrategyCommand(token, {
+      status = "error",
+      reason = "SELF_STRATEGY_NOT_ACTIVE",
+    })
+  end
+  state.selfStrategyCommands = {}
+
+  -- SELF_ACTION consumers currently use callbacks for result/error reporting
+  -- only; there is no local optimistic button state to repair. Dropping these
+  -- requests prevents late ACKs from completing work that belonged to the
+  -- previous active SelfBot lifecycle without adding disable-time UI spam.
+  state.selfActionCommands = {}
+end
+
+function Comm.RunSelfStrategyCommand(stateScope, changes, callback)
+  local state = ensureBridgeState()
+
+  if not state.connected then
+    state.lastError = "SELF_STRATEGY_NOT_CONNECTED"
+    return false
+  end
+  if state.selfBotCapable ~= true then
+    state.lastError = "SELF_BOT_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+  if state.selfStrategyCapable ~= true then
+    state.lastError = "SELF_STRATEGY_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+  if state.selfBotLastActive ~= true then
+    state.lastError = "SELF_STRATEGY_NOT_ACTIVE"
+    return false
+  end
+
+  stateScope = string.upper(trim(stateScope or ""))
+  changes = validateStrategyMutationChanges(changes)
+
+  if stateScope ~= "C" and stateScope ~= "N" then
+    state.lastError = "SELF_STRATEGY_INVALID_STATE_SCOPE"
+    return false
+  end
+  if not changes then
+    state.lastError = "SELF_STRATEGY_INVALID_CHANGES"
+    return false
+  end
+  if countTableEntries(state.selfStrategyCommands) >= SELF_STRATEGY_MUTATION_MAX_ACTIVE then
+    state.lastError = "SELF_STRATEGY_TOO_MANY_REQUESTS"
+    return false
+  end
+
+  state.selfStrategySeq = (tonumber(state.selfStrategySeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-self-strategy-" .. tostring(state.selfStrategySeq)
+  state.selfStrategyCommands[token] = {
+    stateScope = stateScope,
+    changes = changes,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "SELF_STRATEGY~"
+    .. token .. "~"
+    .. stateScope .. "~"
+    .. urlEncodeField(changes)
+
+  if not Comm.Send("RUN", payload) then
+    state.selfStrategyCommands[token] = nil
+    state.lastError = "SELF_STRATEGY_SEND_FAILED"
+    return false
+  end
+
+  if MultiBot and type(MultiBot.TimerAfter) == "function" then
+    MultiBot.TimerAfter(SELF_STRATEGY_MUTATION_TIMEOUT_SECONDS, function()
+      local bridge = ensureBridgeState()
+      if not bridge.selfStrategyCommands[token] then
+        return
+      end
+
+      bridge.lastError = "SELF_STRATEGY_TIMEOUT~" .. token
+      finishSelfStrategyCommand(token, {
+        status = "timeout",
+        reason = "TIMEOUT",
+      })
+    end)
+  end
+
+  return token
+end
+function Comm.RunLootCommand(scope, target, command)
+  local state = ensureBridgeState()
+
+  if not state.connected then
+    return false
+  end
+
+  command = trim(command or "")
+  if command == "" then
+    return false
+  end
+
+  scope = string.upper(trim(scope or "ALL"))
+  target = trim(target or "")
+
+  if scope ~= "ALL" and scope ~= "GROUP" and scope ~= "BOT" then
+    return false
+  end
+
+  state.lootSeq = (tonumber(state.lootSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-loot-" .. tostring(state.lootSeq)
+
+  return Comm.Send("RUN", "LOOT~" .. scope .. "~" .. urlEncodeField(target) .. "~" .. token .. "~" .. urlEncodeField(command))
+end
+
+-- MB_LOOT_RULE_ITEM_V1_TX_BEGIN
+function Comm.IsLootRuleItemCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.lootRuleItemCapable == true
+end
+
+function Comm.RunLootRuleItem(scope, target, action, itemId)
+  local state = ensureBridgeState()
+  if not state.connected or state.lootRuleItemCapable ~= true then
+    state.lastError = "LOOT_RULE_ITEM_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  scope = string.upper(trim(scope or "ALL"))
+  target = trim(target or "")
+  action = string.upper(trim(action or ""))
+  itemId = parseBoundedInteger(tostring(itemId or ""), 1, 4294967295)
+
+  local validScope = scope == "ALL" or scope == "RAID" or scope == "GROUP"
+      or scope == "PARTY" or scope == "BOT"
+  if not validScope then
+    state.lastError = "LOOT_RULE_ITEM_BAD_SCOPE"
+    return false
+  end
+  if string.len(target) > 64
+      or (scope == "BOT" and target == "")
+      or ((scope == "ALL" or scope == "RAID") and target ~= "") then
+    state.lastError = "LOOT_RULE_ITEM_BAD_TARGET"
+    return false
+  end
+  if (scope == "GROUP" or scope == "PARTY") and target ~= "" then
+    local groupNumber = tonumber(target)
+    if not groupNumber or math.floor(groupNumber) ~= groupNumber or groupNumber < 1 or groupNumber > 8 then
+      state.lastError = "LOOT_RULE_ITEM_BAD_TARGET"
+      return false
+    end
+  end
+  if action ~= "ADD" and action ~= "REMOVE" then
+    state.lastError = "LOOT_RULE_ITEM_BAD_ACTION"
+    return false
+  end
+  if not itemId then
+    state.lastError = "LOOT_RULE_ITEM_BAD_ITEM"
+    return false
+  end
+  if countTableEntries(state.lootRuleItemCommands) >= LOOT_RULE_ITEM_MAX_ACTIVE then
+    state.lastError = "LOOT_RULE_ITEM_TOO_MANY_REQUESTS"
+    return false
+  end
+
+  local targetKey = string.lower(target)
+  for _, pending in pairs(state.lootRuleItemCommands) do
+    if type(pending) == "table"
+        and pending.scope == scope
+        and pending.targetKey == targetKey
+        and pending.action == action
+        and pending.itemId == itemId then
+      state.lastError = "LOOT_RULE_ITEM_ALREADY_PENDING"
+      return false
+    end
+  end
+
+  state.lootRuleItemSeq = (tonumber(state.lootRuleItemSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-loot-item-" .. tostring(state.lootRuleItemSeq)
+  state.lootRuleItemCommands[token] = {
+    scope = scope,
+    target = target,
+    targetKey = targetKey,
+    action = action,
+    itemId = itemId,
+    startedAt = safeNow(),
+  }
+
+  local payload = table.concat({
+    "LOOT_RULE_ITEM", scope, urlEncodeField(target), token, action, tostring(itemId),
+  }, "~")
+  if not Comm.Send("RUN", payload) then
+    state.lootRuleItemCommands[token] = nil
+    state.lastError = "LOOT_RULE_ITEM_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(LOOT_RULE_ITEM_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    local pending = bridge.lootRuleItemCommands[token]
+    if type(pending) ~= "table" then
+      return
+    end
+
+    bridge.lootRuleItemCommands[token] = nil
+    bridge.lastError = "LOOT_RULE_ITEM_TIMEOUT"
+    if MultiBot.OnLootRuleItemResult then
+      MultiBot.OnLootRuleItemResult(
+        pending.scope, pending.target, pending.action, pending.itemId,
+        "ERR", "TIMEOUT", 0, 0, pending
+      )
+    end
+  end)
+
+  return token
+end
+-- MB_LOOT_RULE_ITEM_V1_TX_END
+function Comm.RunPositionCommand(scope, target, command)
+  local state = ensureBridgeState()
+
+  if not state.connected then
+    return false
+  end
+
+  command = trim(command or "")
+  if command == "" then
+    return false
+  end
+
+  scope = string.upper(trim(scope or "ALL"))
+  target = trim(target or "")
+
+  if scope ~= "ALL" and scope ~= "GROUP" and scope ~= "BOT" then
+    return false
+  end
+
+  state.positionSeq = (tonumber(state.positionSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-position-" .. tostring(state.positionSeq)
+
+  return Comm.Send("RUN", "POSITION~" .. scope .. "~" .. urlEncodeField(target) .. "~" .. token .. "~" .. urlEncodeField(command))
+end
+
+function Comm.RunFormationCommand(scope, target, formation, callback)
+  local state = ensureBridgeState()
+
+  if not state.connected then
+    return false
+  end
+
+  if state.formationCapable ~= true then
+    state.lastError = "FORMATION_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  scope = string.upper(trim(scope or "GROUP"))
+  target = trim(target or "")
+  formation = string.lower(trim(formation or ""))
+
+  local allowed = {
+    arrow = true,
+    queue = true,
+    near = true,
+    melee = true,
+    line = true,
+    circle = true,
+    chaos = true,
+    shield = true,
+    far = true,
+  }
+
+  if scope ~= "GROUP" or target ~= "" or not allowed[formation] then
+    return false
+  end
+
+  state.formationSeq = (tonumber(state.formationSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-formation-" .. tostring(state.formationSeq)
+  state.formationCommands[token] = {
+    formation = formation,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("RUN", "FORMATION~" .. scope .. "~~" .. token .. "~" .. urlEncodeField(formation)) then
+    state.formationCommands[token] = nil
+    return false
+  end
+
+  if MultiBot and type(MultiBot.TimerAfter) == "function" then
+    MultiBot.TimerAfter(5.0, function()
+      local bridge = ensureBridgeState()
+      local pending = bridge.formationCommands[token]
+      if not pending then
+        return
+      end
+
+      bridge.formationCommands[token] = nil
+      local result = {
+        status = "timeout",
+        scope = scope,
+        target = target,
+        token = token,
+        success = 0,
+        failure = 0,
+        formation = formation,
+      }
+
+      if type(pending.callback) == "function" then
+        pending.callback(result)
+      end
+
+      if MultiBot.OnFormationCommandApplied then
+        MultiBot.OnFormationCommandApplied(result)
+      end
+
+      systemMessage(L("formation.confirm.timeout"))
+    end)
+  end
+
+  return token
+end
+
+function Comm.RequestFormations(callback)
+  local state = ensureBridgeState()
+
+  if not state.connected then
+    return false
+  end
+
+  if state.formationCapable ~= true then
+    state.lastError = "FORMATION_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  state.formationQuerySeq = (tonumber(state.formationQuerySeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-formations-" .. tostring(state.formationQuerySeq)
+
+  state.formationQueryActive = {
+    token = token,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+    expected = 0,
+    items = {},
+    begun = false,
+  }
+
+  if not Comm.Send("GET", "FORMATIONS~GROUP~~" .. token) then
+    state.formationQueryActive = nil
+    return false
+  end
+
+  if MultiBot and type(MultiBot.TimerAfter) == "function" then
+    MultiBot.TimerAfter(5.0, function()
+      local bridge = ensureBridgeState()
+      local active = bridge.formationQueryActive
+      if not active or active.token ~= token then
+        return
+      end
+
+      bridge.formationQueryActive = nil
+      local result = {
+        token = token,
+        status = "timeout",
+        expected = tonumber(active.expected or 0) or 0,
+        sent = #(active.items or {}),
+        items = active.items or {},
+      }
+
+      if type(active.callback) == "function" then
+        active.callback(result)
+      end
+
+      if MultiBot.OnFormationQueryCompleted then
+        MultiBot.OnFormationQueryCompleted(result)
+      end
+    end)
+  end
+
+  return token
+end
+
+local function getActiveFormationQuery(token)
+  local active = ensureBridgeState().formationQueryActive
+  token = trim(token)
+
+  if type(active) ~= "table" or token == "" or active.token ~= token then
+    return nil
+  end
+
+  return active
+end
+
+function Comm.ApplyFormationsBeginPayload(payload)
+  local token, countText = splitOnce(payload or "", "~")
+  token = trim(token)
+
+  local active = getActiveFormationQuery(token)
+  if not active then
+    return false
+  end
+
+  active.expected = tonumber(countText or "0") or 0
+  active.items = {}
+  active.begun = true
+
+  debugPrint("ADDON:RX", "FORMATIONS_BEGIN", token, active.expected)
+  return true
+end
+
+function Comm.ApplyFormationsItemPayload(payload)
+  local token, rest = splitOnce(payload or "", "~")
+  local encodedBotName, encodedFormation = splitOnce(rest or "", "~")
+  token = trim(token)
+
+  local active = getActiveFormationQuery(token)
+  if not active or not active.begun then
+    return false
+  end
+
+  local botName = trim(urlDecodeField(encodedBotName))
+  local formation = string.lower(trim(urlDecodeField(encodedFormation)))
+
+  if botName == "" then
+    return false
+  end
+
+  if formation == "" then
+    formation = "?"
+  end
+
+  active.items[#active.items + 1] = {
+    botName = botName,
+    formation = formation,
+  }
+
+  debugPrint("ADDON:RX", "FORMATIONS_ITEM", token, botName, formation)
+  return true
+end
+
+function Comm.ApplyFormationsEndPayload(payload)
+  local token, sentText = splitOnce(payload or "", "~")
+  token = trim(token)
+
+  local state = ensureBridgeState()
+  local active = getActiveFormationQuery(token)
+  if not active or not active.begun then
+    return false
+  end
+
+  table.sort(active.items, function(left, right)
+    return string.lower(left.botName or "") < string.lower(right.botName or "")
+  end)
+
+  state.formationQueryActive = nil
+
+  local result = {
+    token = token,
+    status = "ok",
+    expected = tonumber(active.expected or 0) or 0,
+    sent = tonumber(sentText or "0") or 0,
+    items = active.items or {},
+  }
+
+  debugPrint("ADDON:RX", "FORMATIONS_END", token, result.sent)
+
+  if type(active.callback) == "function" then
+    active.callback(result)
+  end
+
+  if MultiBot.OnFormationQueryCompleted then
+    MultiBot.OnFormationQueryCompleted(result)
+  end
+
+  return true
+end
+
+function Comm.HandleFormationProtocolError(requestType, token, reason, state)
+  state = state or ensureBridgeState()
+  requestType = string.upper(trim(requestType or ""))
+  token = trim(token or "")
+  reason = string.upper(trim(reason or ""))
+
+  if requestType == "FORMATION" then
+    local pending = state.formationCommands and state.formationCommands[token] or nil
+    if type(pending) ~= "table" then
+      return false
+    end
+
+    state.formationCommands[token] = nil
+    state.lastError = "FORMATION_" .. reason
+
+    local result = {
+      status = "error",
+      scope = "GROUP",
+      target = "",
+      token = token,
+      success = 0,
+      failure = 0,
+      formation = pending.formation or "",
+      reason = reason,
+    }
+
+    if type(pending.callback) == "function" then
+      pending.callback(result)
+    end
+
+    if MultiBot.OnFormationCommandApplied then
+      MultiBot.OnFormationCommandApplied(result)
+    end
+
+    return true
+  end
+
+  if requestType == "FORMATIONS" then
+    local active = state.formationQueryActive
+    if type(active) ~= "table" or active.token ~= token then
+      return false
+    end
+
+    state.formationQueryActive = nil
+    state.lastError = "FORMATIONS_" .. reason
+
+    local result = {
+      token = token,
+      status = "unavailable",
+      reason = reason,
+      expected = tonumber(active.expected or 0) or 0,
+      sent = #(active.items or {}),
+      items = active.items or {},
+    }
+
+    if type(active.callback) == "function" then
+      active.callback(result)
+    end
+
+    if MultiBot.OnFormationQueryCompleted then
+      MultiBot.OnFormationQueryCompleted(result)
+    end
+
+    return true
+  end
+
+  return false
+end
+
+function Comm.RequestOutfits(name)
+  local state = ensureBridgeState()
+  name = trim(name)
+  if name == "" or not state.connected or state.outfitCapable ~= true then
+    return false
+  end
+
+  state.outfitSeq = (tonumber(state.outfitSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-" .. tostring(state.outfitSeq)
+  local framed = state.outfitFramingCapable == true
+  state.outfitActive = {
+    botName = name,
+    botNameKey = string.lower(name),
+    token = token,
+    startedAt = safeNow(),
+    lines = {},
+    framed = framed,
+    expectedOutfits = nil,
+    completedOutfits = 0,
+    frameOutfits = {},
+  }
+
+  local requestType = framed and "OUTFITS_FRAMED" or "OUTFITS"
+  if not Comm.Send("GET", requestType .. "~" .. name .. "~" .. token) then
+    state.outfitActive = nil
+    return false
+  end
+
+  safeDelay(8.0, function()
+    local live = ensureBridgeState()
+    local active = live.outfitActive
+    if type(active) ~= "table" or active.token ~= token then
+      return
+    end
+
+    live.outfitActive = nil
+    if MultiBot.OutfitUI and MultiBot.OutfitUI.HandleBridgeEnd then
+      MultiBot.OutfitUI:HandleBridgeEnd(active.botName or name, token, "TIMEOUT")
+    end
+  end)
+
+  return token
+end
+
+function Comm.RunOutfitCommand(name, commandSuffix, persist, wasCreate)
+  local state = ensureBridgeState()
+  name = trim(name)
+  commandSuffix = trim(commandSuffix)
+  if name == "" or commandSuffix == "" or not state.connected or state.outfitCapable ~= true then
+    return false
+  end
+
+  state.outfitSeq = (tonumber(state.outfitSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-cmd-" .. tostring(state.outfitSeq)
+  state.outfitCommands[token] = {
+    botName = name,
+    botNameKey = string.lower(name),
+    command = commandSuffix,
+    persist = persist == true,
+    wasCreate = wasCreate == true,
+    startedAt = safeNow(),
+  }
+
+  local persistToken = persist == true and "1" or "0"
+  if not Comm.Send("RUN", "OUTFIT~" .. name .. "~" .. token .. "~" .. urlEncodeField(commandSuffix) .. "~" .. persistToken) then
+    state.outfitCommands[token] = nil
+    return false
+  end
+
+  safeDelay(8.0, function()
+    local live = ensureBridgeState()
+    local command = live.outfitCommands and live.outfitCommands[token] or nil
+    if type(command) ~= "table" then
+      return
+    end
+
+    live.outfitCommands[token] = nil
+    if MultiBot.OutfitUI and MultiBot.OutfitUI.HandleBridgeCommandResult then
+      MultiBot.OutfitUI:HandleBridgeCommandResult(
+        command.botName or name, token, "ERR", command.command or commandSuffix,
+        command.wasCreate == true, "TIMEOUT"
+      )
+    end
+  end)
+
+  return token
+end
+
+function Comm.RequestTrainer(name)
+  local state = ensureBridgeState()
+  name = trim(name)
+  if name == "" or not state.connected then
+    return false
+  end
+
+  state.trainerSeq = (tonumber(state.trainerSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-trainer-" .. tostring(state.trainerSeq)
+  state.trainerActive = {
+    botName = name,
+    botNameKey = string.lower(name),
+    token = token,
+    trainerEntry = 0,
+    trainerName = "",
+    startedAt = safeNow(),
+    spells = {},
+  }
+
+  if not Comm.Send("GET", "TRAINER~" .. name .. "~" .. token) then
+    state.trainerActive = nil
+    return false
+  end
+
+  safeDelay(8.0, function()
+    local live = ensureBridgeState()
+    local active = live.trainerActive
+    if type(active) ~= "table" or active.token ~= token then
+      return
+    end
+
+    live.trainerActive = nil
+    if MultiBot.TrainerUI and MultiBot.TrainerUI.HandleBridgeEnd then
+      MultiBot.TrainerUI:HandleBridgeEnd(
+        active.botName or name, token, tonumber(active.trainerEntry or 0) or 0,
+        active.trainerName or "", active.spells or {}, "TIMEOUT"
+      )
+    end
+  end)
+
+  return token
+end
+
+function Comm.RunTrainerLearn(name, trainerEntry, spellId)
+  local state = ensureBridgeState()
+  name = trim(name)
+  trainerEntry = tonumber(trainerEntry or 0) or 0
+
+  local spellToken = trim(spellId)
+  if spellToken == "" and tonumber(spellId or 0) then
+    spellToken = tostring(tonumber(spellId or 0) or 0)
+  end
+  if string.upper(spellToken) ~= "ALL" then
+    local numericSpellId = tonumber(spellToken or "0") or 0
+    if numericSpellId <= 0 then
+      return false
+    end
+    spellToken = tostring(numericSpellId)
+  else
+    spellToken = "ALL"
+  end
+
+  if name == "" or trainerEntry <= 0 or not state.connected then
+    return false
+  end
+
+  state.trainerSeq = (tonumber(state.trainerSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-trainer-learn-" .. tostring(state.trainerSeq)
+  state.trainerCommands[token] = {
+    botName = name,
+    botNameKey = string.lower(name),
+    trainerEntry = trainerEntry,
+    spellId = spellToken,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("RUN", "TRAINER_LEARN~" .. name .. "~" .. token .. "~" .. trainerEntry .. "~" .. spellToken) then
+    state.trainerCommands[token] = nil
+    return false
+  end
+
+  safeDelay(8.0, function()
+    local live = ensureBridgeState()
+    local command = live.trainerCommands and live.trainerCommands[token] or nil
+    if type(command) ~= "table" then
+      return
+    end
+
+    live.trainerCommands[token] = nil
+    if MultiBot.TrainerUI and MultiBot.TrainerUI.HandleBridgeLearnResult then
+      MultiBot.TrainerUI:HandleBridgeLearnResult(
+        command.botName or name, token, tonumber(command.trainerEntry or trainerEntry) or 0,
+        command.spellId or spellToken, "ERR", "TIMEOUT", 0, 0
+      )
+    end
+  end)
+
+  return token
+end
+
+function Comm.RequestGlyphs(name)
+  local state = ensureBridgeState()
+  if not state.connected and not state.bootstrapPending then
+    return false
+  end
+
+  name = trim(name)
+  if name == "" then
+    return false
+  end
+
+  state.glyphSeq = (tonumber(state.glyphSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-" .. tostring(state.glyphSeq)
+  state.glyphActive = {
+    botName = name,
+    botNameKey = string.lower(name),
+    token = token,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("GET", "GLYPHS~" .. name .. "~" .. token) then
+    state.glyphActive = nil
+    return false
+  end
+
+  return token
+end
+
+function Comm.RequestQuests(mode, name)
+  local state = ensureBridgeState()
+  if not state.connected and not state.bootstrapPending then
+    return false
+  end
+
+  mode = string.upper(trim(mode or "ALL"))
+  if mode ~= "INCOMPLETED" and mode ~= "COMPLETED" and mode ~= "ALL" then
+    mode = "ALL"
+  end
+
+  name = trim(name)
+  state.questSeq = (tonumber(state.questSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-" .. tostring(state.questSeq)
+
+  state.questActive[token] = {
+    mode = mode,
+    botName = name,
+    isGroup = name == "",
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("GET", "QUESTS~" .. mode .. "~" .. name .. "~" .. token) then
+    state.questActive[token] = nil
+    return false
+  end
+
+  return token
+end
+
+function Comm.RequestGameObjects(name)
+  local state = ensureBridgeState()
+  if not state.connected and not state.bootstrapPending then
+    return false
+  end
+
+  name = trim(name)
+  state.gameObjectSeq = (tonumber(state.gameObjectSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-gob-" .. tostring(state.gameObjectSeq)
+
+  state.gameObjectActive[token] = {
+    botName = name,
+    isGroup = name == "",
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("GET", "GAMEOBJECTS~" .. name .. "~" .. token) then
+    state.gameObjectActive[token] = nil
+    return false
+  end
+
+  return token
+end
+
+function Comm.RequestPvpStats(name)
+  ensureBridgeState()
+
+  name = trim(name)
+  if name ~= "" then
+    return Comm.Send("GET", "PVP_STATS~" .. name)
+  end
+
+  return Comm.Send("GET", "PVP_STATS")
+end
+
+-- MB_ISSUE33_SELF_BOT_V1_BEGIN
+local function finishSelfBotRequest(kind, token, result)
+  local state = ensureBridgeState()
+  local field = kind == "command" and "selfBotCommandActive" or "selfBotStateActive"
+  local pending = state[field]
+  if type(pending) ~= "table" or pending.token ~= token then
+    return false
+  end
+
+  state[field] = nil
+  result = type(result) == "table" and result or {}
+  result.token = token
+  result.kind = kind
+
+  -- Recovery state requests must never promote a cached/local fallback value
+  -- to authoritative UI state. Only a successfully parsed server response may
+  -- carry active through such a request.
+  if pending.authoritativeOnly == true and result.authoritative ~= true then
+    result.active = nil
+  end
+
+  if type(result.active) == "boolean" then
+    state.selfBotLastActive = result.active
+  end
+
+  if result.status == "ok" then
+    state.lastError = nil
+  else
+    state.lastError = "SELF_BOT_" .. tostring(result.reason or "UNKNOWN")
+  end
+
+  if type(result.active) == "boolean" and MultiBot.OnBridgeSelfBotState then
+    MultiBot.OnBridgeSelfBotState(result.active, result)
+  end
+
+  if type(pending.callback) == "function" then
+    pending.callback(result)
+  end
+
+  return true
+end
+
+local function normalizeSelfBotMountStrategy(state)
+  state = type(state) == "table" and state or ensureBridgeState()
+
+  if state.connected ~= true
+      or state.selfBotLastActive ~= true
+      or state.selfStrategyCapable ~= true
+      or type(Comm.RunSelfStrategyCommand) ~= "function" then
+    return false
+  end
+
+  if state.selfBotMountNormalized == true or state.selfBotMountNormalizePending == true then
+    return true
+  end
+
+  local generation = tonumber(state.connectionGeneration) or 0
+  local epoch = tonumber(state.selfBotMountNormalizeEpoch) or 0
+  state.selfBotMountNormalizePending = true
+
+  local token = Comm.RunSelfStrategyCommand("N", "-mount", function(result)
+    local bridge = ensureBridgeState()
+    if (tonumber(bridge.connectionGeneration) or 0) ~= generation
+        or (tonumber(bridge.selfBotMountNormalizeEpoch) or 0) ~= epoch then
+      return
+    end
+
+    bridge.selfBotMountNormalizePending = false
+    if bridge.selfBotLastActive == true
+        and type(result) == "table"
+        and result.status == "ok" then
+      bridge.selfBotMountNormalized = true
+      debugPrint("SELFBOT:MOUNT_NORMALIZE", "OK")
+    else
+      bridge.selfBotMountNormalized = false
+      debugPrint("SELFBOT:MOUNT_NORMALIZE", "FAILED",
+        type(result) == "table" and tostring(result.reason or result.status or "UNKNOWN") or "INVALID_RESULT")
+    end
+  end)
+
+  if token == false or token == nil then
+    state.selfBotMountNormalizePending = false
+    return false
+  end
+
+  debugPrint("SELFBOT:MOUNT_NORMALIZE", "SENT", tostring(token))
+  return true
+end
+
+-- Keep SELF_BOT response parsing outside Comm.HandleAddonMessage. WoW 3.3.5a
+-- uses Lua 5.1, whose function upvalue limit is 60; the main dispatcher is
+-- already close to that limit.
+function Comm.HandleSelfBotAddonMessage(opcode, payload, state)
+  if opcode ~= "SELF_BOT_STATE" and opcode ~= "SELF_BOT_RESULT" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+
+  local fields = splitFields(payload or "")
+  local kind = opcode == "SELF_BOT_RESULT" and "command" or "state"
+  local pending = kind == "command" and state.selfBotCommandActive or state.selfBotStateActive
+
+  if #fields ~= 4 then
+    if type(pending) == "table" then
+      finishSelfBotRequest(kind, pending.token, {
+        status = "error",
+        active = type(state.selfBotLastActive) == "boolean" and state.selfBotLastActive or nil,
+        reason = "BAD_RESPONSE",
+      })
+    else
+      state.lastError = "SELF_BOT_BAD_RESPONSE"
+    end
+    return true
+  end
+
+  local token = trim(fields[1])
+  local status = string.upper(trim(fields[2]))
+  local activeText = trim(fields[3])
+  local reason = urlDecodeFieldStrict(fields[4], 64, false)
+
+  if type(pending) ~= "table" or pending.token ~= token then
+    return true
+  end
+
+  if not isValidStateToken(token)
+      or (status ~= "OK" and status ~= "ERR")
+      or (activeText ~= "0" and activeText ~= "1")
+      or reason == nil then
+    finishSelfBotRequest(kind, token, {
+      status = "error",
+      active = type(state.selfBotLastActive) == "boolean" and state.selfBotLastActive or nil,
+      reason = "BAD_RESPONSE",
+    })
+    return true
+  end
+
+  state.connected = true
+  finishSelfBotRequest(kind, token, {
+    status = status == "OK" and "ok" or "error",
+    active = activeText == "1",
+    authoritative = true,
+    reason = reason,
+    desiredState = type(pending) == "table" and pending.desiredState or nil,
+  })
+  if activeText == "0" then
+    state.selfBotMountNormalizeEpoch = (tonumber(state.selfBotMountNormalizeEpoch) or 0) + 1
+    state.selfBotMountNormalizePending = false
+    state.selfBotMountNormalized = false
+    invalidateInactiveSelfBotWork(state)
+  elseif state.selfStrategyCapable == true then
+    normalizeSelfBotMountStrategy(state)
+  end
+
+  if status == "OK" and activeText == "1" and state.selfStrategyCapable == true
+      and type(Comm.RequestSelfStrategyState) == "function" then
+    Comm.RequestSelfStrategyState()
+  end
+
+  debugPrint("ADDON:RX", opcode, token, status, activeText, reason)
+  return true
+end
+
+function Comm.HandleSelfBotProtocolError(requestType, token, reason, state)
+  if requestType ~= "SELF_BOT" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+
+  if type(state.selfBotCommandActive) == "table"
+      and state.selfBotCommandActive.token == token then
+    finishSelfBotRequest("command", token, {
+      status = "error",
+      active = type(state.selfBotLastActive) == "boolean" and state.selfBotLastActive or nil,
+      reason = reason,
+      desiredState = state.selfBotCommandActive.desiredState,
+    })
+  elseif type(state.selfBotStateActive) == "table"
+      and state.selfBotStateActive.token == token then
+    finishSelfBotRequest("state", token, {
+      status = "error",
+      active = type(state.selfBotLastActive) == "boolean" and state.selfBotLastActive or nil,
+      reason = reason,
+    })
+  end
+
+  return true
+end
+
+function Comm.IsSelfBotCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.selfBotCapable == true
+end
+
+local function requestSelfBotState(callback, options)
+  local state = ensureBridgeState()
+  options = type(options) == "table" and options or {}
+  local allowDuringCommand = options.allowDuringCommand == true
+  local authoritativeOnly = options.authoritativeOnly == true
+
+  if not state.connected or state.selfBotCapable ~= true then
+    return false
+  end
+  if type(state.selfBotCommandActive) == "table" and not allowDuringCommand then
+    return false
+  end
+  if type(state.selfBotStateActive) == "table" then
+    -- A recovery caller requires its own completion callback. Do not silently
+    -- attach it to an unrelated state request.
+    if authoritativeOnly then
+      return false
+    end
+    return state.selfBotStateActive.token
+  end
+
+  state.selfBotStateSeq = (tonumber(state.selfBotStateSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000))
+      .. "-self-state-" .. tostring(state.selfBotStateSeq)
+  state.selfBotStateActive = {
+    token = token,
+    callback = type(callback) == "function" and callback or nil,
+    authoritativeOnly = authoritativeOnly,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("GET", "SELF_BOT~" .. token) then
+    state.selfBotStateActive = nil
+    state.lastError = "SELF_BOT_STATE_SEND_FAILED"
+    return false
+  end
+
+  if MultiBot and type(MultiBot.TimerAfter) == "function" then
+    MultiBot.TimerAfter(SELF_BOT_TIMEOUT_SECONDS, function()
+      local bridge = ensureBridgeState()
+      local pending = bridge.selfBotStateActive
+      if type(pending) ~= "table" or pending.token ~= token then
+        return
+      end
+
+      finishSelfBotRequest("state", token, {
+        status = "timeout",
+        active = type(bridge.selfBotLastActive) == "boolean" and bridge.selfBotLastActive or nil,
+        reason = "TIMEOUT",
+      })
+    end)
+  end
+
+  return token
+end
+
+function Comm.RequestSelfBotState(callback)
+  return requestSelfBotState(callback, nil)
+end
+
+function Comm.RunSelfBot(desiredState, callback)
+  local state = ensureBridgeState()
+  desiredState = string.upper(trim(desiredState or ""))
+
+  if not state.connected or state.selfBotCapable ~= true then
+    return false
+  end
+  if desiredState ~= "ENABLE" and desiredState ~= "DISABLE" then
+    return false
+  end
+  if type(state.selfBotCommandActive) == "table" then
+    return false
+  end
+
+  -- A state response created before this mutation is stale by definition.
+  local staleState = state.selfBotStateActive
+  if type(staleState) == "table" then
+    finishSelfBotRequest("state", staleState.token, {
+      status = "error",
+      reason = "SUPERSEDED",
+    })
+  end
+
+  state.selfBotCommandSeq = (tonumber(state.selfBotCommandSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000))
+      .. "-self-cmd-" .. tostring(state.selfBotCommandSeq)
+  state.selfBotCommandActive = {
+    token = token,
+    desiredState = desiredState,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("RUN", "SELF_BOT~" .. token .. "~" .. desiredState) then
+    state.selfBotCommandActive = nil
+    state.lastError = "SELF_BOT_SEND_FAILED"
+    return false
+  end
+
+  if MultiBot and type(MultiBot.TimerAfter) == "function" then
+    MultiBot.TimerAfter(SELF_BOT_TIMEOUT_SECONDS, function()
+      local bridge = ensureBridgeState()
+      local pending = bridge.selfBotCommandActive
+      if type(pending) ~= "table" or pending.token ~= token then
+        return
+      end
+
+      local desiredAtTimeout = pending.desiredState
+      local recoveryToken = requestSelfBotState(function(stateResult)
+        local current = ensureBridgeState().selfBotCommandActive
+        if type(current) ~= "table" or current.token ~= token then
+          return
+        end
+
+        finishSelfBotRequest("command", token, {
+          status = "timeout",
+          active = type(stateResult) == "table"
+              and type(stateResult.active) == "boolean"
+              and stateResult.active
+              or nil,
+          reason = "TIMEOUT",
+          desiredState = current.desiredState,
+        })
+      end, {
+        allowDuringCommand = true,
+        authoritativeOnly = true,
+      })
+
+      if not recoveryToken then
+        finishSelfBotRequest("command", token, {
+          status = "timeout",
+          reason = "TIMEOUT_STATE_REFRESH_FAILED",
+          desiredState = desiredAtTimeout,
+        })
+      end
+    end)
+  end
+
+  return token
+end
+-- MB_ISSUE33_SELF_BOT_V1_END
+
+function Comm.RequestInventory(name)
+  local state = ensureBridgeState()
+  name = trim(name)
+  if name == "" or not state.connected or state.inventoryCapable ~= true then
+    return false
+  end
+  if not isInventoryViewCurrent(name) then
+    return false
+  end
+
+  state.inventorySeq = (tonumber(state.inventorySeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-" .. tostring(state.inventorySeq)
+  state.inventoryActive = {
+    botName = name,
+    botNameKey = string.lower(name),
+    token = token,
+    startedAt = safeNow(),
+    begun = false,
+    summaryReceived = false,
+  }
+
+  if not Comm.Send("GET", "INVENTORY~" .. name .. "~" .. token) then
+    state.inventoryActive = nil
+    return false
+  end
+
+  return true
+end
+
+function Comm.RequestInventoryExact(name)
+  local state = ensureBridgeState()
+  name = trim(name)
+  if name == "" or not state.connected or state.inventoryExactCapable ~= true then
+    return false
+  end
+  if not isInventoryViewCurrent(name) then
+    return false
+  end
+
+  state.inventoryExactSeq = (tonumber(state.inventoryExactSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-invx-" .. tostring(state.inventoryExactSeq)
+  state.inventoryExactActive = {
+    botName = name,
+    botNameKey = string.lower(name),
+    token = token,
+    startedAt = safeNow(),
+    begun = false,
+    bags = {},
+    items = {},
+    itemsByPosition = {},
+  }
+
+  if not Comm.Send("GET", "INVENTORY_EXACT~" .. name .. "~" .. token) then
+    state.inventoryExactActive = nil
+    return false
+  end
+
+  return token
+end
+
+function Comm.GetInventoryExactSnapshot(name)
+  local state = ensureBridgeState()
+  name = trim(name)
+  if name == "" then
+    return nil
+  end
+
+  return state.inventoryExactSnapshots[string.lower(name)]
+end
+
+function Comm.IsInventoryItemMoveCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.inventoryExactCapable == true and state.inventoryItemMoveCapable == true
+end
+
+function Comm.RunInventoryItemMove(name, srcBag, srcSlot, srcItemId, srcCount, dstBag, dstSlot, dstItemId, dstCount)
+  local state = ensureBridgeState()
+  name = trim(name)
+
+  srcBag = parseBoundedInteger(tostring(srcBag or ""), 0, 255)
+  srcSlot = parseBoundedInteger(tostring(srcSlot or ""), 0, 255)
+  srcItemId = parseBoundedInteger(tostring(srcItemId or ""), 1, 4294967295)
+  srcCount = parseBoundedInteger(tostring(srcCount or ""), 1, INVENTORY_ITEM_MOVE_MAX_COUNT)
+  dstBag = parseBoundedInteger(tostring(dstBag or ""), 0, 255)
+  dstSlot = parseBoundedInteger(tostring(dstSlot or ""), 0, 255)
+  dstItemId = parseBoundedInteger(tostring(dstItemId or ""), 0, 4294967295)
+  dstCount = parseBoundedInteger(tostring(dstCount or ""), 0, INVENTORY_ITEM_MOVE_MAX_COUNT)
+
+  if name == "" or not state.connected or state.inventoryExactCapable ~= true or state.inventoryItemMoveCapable ~= true then
+    return false
+  end
+  if not srcBag or not srcSlot or not srcItemId or not srcCount or not dstBag or not dstSlot or dstItemId == nil or dstCount == nil then
+    return false
+  end
+  if (dstItemId == 0 and dstCount ~= 0) or (dstItemId ~= 0 and dstCount == 0) then
+    return false
+  end
+  if srcBag == dstBag and srcSlot == dstSlot then
+    return false
+  end
+
+  state.inventoryItemMoveSeq = (tonumber(state.inventoryItemMoveSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-move-" .. tostring(state.inventoryItemMoveSeq)
+  local command = {
+    token = token,
+    botName = name,
+    botNameKey = string.lower(name),
+    srcBag = srcBag,
+    srcSlot = srcSlot,
+    srcItemId = srcItemId,
+    srcCount = srcCount,
+    dstBag = dstBag,
+    dstSlot = dstSlot,
+    dstItemId = dstItemId,
+    dstCount = dstCount,
+    startedAt = safeNow(),
+  }
+  state.inventoryItemMoves[token] = command
+
+  local payload = table.concat({
+    "ITEM_MOVE", name, token,
+    tostring(srcBag), tostring(srcSlot), tostring(srcItemId), tostring(srcCount),
+    tostring(dstBag), tostring(dstSlot), tostring(dstItemId), tostring(dstCount),
+  }, "~")
+
+  if not Comm.Send("RUN", payload) then
+    state.inventoryItemMoves[token] = nil
+    return false
+  end
+
+  safeDelay(INVENTORY_ITEM_MOVE_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    local pending = bridge.inventoryItemMoves and bridge.inventoryItemMoves[token] or nil
+    if not pending then
+      return
+    end
+
+    bridge.inventoryItemMoves[token] = nil
+    bridge.lastError = "ITEM_MOVE_TIMEOUT"
+    if MultiBot.OnBridgeInventoryItemMoveResult then
+      MultiBot.OnBridgeInventoryItemMoveResult(
+        pending.botName, "ERR", "TIMEOUT",
+        pending.srcBag, pending.srcSlot, pending.dstBag, pending.dstSlot, pending
+      )
+    end
+  end)
+
+  return token
+end
+
+function Comm.IsInventoryItemTradeCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.inventoryExactCapable == true and state.inventoryItemTradeCapable == true
+end
+
+function Comm.RunInventoryItemTrade(name, srcBag, srcSlot, srcItemId, srcCount)
+  local state = ensureBridgeState()
+  name = trim(name)
+
+  srcBag = parseBoundedInteger(tostring(srcBag or ""), 0, 255)
+  srcSlot = parseBoundedInteger(tostring(srcSlot or ""), 0, 255)
+  srcItemId = parseBoundedInteger(tostring(srcItemId or ""), 1, 4294967295)
+  srcCount = parseBoundedInteger(tostring(srcCount or ""), 1, INVENTORY_ITEM_TRADE_MAX_COUNT)
+
+  if name == "" or not state.connected or state.inventoryExactCapable ~= true or state.inventoryItemTradeCapable ~= true then
+    return false
+  end
+  if srcBag == nil or srcSlot == nil or not srcItemId or not srcCount then
+    return false
+  end
+
+  local botNameKey = string.lower(name)
+  for _, pending in pairs(state.inventoryItemTrades or {}) do
+    if pending.botNameKey == botNameKey
+        and pending.srcBag == srcBag
+        and pending.srcSlot == srcSlot
+        and pending.srcItemId == srcItemId
+        and pending.srcCount == srcCount then
+      return false
+    end
+  end
+
+  state.inventoryItemTradeSeq = (tonumber(state.inventoryItemTradeSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-trade-" .. tostring(state.inventoryItemTradeSeq)
+  local command = {
+    token = token,
+    botName = name,
+    botNameKey = botNameKey,
+    srcBag = srcBag,
+    srcSlot = srcSlot,
+    srcItemId = srcItemId,
+    srcCount = srcCount,
+    startedAt = safeNow(),
+  }
+  state.inventoryItemTrades[token] = command
+
+  local payload = table.concat({
+    "ITEM_TRADE", name, token,
+    tostring(srcBag), tostring(srcSlot), tostring(srcItemId), tostring(srcCount),
+  }, "~")
+
+  if not Comm.Send("RUN", payload) then
+    state.inventoryItemTrades[token] = nil
+    return false
+  end
+
+  safeDelay(INVENTORY_ITEM_TRADE_TIMEOUT_SECONDS, function()
+    local bridgeState = ensureBridgeState()
+    local pending = bridgeState.inventoryItemTrades and bridgeState.inventoryItemTrades[token] or nil
+    if not pending then
+      return
+    end
+
+    bridgeState.inventoryItemTrades[token] = nil
+    bridgeState.lastError = "ITEM_TRADE_TIMEOUT"
+    if MultiBot.OnBridgeInventoryItemTradeResult then
+      MultiBot.OnBridgeInventoryItemTradeResult(
+        pending.botName, "ERR", "TIMEOUT",
+        pending.srcBag, pending.srcSlot, pending.srcItemId, pending.srcCount, 255, pending
+      )
+    end
+  end)
+
+  return token
+end
+
+function Comm.IsInventoryItemDepositExactCapable()
+  local state = ensureBridgeState()
+  return state.connected == true
+      and state.inventoryExactCapable == true
+      and state.inventoryItemDepositExactCapable == true
+end
+
+function Comm.RunInventoryItemDepositExact(name, action, srcBag, srcSlot, srcItemId, srcCount)
+  local state = ensureBridgeState()
+  name = trim(name)
+  action = string.upper(trim(action))
+
+  srcBag = parseBoundedInteger(tostring(srcBag or ""), 0, 255)
+  srcSlot = parseBoundedInteger(tostring(srcSlot or ""), 0, 255)
+  srcItemId = parseBoundedInteger(tostring(srcItemId or ""), 1, 4294967295)
+  srcCount = parseBoundedInteger(tostring(srcCount or ""), 1, INVENTORY_ITEM_DEPOSIT_EXACT_MAX_COUNT)
+
+  if name == ""
+      or (action ~= "BANK_DEPOSIT" and action ~= "GBANK_DEPOSIT")
+      or not state.connected
+      or state.inventoryExactCapable ~= true
+      or state.inventoryItemDepositExactCapable ~= true then
+    return false
+  end
+  if srcBag == nil or srcSlot == nil or not srcItemId or not srcCount then
+    return false
+  end
+
+  local botNameKey = string.lower(name)
+  for _, pending in pairs(state.inventoryItemDepositExacts or {}) do
+    if pending.botNameKey == botNameKey
+        and pending.action == action
+        and pending.srcBag == srcBag
+        and pending.srcSlot == srcSlot
+        and pending.srcItemId == srcItemId
+        and pending.srcCount == srcCount then
+      return false
+    end
+  end
+
+  state.inventoryItemDepositExactSeq = (tonumber(state.inventoryItemDepositExactSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-deposit-" .. tostring(state.inventoryItemDepositExactSeq)
+  local command = {
+    token = token,
+    botName = name,
+    botNameKey = botNameKey,
+    action = action,
+    srcBag = srcBag,
+    srcSlot = srcSlot,
+    srcItemId = srcItemId,
+    srcCount = srcCount,
+    startedAt = safeNow(),
+  }
+  state.inventoryItemDepositExacts[token] = command
+
+  local payload = table.concat({
+    "ITEM_DEPOSIT_EXACT", name, token, action,
+    tostring(srcBag), tostring(srcSlot), tostring(srcItemId), tostring(srcCount),
+  }, "~")
+
+  if not Comm.Send("RUN", payload) then
+    state.inventoryItemDepositExacts[token] = nil
+    return false
+  end
+
+  safeDelay(INVENTORY_ITEM_DEPOSIT_EXACT_TIMEOUT_SECONDS, function()
+    local bridgeState = ensureBridgeState()
+    local pending = bridgeState.inventoryItemDepositExacts and bridgeState.inventoryItemDepositExacts[token] or nil
+    if not pending then
+      return
+    end
+
+    bridgeState.inventoryItemDepositExacts[token] = nil
+    bridgeState.lastError = "ITEM_DEPOSIT_EXACT_TIMEOUT"
+    if MultiBot.OnBridgeInventoryItemActionResult then
+      MultiBot.OnBridgeInventoryItemActionResult(
+        pending.botName, pending.action, pending.srcItemId,
+        "ERR", "TIMEOUT", 0, pending
+      )
+    end
+  end)
+
+  return token
+end
+
+function Comm.IsInventoryItemEquipCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.inventoryExactCapable == true and state.inventoryItemEquipCapable == true
+end
+
+function Comm.RunInventoryItemEquip(name, srcBag, srcSlot, srcItemId, srcCount)
+  local state = ensureBridgeState()
+  name = trim(name)
+
+  srcBag = parseBoundedInteger(tostring(srcBag or ""), 0, 255)
+  srcSlot = parseBoundedInteger(tostring(srcSlot or ""), 0, 255)
+  srcItemId = parseBoundedInteger(tostring(srcItemId or ""), 1, 4294967295)
+  srcCount = parseBoundedInteger(tostring(srcCount or ""), 1, INVENTORY_ITEM_EQUIP_MAX_COUNT)
+
+  if name == "" or not state.connected or state.inventoryExactCapable ~= true or state.inventoryItemEquipCapable ~= true then
+    return false
+  end
+  if not srcBag or not srcSlot or not srcItemId or not srcCount then
+    return false
+  end
+
+  state.inventoryItemEquipSeq = (tonumber(state.inventoryItemEquipSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-equip-" .. tostring(state.inventoryItemEquipSeq)
+  local command = {
+    token = token,
+    botName = name,
+    botNameKey = string.lower(name),
+    srcBag = srcBag,
+    srcSlot = srcSlot,
+    srcItemId = srcItemId,
+    srcCount = srcCount,
+    startedAt = safeNow(),
+  }
+  state.inventoryItemEquips[token] = command
+
+  local payload = table.concat({
+    "ITEM_EQUIP", name, token,
+    tostring(srcBag), tostring(srcSlot), tostring(srcItemId), tostring(srcCount),
+  }, "~")
+
+  if not Comm.Send("RUN", payload) then
+    state.inventoryItemEquips[token] = nil
+    return false
+  end
+
+  safeDelay(INVENTORY_ITEM_EQUIP_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    local pending = bridge.inventoryItemEquips and bridge.inventoryItemEquips[token] or nil
+    if not pending then
+      return
+    end
+
+    bridge.inventoryItemEquips[token] = nil
+    bridge.lastError = "ITEM_EQUIP_TIMEOUT"
+    if bridge.connected then
+      local refreshed = MultiBot.RequestInventoryRefresh
+        and MultiBot.RequestInventoryRefresh(pending.botName, 0.30)
+      if not refreshed and Comm.RequestInventoryExact then
+        Comm.RequestInventoryExact(pending.botName)
+      end
+    end
+  end)
+
+  return token
+end
+
+function Comm.IsInventoryItemUnequipCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.inventoryItemUnequipCapable == true
+end
+
+function Comm.RunInventoryItemUnequip(name, srcSlot, srcItemId)
+  local state = ensureBridgeState()
+  name = trim(name)
+
+  srcSlot = parseBoundedInteger(tostring(srcSlot or ""), 0, 18)
+  srcItemId = parseBoundedInteger(tostring(srcItemId or ""), 1, 4294967295)
+
+  if name == "" or not state.connected or state.inventoryItemUnequipCapable ~= true then
+    return false
+  end
+  if srcSlot == nil or not srcItemId then
+    return false
+  end
+
+  state.inventoryItemUnequipSeq = (tonumber(state.inventoryItemUnequipSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-unequip-" .. tostring(state.inventoryItemUnequipSeq)
+  local command = {
+    token = token,
+    botName = name,
+    botNameKey = string.lower(name),
+    srcSlot = srcSlot,
+    srcItemId = srcItemId,
+    startedAt = safeNow(),
+  }
+  state.inventoryItemUnequips[token] = command
+
+  local payload = table.concat({
+    "ITEM_UNEQUIP", name, token,
+    tostring(srcSlot), tostring(srcItemId),
+  }, "~")
+
+  if not Comm.Send("RUN", payload) then
+    state.inventoryItemUnequips[token] = nil
+    return false
+  end
+
+  safeDelay(INVENTORY_ITEM_UNEQUIP_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    local pending = bridge.inventoryItemUnequips and bridge.inventoryItemUnequips[token] or nil
+    if not pending then
+      return
+    end
+
+    bridge.inventoryItemUnequips[token] = nil
+    bridge.lastError = "ITEM_UNEQUIP_TIMEOUT"
+    if MultiBot.OnBridgeInventoryItemUnequipResult then
+      MultiBot.OnBridgeInventoryItemUnequipResult(
+        pending.botName, "ERR", "TIMEOUT", pending.srcSlot, pending.srcItemId, pending
+      )
+    end
+  end)
+
+  return token
+end
+
+function Comm.IsInventoryItemDestroyCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.inventoryExactCapable == true and state.inventoryItemDestroyCapable == true
+end
+
+function Comm.RunInventoryItemDestroy(name, srcBag, srcSlot, srcItemId, srcCount)
+  local state = ensureBridgeState()
+  name = trim(name)
+
+  srcBag = parseBoundedInteger(tostring(srcBag or ""), 0, 255)
+  srcSlot = parseBoundedInteger(tostring(srcSlot or ""), 0, 255)
+  srcItemId = parseBoundedInteger(tostring(srcItemId or ""), 1, 4294967295)
+  srcCount = parseBoundedInteger(tostring(srcCount or ""), 1, INVENTORY_ITEM_DESTROY_MAX_COUNT)
+
+  if name == "" or not state.connected or state.inventoryExactCapable ~= true or state.inventoryItemDestroyCapable ~= true then
+    return false
+  end
+  if srcBag == nil or srcSlot == nil or not srcItemId or not srcCount then
+    return false
+  end
+
+  state.inventoryItemDestroySeq = (tonumber(state.inventoryItemDestroySeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-destroy-" .. tostring(state.inventoryItemDestroySeq)
+  local command = {
+    token = token,
+    botName = name,
+    botNameKey = string.lower(name),
+    srcBag = srcBag,
+    srcSlot = srcSlot,
+    srcItemId = srcItemId,
+    srcCount = srcCount,
+    startedAt = safeNow(),
+  }
+  state.inventoryItemDestroys[token] = command
+
+  local payload = table.concat({
+    "ITEM_DESTROY", name, token,
+    tostring(srcBag), tostring(srcSlot), tostring(srcItemId), tostring(srcCount),
+  }, "~")
+
+  if not Comm.Send("RUN", payload) then
+    state.inventoryItemDestroys[token] = nil
+    return false
+  end
+
+  safeDelay(INVENTORY_ITEM_DESTROY_TIMEOUT_SECONDS, function()
+    local bridgeState = ensureBridgeState()
+    local pending = bridgeState.inventoryItemDestroys and bridgeState.inventoryItemDestroys[token] or nil
+    if not pending then
+      return
+    end
+
+    bridgeState.inventoryItemDestroys[token] = nil
+    bridgeState.lastError = "ITEM_DESTROY_TIMEOUT"
+    if MultiBot.OnBridgeInventoryItemDestroyResult then
+      MultiBot.OnBridgeInventoryItemDestroyResult(
+        pending.botName, "ERR", "TIMEOUT",
+        pending.srcBag, pending.srcSlot, pending.srcItemId, pending
+      )
+    end
+  end)
+
+  return token
+end
+function Comm.IsInventoryItemUseCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.inventoryExactCapable == true and state.inventoryItemUseCapable == true
+end
+
+function Comm.RunInventoryItemUse(name, srcBag, srcSlot, srcItemId, srcCount)
+  local state = ensureBridgeState()
+  name = trim(name)
+
+  srcBag = parseBoundedInteger(tostring(srcBag or ""), 0, 255)
+  srcSlot = parseBoundedInteger(tostring(srcSlot or ""), 0, 255)
+  srcItemId = parseBoundedInteger(tostring(srcItemId or ""), 1, 4294967295)
+  srcCount = parseBoundedInteger(tostring(srcCount or ""), 1, INVENTORY_ITEM_USE_MAX_COUNT)
+
+  if name == "" or not state.connected or state.inventoryExactCapable ~= true or state.inventoryItemUseCapable ~= true then
+    return false
+  end
+  if srcBag == nil or srcSlot == nil or not srcItemId or not srcCount then
+    return false
+  end
+
+  local botNameKey = string.lower(name)
+  for _, pending in pairs(state.inventoryItemUses or {}) do
+    if pending.botNameKey == botNameKey
+        and pending.srcBag == srcBag
+        and pending.srcSlot == srcSlot
+        and pending.srcItemId == srcItemId
+        and pending.srcCount == srcCount then
+      return false
+    end
+  end
+
+  state.inventoryItemUseSeq = (tonumber(state.inventoryItemUseSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-use-" .. tostring(state.inventoryItemUseSeq)
+  local command = {
+    token = token,
+    botName = name,
+    botNameKey = botNameKey,
+    srcBag = srcBag,
+    srcSlot = srcSlot,
+    srcItemId = srcItemId,
+    srcCount = srcCount,
+    startedAt = safeNow(),
+  }
+  state.inventoryItemUses[token] = command
+
+  local payload = table.concat({
+    "ITEM_USE", name, token,
+    tostring(srcBag), tostring(srcSlot), tostring(srcItemId), tostring(srcCount),
+  }, "~")
+
+  if not Comm.Send("RUN", payload) then
+    state.inventoryItemUses[token] = nil
+    return false
+  end
+
+  safeDelay(INVENTORY_ITEM_USE_TIMEOUT_SECONDS, function()
+    local bridgeState = ensureBridgeState()
+    local pending = bridgeState.inventoryItemUses and bridgeState.inventoryItemUses[token] or nil
+    if not pending then
+      return
+    end
+
+    bridgeState.inventoryItemUses[token] = nil
+    bridgeState.lastError = "ITEM_USE_TIMEOUT"
+    if MultiBot.OnBridgeInventoryItemUseResult then
+      MultiBot.OnBridgeInventoryItemUseResult(
+        pending.botName, "ERR", "TIMEOUT",
+        pending.srcBag, pending.srcSlot, pending.srcItemId, pending
+      )
+    end
+  end)
+
+  return token
+end
+
+-- MB_ITEM_SELL_SINGLE_V1_COMM_BEGIN
+function Comm.IsInventoryItemSellCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.inventoryExactCapable == true and state.inventoryItemSellCapable == true
+end
+
+function Comm.RunInventoryItemSell(name, srcBag, srcSlot, srcItemId, srcCount)
+  local state = ensureBridgeState()
+  name = trim(name)
+
+  srcBag = parseBoundedInteger(tostring(srcBag or ""), 0, 255)
+  srcSlot = parseBoundedInteger(tostring(srcSlot or ""), 0, 255)
+  srcItemId = parseBoundedInteger(tostring(srcItemId or ""), 1, 4294967295)
+  srcCount = parseBoundedInteger(tostring(srcCount or ""), 1, INVENTORY_ITEM_SELL_MAX_COUNT)
+
+  if name == "" or not state.connected or state.inventoryExactCapable ~= true or state.inventoryItemSellCapable ~= true then
+    return false
+  end
+  if srcBag == nil or srcSlot == nil or not srcItemId or not srcCount then
+    return false
+  end
+
+  local botNameKey = string.lower(name)
+  for _, pending in pairs(state.inventoryItemSells or {}) do
+    if pending.botNameKey == botNameKey
+        and pending.srcBag == srcBag
+        and pending.srcSlot == srcSlot
+        and pending.srcItemId == srcItemId
+        and pending.srcCount == srcCount then
+      return false
+    end
+  end
+
+  state.inventoryItemSellSeq = (tonumber(state.inventoryItemSellSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-sell-" .. tostring(state.inventoryItemSellSeq)
+  local command = {
+    token = token,
+    botName = name,
+    botNameKey = botNameKey,
+    srcBag = srcBag,
+    srcSlot = srcSlot,
+    srcItemId = srcItemId,
+    srcCount = srcCount,
+    startedAt = safeNow(),
+  }
+  state.inventoryItemSells[token] = command
+
+  local payload = table.concat({
+    "ITEM_SELL", name, token,
+    tostring(srcBag), tostring(srcSlot), tostring(srcItemId), tostring(srcCount),
+  }, "~")
+
+  if not Comm.Send("RUN", payload) then
+    state.inventoryItemSells[token] = nil
+    return false
+  end
+
+  safeDelay(INVENTORY_ITEM_SELL_TIMEOUT_SECONDS, function()
+    local bridgeState = ensureBridgeState()
+    local pending = bridgeState.inventoryItemSells and bridgeState.inventoryItemSells[token] or nil
+    if not pending then
+      return
+    end
+
+    bridgeState.inventoryItemSells[token] = nil
+    bridgeState.lastError = "ITEM_SELL_TIMEOUT"
+    if MultiBot.OnBridgeInventoryItemSellResult then
+      MultiBot.OnBridgeInventoryItemSellResult(
+        pending.botName, "ERR", "TIMEOUT",
+        pending.srcBag, pending.srcSlot, pending.srcItemId, 0, pending
+      )
+    end
+  end)
+
+  return token
+end
+-- MB_ITEM_SELL_SINGLE_V1_COMM_END
+-- MB_VENDOR_BUYBACK_V1_COMM_BEGIN
+function Comm.IsInventoryBuybackCapable()
+  local state = ensureBridgeState()
+  return state.connected == true
+    and state.inventoryExactCapable == true
+    and state.inventoryBuybackCapable == true
+end
+
+function Comm.RequestInventoryBuyback(name)
+  local state = ensureBridgeState()
+  name = trim(name)
+
+  if name == "" or not Comm.IsInventoryBuybackCapable() then
+    return false
+  end
+  if type(state.inventoryBuybackActive) == "table" then
+    return false
+  end
+
+  state.inventoryBuybackSeq = (tonumber(state.inventoryBuybackSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-buyback-list-" .. tostring(state.inventoryBuybackSeq)
+  state.inventoryBuybackActive = {
+    token = token,
+    botName = name,
+    botNameKey = string.lower(name),
+    startedAt = safeNow(),
+    begun = false,
+    expectedCount = nil,
+    items = {},
+    seenSlots = {},
+    error = nil,
+  }
+
+  if not Comm.Send("GET", "BUYBACK~" .. name .. "~" .. token) then
+    state.inventoryBuybackActive = nil
+    return false
+  end
+
+  safeDelay(INVENTORY_BUYBACK_TIMEOUT_SECONDS, function()
+    local bridgeState = ensureBridgeState()
+    local active = bridgeState.inventoryBuybackActive
+    if type(active) ~= "table" or active.token ~= token then
+      return
+    end
+
+    bridgeState.inventoryBuybackActive = nil
+    bridgeState.lastError = "BUYBACK_TIMEOUT"
+    if MultiBot.OnBridgeInventoryBuybackList then
+      MultiBot.OnBridgeInventoryBuybackList(active.botName, {}, {
+        token = token,
+        status = "ERR",
+        reason = "TIMEOUT",
+      })
+    end
+  end)
+
+  return token
+end
+
+function Comm.RunInventoryBuyback(name, slot, itemId, count, price)
+  local state = ensureBridgeState()
+  name = trim(name)
+  slot = parseBoundedInteger(tostring(slot or ""), 74, 85)
+  itemId = parseBoundedInteger(tostring(itemId or ""), 1, 4294967295)
+  count = parseBoundedInteger(tostring(count or ""), 1, INVENTORY_BUYBACK_MAX_COUNT)
+  price = parseBoundedInteger(tostring(price or ""), 0, 4294967295)
+
+  if name == "" or not Comm.IsInventoryBuybackCapable() then
+    return false
+  end
+  if slot == nil or itemId == nil or count == nil or price == nil then
+    return false
+  end
+
+  local botNameKey = string.lower(name)
+  for _, pending in pairs(state.inventoryBuybackCommands or {}) do
+    if pending.botNameKey == botNameKey and pending.slot == slot then
+      return false
+    end
+  end
+
+  state.inventoryBuybackItemSeq = (tonumber(state.inventoryBuybackItemSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-buyback-item-" .. tostring(state.inventoryBuybackItemSeq)
+  local command = {
+    token = token,
+    botName = name,
+    botNameKey = botNameKey,
+    slot = slot,
+    itemId = itemId,
+    count = count,
+    price = price,
+    startedAt = safeNow(),
+  }
+  state.inventoryBuybackCommands[token] = command
+
+  local payload = table.concat({
+    "BUYBACK_ITEM", name, token,
+    tostring(slot), tostring(itemId), tostring(count), tostring(price),
+  }, "~")
+
+  if not Comm.Send("RUN", payload) then
+    state.inventoryBuybackCommands[token] = nil
+    return false
+  end
+
+  safeDelay(INVENTORY_BUYBACK_TIMEOUT_SECONDS, function()
+    local bridgeState = ensureBridgeState()
+    local pending = bridgeState.inventoryBuybackCommands and bridgeState.inventoryBuybackCommands[token] or nil
+    if not pending then
+      return
+    end
+
+    bridgeState.inventoryBuybackCommands[token] = nil
+    bridgeState.lastError = "BUYBACK_TIMEOUT"
+    if MultiBot.OnBridgeInventoryBuybackResult then
+      MultiBot.OnBridgeInventoryBuybackResult(
+        pending.botName, "ERR", "TIMEOUT",
+        pending.slot, pending.itemId, pending.count, pending.price, pending
+      )
+    end
+  end)
+
+  return token
+end
+-- MB_VENDOR_BUYBACK_V1_COMM_END
+
+
+function Comm.RequestBank(name)
+  local state = ensureBridgeState()
+  name = trim(name)
+  if name == "" or not state.connected then
+    return false
+  end
+
+  state.bankSeq = (tonumber(state.bankSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-bank-" .. tostring(state.bankSeq)
+  state.bankActive = {
+    botName = name,
+    botNameKey = string.lower(name),
+    token = token,
+    startedAt = safeNow(),
+    items = {},
+    error = nil,
+  }
+
+  if not Comm.Send("GET", "BANK~" .. name .. "~" .. token) then
+    state.bankActive = nil
+    return false
+  end
+
+  return token
+end
+
+function Comm.RequestGuildBank(name)
+  local state = ensureBridgeState()
+  name = trim(name)
+  if name == "" or not state.connected then
+    return false
+  end
+
+  state.guildBankSeq = (tonumber(state.guildBankSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-gbank-" .. tostring(state.guildBankSeq)
+  state.guildBankActive = {
+    botName = name,
+    botNameKey = string.lower(name),
+    token = token,
+    startedAt = safeNow(),
+    items = {},
+    error = nil,
+  }
+
+  if not Comm.Send("GET", "GBANK~" .. name .. "~" .. token) then
+    state.guildBankActive = nil
+    return false
+  end
+
+  return token
+end
+
+function Comm.RequestSpellbook(name)
+  local state = ensureBridgeState()
+  name = trim(name)
+  if name == "" or not state.connected then
+    return false
+  end
+
+  state.spellbookSeq = (tonumber(state.spellbookSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-" .. tostring(state.spellbookSeq)
+  state.spellbookActive = {
+    botName = name,
+    botNameKey = string.lower(name),
+    token = token,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("GET", "SPELLBOOK~" .. name .. "~" .. token) then
+    state.spellbookActive = nil
+    return false
+  end
+
+  return true
+end
+
+-- MB_SPELLBOOK_CAST_V1_BEGIN
+function Comm.IsSpellbookCastCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.spellbookCastCapable == true
+end
+
+function Comm.ShowSpellbookCastFeedback(pending, status, targetName, reason)
+  pending = type(pending) == "table" and pending or {}
+  local botName = trim(pending.botName or "")
+  local spellId = tonumber(pending.spellId or 0) or 0
+  local spellName = tostring(spellId)
+  if spellId > 0 and type(GetSpellInfo) == "function" then
+    local localizedName = GetSpellInfo(spellId)
+    if type(localizedName) == "string" and localizedName ~= "" then
+      spellName = localizedName
+    end
+  end
+
+  status = string.upper(trim(status or "ERR"))
+  targetName = trim(targetName or "")
+  reason = string.upper(trim(reason or "UNKNOWN"))
+
+  if status == "OK" then
+    if targetName ~= "" and string.lower(targetName) ~= string.lower(botName) then
+      systemMessage(string.format(
+        L("spellbook.cast.success.target", "[MultiBot] %s casts %s on %s."),
+        botName,
+        spellName,
+        targetName))
+    else
+      systemMessage(string.format(
+        L("spellbook.cast.success.self", "[MultiBot] %s casts %s."),
+        botName,
+        spellName))
+    end
+    return
+  end
+
+  local reasonKey = reason
+  if string.sub(reasonKey, 1, 12) == "CAST_FAILED_" then
+    reasonKey = "UNKNOWN"
+  end
+
+  local reasonText = L(
+    "spellbook.cast.reason." .. reasonKey,
+    L("spellbook.cast.reason.UNKNOWN", "The spell could not be cast."))
+
+  systemMessage(string.format(
+    L("spellbook.cast.failed", "[MultiBot] %s cannot cast %s: %s."),
+    botName,
+    spellName,
+    reasonText))
+end
+function Comm.RunSpellbookCast(name, spellId, callback)
+  local state = ensureBridgeState()
+  name = trim(name or "")
+  spellId = parseBoundedInteger(tostring(spellId or ""), 1, 4294967295)
+
+  if name == "" or spellId == nil then
+    state.lastError = "SPELLBOOK_CAST_BAD_REQUEST"
+    Comm.ShowSpellbookCastFeedback({ botName = name, spellId = spellId or 0 }, "ERR", "", "BAD_REQUEST")
+    return false
+  end
+  if not state.connected then
+    state.lastError = "SPELLBOOK_CAST_NOT_CONNECTED"
+    Comm.ShowSpellbookCastFeedback({ botName = name, spellId = spellId }, "ERR", "", "BRIDGE_REQUIRED")
+    return false
+  end
+  if state.spellbookCastCapable ~= true then
+    state.lastError = "SPELLBOOK_CAST_CAPABILITY_UNAVAILABLE"
+    Comm.ShowSpellbookCastFeedback({ botName = name, spellId = spellId }, "ERR", "", "CAPABILITY_UNAVAILABLE")
+    return false
+  end
+
+  state.spellbookCastCommands = type(state.spellbookCastCommands) == "table" and state.spellbookCastCommands or {}
+  if countTableEntries(state.spellbookCastCommands) >= 16 then
+    state.lastError = "SPELLBOOK_CAST_TOO_MANY_REQUESTS"
+    Comm.ShowSpellbookCastFeedback({ botName = name, spellId = spellId }, "ERR", "", "TOO_MANY_REQUESTS")
+    return false
+  end
+
+  state.spellbookCastSeq = (tonumber(state.spellbookCastSeq) or 0) + 1
+  if state.spellbookCastSeq > 1000000000 then
+    state.spellbookCastSeq = 1
+  end
+
+  local token = "sc" .. tostring(state.spellbookCastSeq) .. tostring(math.floor(safeNow() * 1000))
+  state.spellbookCastCommands[token] = {
+    botName = name,
+    botNameKey = string.lower(name),
+    spellId = spellId,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "SPELLBOOK_CAST~" .. urlEncodeField(name) .. "~" .. token .. "~" .. tostring(spellId)
+  if not Comm.Send("RUN", payload) then
+    local pending = state.spellbookCastCommands[token]
+    state.spellbookCastCommands[token] = nil
+    state.lastError = "SPELLBOOK_CAST_SEND_FAILED"
+    Comm.ShowSpellbookCastFeedback(pending, "ERR", "", "SEND_FAILED")
+    return false
+  end
+
+  safeDelay(5.0, function()
+    local bridge = ensureBridgeState()
+    local pending = bridge.spellbookCastCommands and bridge.spellbookCastCommands[token] or nil
+    if type(pending) ~= "table" then return end
+
+    bridge.spellbookCastCommands[token] = nil
+    bridge.lastError = "SPELLBOOK_CAST_TIMEOUT"
+    Comm.ShowSpellbookCastFeedback(pending, "ERR", "", "TIMEOUT")
+    if type(pending.callback) == "function" then
+      pending.callback({
+        status = "timeout",
+        botName = pending.botName,
+        spellId = pending.spellId,
+        targetName = "",
+        reason = "TIMEOUT",
+      })
+    end
+  end)
+
+  return token
+end
+
+function Comm.HandleSpellbookCastAddonMessage(opcode, payload, state)
+  if opcode ~= "SPELLBOOK_CAST_ACK" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  local fields = splitFields(payload or "")
+  if #fields ~= 5 then
+    state.lastError = "SPELLBOOK_CAST_ACK_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = trim(fields[1])
+  local spellId = parseBoundedInteger(fields[2], 1, 4294967295)
+  local status = string.upper(trim(fields[3]))
+  local targetName = urlDecodeFieldStrict(fields[4], 64, true)
+  local reason = urlDecodeFieldStrict(fields[5], 64, false)
+  local pending = state.spellbookCastCommands and state.spellbookCastCommands[token] or nil
+
+  if not isValidStateToken(token)
+      or spellId == nil
+      or (status ~= "OK" and status ~= "ERR")
+      or targetName == nil
+      or reason == nil
+      or type(pending) ~= "table"
+      or pending.spellId ~= spellId then
+    state.lastError = "SPELLBOOK_CAST_ACK_INVALID"
+    return true
+  end
+
+  state.spellbookCastCommands[token] = nil
+  state.connected = true
+  state.lastError = status == "OK" and nil or ("SPELLBOOK_CAST_" .. reason)
+  debugPrint("ADDON:RX", "SPELLBOOK_CAST_ACK", token, spellId, status, targetName, reason)
+  Comm.ShowSpellbookCastFeedback(pending, status, targetName, reason)
+
+  if type(pending.callback) == "function" then
+    pending.callback({
+      status = status == "OK" and "ok" or "failed",
+      botName = pending.botName,
+      spellId = spellId,
+      targetName = targetName,
+      reason = reason,
+    })
+  end
+
+  return true
+end
+
+function Comm.HandleSpellbookCastProtocolError(requestType, token, reason, state)
+  if requestType ~= "SPELLBOOK_CAST" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  token = trim(token)
+  local pending = state.spellbookCastCommands and state.spellbookCastCommands[token] or nil
+  if type(pending) ~= "table" then
+    return true
+  end
+
+  state.spellbookCastCommands[token] = nil
+  local failureReason = reason or "PROTOCOL_ERROR"
+  state.lastError = "SPELLBOOK_CAST_" .. failureReason
+  Comm.ShowSpellbookCastFeedback(pending, "ERR", "", failureReason)
+  if type(pending.callback) == "function" then
+    pending.callback({
+      status = "error",
+      botName = pending.botName,
+      spellId = pending.spellId,
+      targetName = "",
+      reason = failureReason,
+    })
+  end
+  return true
+end
+-- MB_SPELLBOOK_CAST_V1_END
+-- MB_SPELLBOOK_IGNORE_V1_BEGIN
+function Comm.IsSpellbookIgnoreCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.spellbookIgnoreCapable == true
+end
+
+function Comm.ShowSpellbookIgnoreFailure(pending, reason)
+  pending = type(pending) == "table" and pending or {}
+  local botName = trim(pending.botName or "")
+  local spellId = tonumber(pending.spellId or 0) or 0
+  local spellName = tostring(spellId)
+
+  if spellId > 0 and type(GetSpellInfo) == "function" then
+    local localizedName = GetSpellInfo(spellId)
+    if type(localizedName) == "string" and localizedName ~= "" then
+      spellName = localizedName
+    end
+  end
+
+  reason = string.upper(trim(reason or "UNKNOWN"))
+  local reasonText = L(
+    "spellbook.ignore.reason." .. reason,
+    L("spellbook.ignore.reason.UNKNOWN", "The ignored state could not be changed."))
+
+  systemMessage(string.format(
+    L("spellbook.ignore.failed", "[MultiBot] %s could not change the ignored state of %s: %s."),
+    botName,
+    spellName,
+    reasonText))
+end
+
+function Comm.ShowSpellbookIgnoreSuccess(pending, ignored)
+  pending = type(pending) == "table" and pending or {}
+  local botName = trim(pending.botName or "")
+  local spellId = tonumber(pending.spellId or 0) or 0
+  local spellName = tostring(spellId)
+
+  if spellId > 0 and type(GetSpellInfo) == "function" then
+    local localizedName = GetSpellInfo(spellId)
+    if type(localizedName) == "string" and localizedName ~= "" then
+      spellName = localizedName
+    end
+  end
+
+  local messageKey = ignored == true
+    and "spellbook.ignore.success.added"
+    or "spellbook.ignore.success.removed"
+  local message = L(messageKey, "")
+  if type(message) ~= "string" or message == "" then
+    return
+  end
+
+  systemMessage(string.format(message, botName, spellName))
+end
+
+function Comm.RunSpellbookIgnore(name, spellId, action, callback)
+  local state = ensureBridgeState()
+  name = trim(name or "")
+  spellId = parseBoundedInteger(tostring(spellId or ""), 1, 4294967295)
+  action = string.upper(trim(action or ""))
+
+  if name == "" or spellId == nil or (action ~= "IGNORE" and action ~= "ALLOW") then
+    state.lastError = "SPELLBOOK_IGNORE_BAD_REQUEST"
+    Comm.ShowSpellbookIgnoreFailure({ botName = name, spellId = spellId or 0 }, "BAD_REQUEST")
+    return false
+  end
+
+  if not state.connected then
+    state.lastError = "SPELLBOOK_IGNORE_NOT_CONNECTED"
+    Comm.ShowSpellbookIgnoreFailure({ botName = name, spellId = spellId }, "BRIDGE_REQUIRED")
+    return false
+  end
+
+  if state.spellbookIgnoreCapable ~= true then
+    state.lastError = "SPELLBOOK_IGNORE_CAPABILITY_UNAVAILABLE"
+    Comm.ShowSpellbookIgnoreFailure({ botName = name, spellId = spellId }, "CAPABILITY_UNAVAILABLE")
+    return false
+  end
+
+  state.spellbookIgnoreCommands = type(state.spellbookIgnoreCommands) == "table" and state.spellbookIgnoreCommands or {}
+  if countTableEntries(state.spellbookIgnoreCommands) >= 16 then
+    state.lastError = "SPELLBOOK_IGNORE_TOO_MANY_REQUESTS"
+    Comm.ShowSpellbookIgnoreFailure({ botName = name, spellId = spellId }, "TOO_MANY_REQUESTS")
+    return false
+  end
+
+  state.spellbookIgnoreSeq = (tonumber(state.spellbookIgnoreSeq) or 0) + 1
+  if state.spellbookIgnoreSeq > 1000000000 then
+    state.spellbookIgnoreSeq = 1
+  end
+
+  local token = "si" .. tostring(state.spellbookIgnoreSeq) .. tostring(math.floor(safeNow() * 1000))
+  state.spellbookIgnoreCommands[token] = {
+    botName = name,
+    botNameKey = string.lower(name),
+    spellId = spellId,
+    action = action,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "SPELLBOOK_IGNORE~" .. urlEncodeField(name) .. "~" .. token .. "~" .. tostring(spellId) .. "~" .. action
+  if not Comm.Send("RUN", payload) then
+    local pending = state.spellbookIgnoreCommands[token]
+    state.spellbookIgnoreCommands[token] = nil
+    state.lastError = "SPELLBOOK_IGNORE_SEND_FAILED"
+    Comm.ShowSpellbookIgnoreFailure(pending, "SEND_FAILED")
+    return false
+  end
+
+  safeDelay(5.0, function()
+    local bridge = ensureBridgeState()
+    local pending = bridge.spellbookIgnoreCommands and bridge.spellbookIgnoreCommands[token] or nil
+    if type(pending) ~= "table" then return end
+
+    bridge.spellbookIgnoreCommands[token] = nil
+    bridge.lastError = "SPELLBOOK_IGNORE_TIMEOUT"
+    Comm.ShowSpellbookIgnoreFailure(pending, "TIMEOUT")
+
+    if type(pending.callback) == "function" then
+      pending.callback({
+        status = "timeout",
+        botName = pending.botName,
+        spellId = pending.spellId,
+        action = pending.action,
+        ignored = nil,
+        reason = "TIMEOUT",
+      })
+    end
+  end)
+
+  return token
+end
+
+function Comm.HandleSpellbookIgnoreAddonMessage(opcode, payload, state)
+  if opcode ~= "SPELLBOOK_IGNORE_ACK" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  local fields = splitFields(payload or "")
+  if #fields ~= 6 then
+    state.lastError = "SPELLBOOK_IGNORE_ACK_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = trim(fields[1])
+  local spellId = parseBoundedInteger(fields[2], 1, 4294967295)
+  local action = string.upper(trim(fields[3]))
+  local status = string.upper(trim(fields[4]))
+  local ignored = parseBoundedInteger(fields[5], 0, 1)
+  local reason = urlDecodeFieldStrict(fields[6], 64, false)
+  local pending = state.spellbookIgnoreCommands and state.spellbookIgnoreCommands[token] or nil
+
+  if not isValidStateToken(token)
+      or spellId == nil
+      or (action ~= "IGNORE" and action ~= "ALLOW")
+      or (status ~= "OK" and status ~= "ERR")
+      or ignored == nil
+      or reason == nil
+      or type(pending) ~= "table"
+      or pending.spellId ~= spellId
+      or pending.action ~= action then
+    state.lastError = "SPELLBOOK_IGNORE_ACK_INVALID"
+    return true
+  end
+
+  state.spellbookIgnoreCommands[token] = nil
+  state.connected = true
+  state.lastError = status == "OK" and nil or ("SPELLBOOK_IGNORE_" .. reason)
+  debugPrint("ADDON:RX", "SPELLBOOK_IGNORE_ACK", token, spellId, action, status, ignored, reason)
+
+  if status ~= "OK" then
+    Comm.ShowSpellbookIgnoreFailure(pending, reason)
+  else
+    Comm.ShowSpellbookIgnoreSuccess(pending, ignored == 1)
+  end
+
+  if type(pending.callback) == "function" then
+    pending.callback({
+      status = status == "OK" and "ok" or "failed",
+      botName = pending.botName,
+      spellId = spellId,
+      action = action,
+      ignored = ignored == 1,
+      reason = reason,
+    })
+  end
+
+  return true
+end
+
+function Comm.HandleSpellbookIgnoreProtocolError(requestType, token, reason, state)
+  if requestType ~= "SPELLBOOK_IGNORE" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  token = trim(token)
+  local pending = state.spellbookIgnoreCommands and state.spellbookIgnoreCommands[token] or nil
+  if type(pending) ~= "table" then
+    return true
+  end
+
+  state.spellbookIgnoreCommands[token] = nil
+  local failureReason = reason or "PROTOCOL_ERROR"
+  state.lastError = "SPELLBOOK_IGNORE_" .. failureReason
+  Comm.ShowSpellbookIgnoreFailure(pending, failureReason)
+
+  if type(pending.callback) == "function" then
+    pending.callback({
+      status = "error",
+      botName = pending.botName,
+      spellId = pending.spellId,
+      action = pending.action,
+      ignored = nil,
+      reason = failureReason,
+    })
+  end
+
+  return true
+end
+-- MB_SPELLBOOK_IGNORE_V1_END
+function Comm.RequestBotSkills(name)
+  local state = ensureBridgeState()
+  name = trim(name)
+  if name == "" or not state.connected then
+    return false
+  end
+
+  state.botSkillSeq = (tonumber(state.botSkillSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-" .. tostring(state.botSkillSeq)
+  state.botSkillActive = {
+    botName = name,
+    botNameKey = string.lower(name),
+    token = token,
+    startedAt = safeNow(),
+    items = {},
+  }
+
+  if not Comm.Send("GET", "BOT_SKILLS~" .. name .. "~" .. token) then
+    state.botSkillActive = nil
+    return false
+  end
+
+  return true
+end
+
+function Comm.RequestBotReputations(name)
+  local state = ensureBridgeState()
+  name = trim(name)
+  if name == "" or not state.connected then
+    return false
+  end
+
+  state.botReputationSeq = (tonumber(state.botReputationSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-rep-" .. tostring(state.botReputationSeq)
+  state.botReputationActive = {
+    botName = name,
+    botNameKey = string.lower(name),
+    token = token,
+    startedAt = safeNow(),
+    items = {},
+  }
+
+  if not Comm.Send("GET", "BOT_REPUTATIONS~" .. name .. "~" .. token) then
+    state.botReputationActive = nil
+    return false
+  end
+
+  return true
+end
+
+function Comm.RequestBotEmblems(name)
+  local state = ensureBridgeState()
+  name = trim(name)
+  if name == "" or not state.connected then
+    return false
+  end
+
+  state.botEmblemSeq = (tonumber(state.botEmblemSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-emblem-" .. tostring(state.botEmblemSeq)
+  state.botEmblemActive = {
+    botName = name,
+    botNameKey = string.lower(name),
+    token = token,
+    startedAt = safeNow(),
+    items = {},
+    money = nil,
+  }
+
+  if not Comm.Send("GET", "BOT_EMBLEMS~" .. name .. "~" .. token) then
+    state.botEmblemActive = nil
+    return false
+  end
+
+  return true
+end
+
+function Comm.RequestProfessionRecipes(name, skillId)
+  local state = ensureBridgeState()
+  name = trim(name)
+  skillId = tonumber(skillId or 0) or 0
+  if name == "" or skillId <= 0 or not state.connected then
+    return false
+  end
+
+  state.professionRecipeSeq = (tonumber(state.professionRecipeSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-" .. tostring(state.professionRecipeSeq)
+  state.professionRecipeActive = {
+    botName = name,
+    botNameKey = string.lower(name),
+    skillId = skillId,
+    token = token,
+    startedAt = safeNow(),
+    recipes = {},
+  }
+
+  if not Comm.Send("GET", "PROFESSION_RECIPES~" .. name .. "~" .. skillId .. "~" .. token) then
+    state.professionRecipeActive = nil
+    return false
+  end
+
+  return true
+end
+
+function Comm.IsEnchantTradeCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.enchantTradeCapable == true
+end
+
+function Comm.IsBotEnchanter(name)
+  local state = ensureBridgeState()
+  name = string.lower(trim(name))
+  if name == "" then
+    return false
+  end
+
+  local entry = state.professions and state.professions[name] or nil
+  return type(entry) == "table"
+      and type(entry.professions) == "table"
+      and entry.professions.enchanting ~= nil
+end
+
+local function scheduleEnchantTradeListTimeout(name, token, delaySeconds)
+  safeDelay(delaySeconds or ENCHANT_TRADE_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    local active = bridge.enchantTradeActive
+    if type(active) ~= "table" or active.token ~= token then
+      return
+    end
+
+    local now = safeNow()
+    local lastProgressAt = tonumber(active.lastProgressAt) or tonumber(active.startedAt) or 0
+    if now > 0 and lastProgressAt > 0 then
+      local idleSeconds = now - lastProgressAt
+      if idleSeconds < ENCHANT_TRADE_TIMEOUT_SECONDS
+          and MultiBot
+          and type(MultiBot.TimerAfter) == "function" then
+        scheduleEnchantTradeListTimeout(
+          name,
+          token,
+          math.max(0.05, ENCHANT_TRADE_TIMEOUT_SECONDS - idleSeconds)
+        )
+        return
+      end
+    end
+
+    bridge.enchantTradeActive = nil
+    if MultiBot.OnBridgeEnchantTradeList then
+      MultiBot.OnBridgeEnchantTradeList(active.botName or name, {}, {
+        token = token,
+        status = "ERR",
+        reason = "TIMEOUT",
+        skillValue = 0,
+        maxSkill = 0,
+      })
+    end
+  end)
+end
+
+local function markEnchantTradeListProgress(active)
+  if type(active) == "table" then
+    active.lastProgressAt = safeNow()
+  end
+end
+
+function Comm.RequestEnchantTrade(name)
+  local state = ensureBridgeState()
+  name = trim(name)
+  if name == "" or not state.connected or state.enchantTradeCapable ~= true then
+    return false
+  end
+
+  state.enchantTradeSeq = (tonumber(state.enchantTradeSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-ench-list-" .. tostring(state.enchantTradeSeq)
+  local now = safeNow()
+  state.enchantTradeActive = {
+    botName = name,
+    botNameKey = string.lower(name),
+    token = token,
+    startedAt = now,
+    lastProgressAt = now,
+    began = false,
+    status = "PENDING",
+    reason = "",
+    skillValue = 0,
+    maxSkill = 0,
+    items = {},
+  }
+
+  if not Comm.Send("GET", "ENCHANT_TRADE~" .. name .. "~" .. token) then
+    state.enchantTradeActive = nil
+    return false
+  end
+
+  scheduleEnchantTradeListTimeout(name, token, ENCHANT_TRADE_TIMEOUT_SECONDS)
+  return token
+end
+
+function Comm.RunEnchantTrade(name, spellId)
+  local state = ensureBridgeState()
+  name = trim(name)
+  spellId = tonumber(spellId or 0) or 0
+  if name == "" or spellId <= 0 or not state.connected or state.enchantTradeCapable ~= true then
+    return false
+  end
+
+  if countTableEntries(state.enchantTradeCommands) >= ENCHANT_TRADE_MAX_ACTIVE then
+    return false
+  end
+
+  state.enchantTradeSeq = (tonumber(state.enchantTradeSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-ench-run-" .. tostring(state.enchantTradeSeq)
+  state.enchantTradeCommands[token] = {
+    botName = name,
+    botNameKey = string.lower(name),
+    spellId = spellId,
+    token = token,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("RUN", "ENCHANT_TRADE~" .. name .. "~" .. token .. "~" .. tostring(spellId)) then
+    state.enchantTradeCommands[token] = nil
+    return false
+  end
+
+  safeDelay(ENCHANT_TRADE_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    local command = bridge.enchantTradeCommands[token]
+    if not command then
+      return
+    end
+
+    bridge.enchantTradeCommands[token] = nil
+    if MultiBot.OnBridgeEnchantTradeResult then
+      MultiBot.OnBridgeEnchantTradeResult(command.botName, command.spellId, "ERR", "TIMEOUT", command)
+    end
+  end)
+
+  return token
+end
+
+local function finishProfessionRecipeCraftCommand(token, status, reason, responseItemId)
+  local state = ensureBridgeState()
+  local pending = state.professionRecipeCrafts[token]
+  if type(pending) ~= "table" then
+    return false
+  end
+
+  state.professionRecipeCrafts[token] = nil
+  status = status == "OK" and "OK" or "ERR"
+  reason = trim(reason or "")
+  if reason == "" then
+    reason = status == "OK" and "OK" or "FAILED"
+  end
+
+  responseItemId = tonumber(responseItemId)
+  if responseItemId == nil
+      or responseItemId < 0
+      or responseItemId > 4294967295
+      or math.floor(responseItemId) ~= responseItemId then
+    responseItemId = pending.itemId
+  end
+
+  pending.result = status
+  pending.reason = reason
+  pending.responseItemId = responseItemId
+
+  if status == "OK" then
+    state.lastError = nil
+  else
+    state.lastError = "PROFESSION_RECIPE_CRAFT_" .. reason
+  end
+
+  if MultiBot.OnBridgeProfessionRecipeCraftResult then
+    MultiBot.OnBridgeProfessionRecipeCraftResult(
+      pending.botName, pending.skillId, pending.spellId, responseItemId,
+      status, reason, pending
+    )
+  end
+
+  debugPrint(
+    "ADDON:RX", "PROFESSION_RECIPE_CRAFT",
+    pending.botName, pending.skillId, pending.spellId, status, reason
+  )
+  return true
+end
+function Comm.RunProfessionRecipeCraft(name, skillId, spellId, itemId)
+  local state = ensureBridgeState()
+  name = trim(name)
+  skillId = tonumber(skillId or 0) or 0
+  spellId = tonumber(spellId or 0) or 0
+  itemId = tonumber(itemId or 0) or 0
+  if name == "" or skillId <= 0 or spellId <= 0 or itemId < 0 or not state.connected then
+    return false
+  end
+
+  if countTableEntries(state.professionRecipeCrafts) >= PROFESSION_RECIPE_CRAFT_MAX_ACTIVE then
+    state.lastError = "PROFESSION_RECIPE_CRAFT_TOO_MANY_REQUESTS"
+    return false
+  end
+
+  state.professionRecipeCraftSeq = (tonumber(state.professionRecipeCraftSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-craft-" .. tostring(state.professionRecipeCraftSeq)
+  state.professionRecipeCrafts[token] = {
+    botName = name,
+    botNameKey = string.lower(name),
+    skillId = skillId,
+    spellId = spellId,
+    itemId = itemId,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("RUN", "CRAFT_RECIPE~" .. name .. "~" .. token .. "~" .. skillId .. "~" .. spellId .. "~" .. itemId) then
+    state.professionRecipeCrafts[token] = nil
+    state.lastError = "PROFESSION_RECIPE_CRAFT_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(PROFESSION_RECIPE_CRAFT_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    local pending = bridge.professionRecipeCrafts[token]
+    if type(pending) ~= "table" then
+      return
+    end
+
+    finishProfessionRecipeCraftCommand(token, "ERR", "TIMEOUT", pending.itemId)
+  end)
+
+  return token
+end
+
+-- MB_CRAFT_RECIPE_TARGET_V1_COMM_BEGIN
+function Comm.IsProfessionRecipeTargetCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.craftRecipeTargetCapable == true
+end
+
+function Comm.RunProfessionRecipeTarget(name, skillId, spellId, targetBag, targetSlot, targetItemId)
+  local state = ensureBridgeState()
+  name = trim(name)
+  skillId = parseBoundedInteger(tostring(skillId or ""), 1, 4294967295)
+  spellId = parseBoundedInteger(tostring(spellId or ""), 1, 4294967295)
+  targetBag = parseBoundedInteger(tostring(targetBag or ""), 0, 255)
+  targetSlot = parseBoundedInteger(tostring(targetSlot or ""), 0, 255)
+  targetItemId = parseBoundedInteger(tostring(targetItemId or ""), 1, 4294967295)
+
+  if name == ""
+      or not skillId
+      or not spellId
+      or not targetBag
+      or not targetSlot
+      or not targetItemId
+      or not state.connected
+      or state.craftRecipeTargetCapable ~= true then
+    return false
+  end
+
+  if countTableEntries(state.professionRecipeTargetCommands) >= CRAFT_RECIPE_TARGET_MAX_ACTIVE then
+    return false
+  end
+
+  state.professionRecipeTargetSeq = (tonumber(state.professionRecipeTargetSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-craft-target-" .. tostring(state.professionRecipeTargetSeq)
+  state.professionRecipeTargetCommands[token] = {
+    botName = name,
+    botNameKey = string.lower(name),
+    skillId = skillId,
+    spellId = spellId,
+    targetBag = targetBag,
+    targetSlot = targetSlot,
+    targetItemId = targetItemId,
+    token = token,
+    startedAt = safeNow(),
+  }
+
+  local payload = table.concat({
+    "CRAFT_RECIPE_TARGET",
+    token,
+    urlEncodeField(name),
+    tostring(skillId),
+    tostring(spellId),
+    tostring(targetBag),
+    tostring(targetSlot),
+    tostring(targetItemId),
+  }, "~")
+
+  if not Comm.Send("RUN", payload) then
+    state.professionRecipeTargetCommands[token] = nil
+    return false
+  end
+
+  safeDelay(CRAFT_RECIPE_TARGET_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    local pending = bridge.professionRecipeTargetCommands[token]
+    if type(pending) ~= "table" then
+      return
+    end
+
+    bridge.professionRecipeTargetCommands[token] = nil
+    bridge.lastError = "CRAFT_RECIPE_TARGET_TIMEOUT"
+    if MultiBot.OnBridgeProfessionRecipeTargetResult then
+      MultiBot.OnBridgeProfessionRecipeTargetResult(
+        pending.botName, "ERR", "TIMEOUT",
+        pending.skillId, pending.spellId,
+        pending.targetBag, pending.targetSlot, pending.targetItemId,
+        pending
+      )
+    end
+  end)
+
+  return token
+end
+
+function Comm.ApplyProfessionRecipeTargetResultPayload(payload)
+  local token, rest = splitOnce(payload or "", "~")
+  local encodedBotName, rest2 = splitOnce(rest or "", "~")
+  local status, rest3 = splitOnce(rest2 or "", "~")
+  local encodedReason, rest4 = splitOnce(rest3 or "", "~")
+  local skillIdValue, rest5 = splitOnce(rest4 or "", "~")
+  local spellIdValue, rest6 = splitOnce(rest5 or "", "~")
+  local targetBagValue, rest7 = splitOnce(rest6 or "", "~")
+  local targetSlotValue, targetItemIdValue = splitOnce(rest7 or "", "~")
+
+  token = trim(token)
+  local botName = trim(urlDecodeField(encodedBotName))
+  status = trim(status)
+  local reason = trim(urlDecodeField(encodedReason))
+  local skillId = parseBoundedInteger(skillIdValue or "", 1, 4294967295)
+  local spellId = parseBoundedInteger(spellIdValue or "", 1, 4294967295)
+  local targetBag = parseBoundedInteger(targetBagValue or "", 0, 255)
+  local targetSlot = parseBoundedInteger(targetSlotValue or "", 0, 255)
+  local targetItemId = parseBoundedInteger(targetItemIdValue or "", 1, 4294967295)
+
+  local state = ensureBridgeState()
+  local pending = state.professionRecipeTargetCommands[token]
+  if type(pending) ~= "table" then
+    return false
+  end
+
+  local valid = botName ~= ""
+      and (status == "OK" or status == "ERR")
+      and reason ~= ""
+      and skillId ~= nil
+      and spellId ~= nil
+      and targetBag ~= nil
+      and targetSlot ~= nil
+      and targetItemId ~= nil
+      and string.lower(botName) == pending.botNameKey
+      and skillId == pending.skillId
+      and spellId == pending.spellId
+      and targetBag == pending.targetBag
+      and targetSlot == pending.targetSlot
+      and targetItemId == pending.targetItemId
+
+  state.professionRecipeTargetCommands[token] = nil
+
+  if not valid then
+    state.lastError = "CRAFT_RECIPE_TARGET_BAD_RESPONSE"
+    if MultiBot.OnBridgeProfessionRecipeTargetResult then
+      MultiBot.OnBridgeProfessionRecipeTargetResult(
+        pending.botName, "ERR", "BAD_RESPONSE",
+        pending.skillId, pending.spellId,
+        pending.targetBag, pending.targetSlot, pending.targetItemId,
+        pending
+      )
+    end
+    return true
+  end
+
+  state.connected = true
+  state.lastError = status == "OK" and nil or ("CRAFT_RECIPE_TARGET_" .. reason)
+  if MultiBot.OnBridgeProfessionRecipeTargetResult then
+    MultiBot.OnBridgeProfessionRecipeTargetResult(
+      botName, status, reason,
+      skillId, spellId, targetBag, targetSlot, targetItemId,
+      pending
+    )
+  end
+
+  debugPrint("ADDON:RX", "CRAFT_RECIPE_TARGET_RESULT", botName, skillId, spellId, status, reason)
+  return true
+end
+-- MB_CRAFT_RECIPE_TARGET_V1_COMM_END
+
+-- MB_TALENT_APPLY_V1_BEGIN
+local function finishTalentApplyCommand(token, result)
+  local state = ensureBridgeState()
+  local pending = state.talentApplyCommands[token]
+  if type(pending) ~= "table" then
+    return false
+  end
+
+  state.talentApplyCommands[token] = nil
+  result = type(result) == "table" and result or {}
+  result.botName = result.botName or pending.botName
+  result.build = result.build or pending.build
+
+  if type(pending.callback) == "function" then
+    pending.callback(result)
+  end
+  return true
+end
+
+function Comm.IsTalentApplyCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.talentApplyCapable == true
+end
+
+function Comm.RunTalentApply(botName, build, callback)
+  local state = ensureBridgeState()
+  botName = trim(botName or "")
+  build = type(build) == "string" and build or ""
+
+  if not state.connected or state.talentApplyCapable ~= true then
+    state.lastError = "TALENT_APPLY_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+  if botName == "" or #botName > 64 then
+    state.lastError = "TALENT_APPLY_BAD_BOT"
+    return false
+  end
+  if #build == 0 or #build > 128 or not string.match(build, "^[0-5]+%-[0-5]+%-[0-5]+$") then
+    state.lastError = "TALENT_APPLY_BAD_BUILD"
+    return false
+  end
+  if countTableEntries(state.talentApplyCommands) >= 8 then
+    state.lastError = "TALENT_APPLY_TOO_MANY_REQUESTS"
+    return false
+  end
+
+  state.talentApplySeq = (tonumber(state.talentApplySeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-talent-apply-" .. tostring(state.talentApplySeq)
+  state.talentApplyCommands[token] = {
+    botName = botName,
+    botNameKey = string.lower(botName),
+    build = build,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "TALENT_APPLY~" .. token .. "~" .. urlEncodeField(botName) .. "~" .. build
+  if not Comm.Send("RUN", payload) then
+    state.talentApplyCommands[token] = nil
+    state.lastError = "TALENT_APPLY_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(TALENT_APPLY_TIMEOUT_SECONDS, function()
+    local bridgeState = ensureBridgeState()
+    local pending = bridgeState.talentApplyCommands[token]
+    if type(pending) ~= "table" then
+      return
+    end
+
+    bridgeState.lastError = "TALENT_APPLY_TIMEOUT"
+    finishTalentApplyCommand(token, {
+      status = "error",
+      reason = "TIMEOUT",
+      botName = pending.botName,
+      build = pending.build,
+      treePoints = {0, 0, 0},
+    })
+  end)
+
+  return token
+end
+
+local function handleTalentApplyResponse(payload, state)
+  local fields = splitFields(payload or "")
+  local token = trim(fields[1] or "")
+  local pending = isValidStateToken(token) and state.talentApplyCommands[token] or nil
+  if #fields ~= 7 then
+    state.lastError = "TALENT_APPLY_BAD_FIELD_COUNT"
+    if type(pending) == "table" then
+      finishTalentApplyCommand(token, {
+        status = "error",
+        reason = "BAD_RESPONSE",
+        botName = pending.botName,
+        build = pending.build,
+        treePoints = {0, 0, 0},
+      })
+    end
+    return true
+  end
+
+  local botName = urlDecodeFieldStrict(fields[2], 64, false)
+  local status = string.upper(trim(fields[3]))
+  local reason = urlDecodeFieldStrict(fields[4], 64, false)
+  local tree0 = parseBoundedInteger(fields[5], 0, 255)
+  local tree1 = parseBoundedInteger(fields[6], 0, 255)
+  local tree2 = parseBoundedInteger(fields[7], 0, 255)
+
+  local valid = isValidStateToken(token)
+      and botName ~= nil
+      and (status == "OK" or status == "ERR")
+      and reason ~= nil
+      and tree0 ~= nil and tree1 ~= nil and tree2 ~= nil
+      and type(pending) == "table"
+      and string.lower(botName) == pending.botNameKey
+
+  if not valid then
+    state.lastError = "TALENT_APPLY_BAD_RESPONSE"
+    if type(pending) == "table" then
+      finishTalentApplyCommand(token, {
+        status = "error",
+        reason = "BAD_RESPONSE",
+        botName = pending.botName,
+        build = pending.build,
+        treePoints = {0, 0, 0},
+      })
+    end
+    return true
+  end
+
+  state.connected = true
+  state.lastError = status == "OK" and nil or ("TALENT_APPLY_" .. reason)
+  finishTalentApplyCommand(token, {
+    status = status == "OK" and "ok" or "error",
+    reason = reason,
+    botName = botName,
+    build = pending.build,
+    treePoints = {tree0, tree1, tree2},
+  })
+  return true
+end
+-- MB_TALENT_APPLY_V1_END
+-- MB_TALENT_SPEC_APPLY_V1_BEGIN
+local function finishTalentSpecApplyCommand(token, result)
+  local state = ensureBridgeState()
+  local pending = state.talentSpecApplyCommands[token]
+  if type(pending) ~= "table" then
+    return false
+  end
+
+  state.talentSpecApplyCommands[token] = nil
+  result = type(result) == "table" and result or {}
+  result.botName = result.botName or pending.botName
+  result.slot = result.slot or pending.slot
+  result.specIndex = result.specIndex or pending.specIndex
+  result.specName = result.specName or pending.specName
+
+  if type(pending.callback) == "function" then
+    pending.callback(result)
+  end
+  return true
+end
+
+function Comm.IsTalentSpecApplyCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.talentSpecApplyCapable == true
+end
+
+function Comm.RunTalentSpecApply(botName, slot, specIndex, specName, callback)
+  local state = ensureBridgeState()
+  botName = trim(botName or "")
+  slot = tonumber(slot or 0) or 0
+  specIndex = tonumber(specIndex or -1) or -1
+  specName = trim(specName or "")
+
+  if not state.connected or state.talentSpecApplyCapable ~= true then
+    state.lastError = "TALENT_SPEC_APPLY_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+  if botName == "" or #botName > 64 then
+    state.lastError = "TALENT_SPEC_APPLY_BAD_BOT"
+    return false
+  end
+  if slot ~= 1 and slot ~= 2 then
+    state.lastError = "TALENT_SPEC_APPLY_BAD_SLOT"
+    return false
+  end
+  if specIndex < 0 or specIndex > 30 or math.floor(specIndex) ~= specIndex then
+    state.lastError = "TALENT_SPEC_APPLY_BAD_SPEC"
+    return false
+  end
+  if countTableEntries(state.talentSpecApplyCommands) >= 8 then
+    state.lastError = "TALENT_SPEC_APPLY_TOO_MANY_REQUESTS"
+    return false
+  end
+
+  state.talentSpecApplySeq = (tonumber(state.talentSpecApplySeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-talent-spec-apply-" .. tostring(state.talentSpecApplySeq)
+  state.talentSpecApplyCommands[token] = {
+    botName = botName,
+    botNameKey = string.lower(botName),
+    slot = slot,
+    specIndex = specIndex,
+    specName = specName,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "TALENT_SPEC_APPLY~" .. token .. "~" .. urlEncodeField(botName) .. "~" .. slot .. "~" .. specIndex
+  if not Comm.Send("RUN", payload) then
+    state.talentSpecApplyCommands[token] = nil
+    state.lastError = "TALENT_SPEC_APPLY_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(TALENT_SPEC_APPLY_TIMEOUT_SECONDS, function()
+    local bridgeState = ensureBridgeState()
+    local pending = bridgeState.talentSpecApplyCommands[token]
+    if type(pending) ~= "table" then
+      return
+    end
+
+    bridgeState.lastError = "TALENT_SPEC_APPLY_TIMEOUT"
+    finishTalentSpecApplyCommand(token, {
+      status = "error",
+      reason = "TIMEOUT",
+      botName = pending.botName,
+      slot = pending.slot,
+      specIndex = pending.specIndex,
+      specName = pending.specName,
+      treePoints = {0, 0, 0},
+    })
+  end)
+
+  return token
+end
+
+local function handleTalentSpecApplyResponse(payload, state)
+  local fields = splitFields(payload or "")
+  local token = trim(fields[1] or "")
+  local pending = isValidStateToken(token) and state.talentSpecApplyCommands[token] or nil
+  if #fields ~= 9 then
+    state.lastError = "TALENT_SPEC_APPLY_BAD_FIELD_COUNT"
+    if type(pending) == "table" then
+      finishTalentSpecApplyCommand(token, {
+        status = "error",
+        reason = "BAD_RESPONSE",
+        botName = pending.botName,
+        slot = pending.slot,
+        specIndex = pending.specIndex,
+        specName = pending.specName,
+        treePoints = {0, 0, 0},
+      })
+    end
+    return true
+  end
+
+  local botName = urlDecodeFieldStrict(fields[2], 64, false)
+  local status = string.upper(trim(fields[3]))
+  local reason = urlDecodeFieldStrict(fields[4], 64, false)
+  local slot = parseBoundedInteger(fields[5], 1, 2)
+  local specIndex = parseBoundedInteger(fields[6], 0, 30)
+  local tree0 = parseBoundedInteger(fields[7], 0, 255)
+  local tree1 = parseBoundedInteger(fields[8], 0, 255)
+  local tree2 = parseBoundedInteger(fields[9], 0, 255)
+
+  local valid = isValidStateToken(token)
+      and botName ~= nil
+      and (status == "OK" or status == "ERR")
+      and reason ~= nil
+      and slot ~= nil and specIndex ~= nil
+      and tree0 ~= nil and tree1 ~= nil and tree2 ~= nil
+      and type(pending) == "table"
+      and string.lower(botName) == pending.botNameKey
+      and slot == pending.slot
+      and specIndex == pending.specIndex
+
+  if not valid then
+    state.lastError = "TALENT_SPEC_APPLY_BAD_RESPONSE"
+    if type(pending) == "table" then
+      finishTalentSpecApplyCommand(token, {
+        status = "error",
+        reason = "BAD_RESPONSE",
+        botName = pending.botName,
+        slot = pending.slot,
+        specIndex = pending.specIndex,
+        specName = pending.specName,
+        treePoints = {0, 0, 0},
+      })
+    end
+    return true
+  end
+
+  state.connected = true
+  state.lastError = status == "OK" and nil or ("TALENT_SPEC_APPLY_" .. reason)
+  finishTalentSpecApplyCommand(token, {
+    status = status == "OK" and "ok" or "error",
+    reason = reason,
+    botName = botName,
+    slot = slot,
+    specIndex = specIndex,
+    specName = pending.specName,
+    treePoints = {tree0, tree1, tree2},
+  })
+  return true
+end
+-- MB_TALENT_SPEC_APPLY_V1_END
+
+-- MB_GLYPH_EQUIP_V1_BEGIN
+function Comm.GlyphEquipItemDisplay(itemId)
+  itemId = tonumber(itemId) or 0
+  if itemId <= 0 then
+    return nil
+  end
+
+  local itemName, itemLink = GetItemInfo(itemId)
+  if itemLink and itemLink ~= "" then
+    return itemLink
+  end
+  if itemName and itemName ~= "" then
+    return itemName
+  end
+  return string.format(L("talent.glyphs.feedback.item_fallback", "item #%d"), itemId)
+end
+
+function Comm.ShowGlyphEquipFeedback(result)
+  result = type(result) == "table" and result or {}
+  local botName = trim(result.botName or "")
+  local reason = string.upper(trim(result.reason or "FAILED"))
+
+  if result.status == "ok" then
+    local names = {}
+    for _, itemId in ipairs(result.itemIds or {}) do
+      local display = Comm.GlyphEquipItemDisplay(itemId)
+      if display then
+        names[#names + 1] = display
+      end
+    end
+    local glyphList = table.concat(names, ", ")
+    if glyphList == "" then
+      glyphList = L("talent.glyphs.feedback.none", "none")
+    end
+    Comm.ShowSystemMessage(
+      string.format(L("talent.glyphs.feedback.success", "[MultiBot] Glyphs applied to %s: %s"), botName, glyphList),
+      "green"
+    )
+    return
+  end
+
+  local reasonText = L("talent.glyphs.feedback.reason." .. reason, "")
+  if reasonText == "" then
+    reasonText = L("talent.glyphs.feedback.reason.FAILED", "The glyphs could not be applied.")
+  end
+  Comm.ShowSystemMessage(
+    string.format(L("talent.glyphs.feedback.error", "[MultiBot] Glyphs for %s: %s"), botName ~= "" and botName or "?", reasonText),
+    "red"
+  )
+end
+
+function Comm.FinishGlyphEquipCommand(token, result)
+  local state = ensureBridgeState()
+  local pending = state.glyphEquipCommands[token]
+  if type(pending) ~= "table" then
+    return false
+  end
+
+  state.glyphEquipCommands[token] = nil
+  result = type(result) == "table" and result or {}
+  result.botName = result.botName or pending.botName
+  result.itemIds = result.itemIds or pending.itemIds
+
+  if type(pending.callback) == "function" then
+    pending.callback(result)
+  else
+    Comm.ShowGlyphEquipFeedback(result)
+  end
+  return true
+end
+
+function Comm.IsGlyphEquipCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.glyphEquipCapable == true
+end
+
+function Comm.RunGlyphEquip(botName, itemIds, callback)
+  local state = ensureBridgeState()
+  botName = trim(botName or "")
+
+  if not state.connected or state.glyphEquipCapable ~= true then
+    Comm.ShowGlyphEquipFeedback({ status = "error", reason = "CAPABILITY_UNAVAILABLE", botName = botName, itemIds = itemIds })
+    return false
+  end
+  if botName == "" or #botName > 64 or type(itemIds) ~= "table" or #itemIds ~= 6 then
+    Comm.ShowGlyphEquipFeedback({ status = "error", reason = "BAD_REQUEST", botName = botName, itemIds = itemIds })
+    return false
+  end
+  if countTableEntries(state.glyphEquipCommands) >= 8 then
+    Comm.ShowGlyphEquipFeedback({ status = "error", reason = "RATE_LIMIT", botName = botName, itemIds = itemIds })
+    return false
+  end
+
+  local normalized = {}
+  for i = 1, 6 do
+    local itemId = tonumber(itemIds[i])
+    if not itemId or itemId < 0 or itemId > 4294967295 or math.floor(itemId) ~= itemId then
+      Comm.ShowGlyphEquipFeedback({ status = "error", reason = "BAD_GLYPH", botName = botName, itemIds = itemIds })
+      return false
+    end
+    normalized[i] = itemId
+  end
+
+  state.glyphEquipSeq = (tonumber(state.glyphEquipSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-glyph-equip-" .. tostring(state.glyphEquipSeq)
+  state.glyphEquipCommands[token] = {
+    botName = botName,
+    botNameKey = string.lower(botName),
+    itemIds = normalized,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "GLYPH_EQUIP~" .. token .. "~" .. urlEncodeField(botName) .. "~" .. table.concat(normalized, "~")
+  if not Comm.Send("RUN", payload) then
+    state.glyphEquipCommands[token] = nil
+    Comm.ShowGlyphEquipFeedback({ status = "error", reason = "SEND_FAILED", botName = botName, itemIds = normalized })
+    return false
+  end
+
+  safeDelay(5.0, function()
+    local live = ensureBridgeState()
+    local pending = live.glyphEquipCommands[token]
+    if type(pending) ~= "table" then
+      return
+    end
+    Comm.FinishGlyphEquipCommand(token, {
+      status = "error",
+      reason = "TIMEOUT",
+      botName = pending.botName,
+      itemIds = pending.itemIds,
+    })
+  end)
+
+  return token
+end
+
+function Comm.HandleGlyphEquipResponse(payload, state)
+  local fields = splitFields(payload or "")
+  local token = trim(fields[1] or "")
+  local pending = isValidStateToken(token) and state.glyphEquipCommands[token] or nil
+
+  if #fields ~= 10 then
+    if type(pending) == "table" then
+      Comm.FinishGlyphEquipCommand(token, { status = "error", reason = "BAD_RESPONSE", botName = pending.botName, itemIds = pending.itemIds })
+    end
+    return true
+  end
+
+  local botName = urlDecodeFieldStrict(fields[2], 64, false)
+  local status = string.upper(trim(fields[3] or ""))
+  local reason = urlDecodeFieldStrict(fields[4], 64, false)
+  local responseIds = {}
+  local valid = isValidStateToken(token) and type(pending) == "table"
+      and botName ~= nil and string.lower(botName) == pending.botNameKey
+      and (status == "OK" or status == "ERR") and reason ~= nil
+
+  for i = 1, 6 do
+    local id = parseBoundedInteger(fields[4 + i], 0, 4294967295)
+    responseIds[i] = id
+    if id == nil or type(pending) ~= "table" or id ~= pending.itemIds[i] then
+      valid = false
+    end
+  end
+
+  if not valid then
+    if type(pending) == "table" then
+      Comm.FinishGlyphEquipCommand(token, { status = "error", reason = "BAD_RESPONSE", botName = pending.botName, itemIds = pending.itemIds })
+    end
+    return true
+  end
+
+  state.connected = true
+  Comm.FinishGlyphEquipCommand(token, {
+    status = status == "OK" and "ok" or "error",
+    reason = reason,
+    botName = botName,
+    itemIds = responseIds,
+  })
+  return true
+end
+-- MB_GLYPH_EQUIP_V1_END
+-- MB_QUEST_ABANDON_V1_BEGIN
+
+local function finishQuestAbandonCommand(token, result)
+  local state = ensureBridgeState()
+  local pending = state.questAbandonCommands[token]
+  if type(pending) ~= "table" then
+    return false
+  end
+
+  state.questAbandonCommands[token] = nil
+  result = type(result) == "table" and result or {}
+  result.token = token
+  result.questId = result.questId or pending.questId
+
+  if type(pending.callback) == "function" then
+    pending.callback(result)
+  end
+
+  if MultiBot.OnBridgeQuestAbandonResult then
+    MultiBot.OnBridgeQuestAbandonResult(result)
+  end
+
+  return true
+end
+
+function Comm.IsQuestAbandonCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.questAbandonCapable == true
+end
+
+function Comm.RunQuestAbandon(questId, callback)
+  local state = ensureBridgeState()
+  questId = tonumber(questId or 0) or 0
+
+  if not state.connected or state.questAbandonCapable ~= true then
+    return false
+  end
+  if questId <= 0 or questId > 4294967295 or math.floor(questId) ~= questId then
+    return false
+  end
+  if countTableEntries(state.questAbandonCommands) >= 8 then
+    state.lastError = "QUEST_ABANDON_TOO_MANY_REQUESTS"
+    return false
+  end
+
+  state.questAbandonSeq = (tonumber(state.questAbandonSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-quest-abandon-" .. tostring(state.questAbandonSeq)
+  state.questAbandonCommands[token] = {
+    questId = questId,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("RUN", "QUEST_ABANDON~" .. token .. "~" .. tostring(questId)) then
+    state.questAbandonCommands[token] = nil
+    return false
+  end
+
+  safeDelay(QUEST_ABANDON_TIMEOUT_SECONDS, function()
+    local bridgeState = ensureBridgeState()
+    if not bridgeState.questAbandonCommands[token] then
+      return
+    end
+
+    bridgeState.lastError = "QUEST_ABANDON_TIMEOUT"
+    finishQuestAbandonCommand(token, {
+      status = "error",
+      reason = "TIMEOUT",
+      matched = 0,
+      abandoned = 0,
+      questId = questId,
+    })
+  end)
+
+  return token
+end
+
+local function handleQuestAbandonResponse(payload, state)
+  local fields = splitFields(payload or "")
+  local token = trim(fields[1] or "")
+  local pending = isValidStateToken(token) and state.questAbandonCommands[token] or nil
+  if #fields ~= 6 then
+    state.lastError = "QUEST_ABANDON_BAD_FIELD_COUNT"
+    if type(pending) == "table" then
+      finishQuestAbandonCommand(token, {
+        status = "error",
+        reason = "BAD_RESPONSE",
+        matched = 0,
+        abandoned = 0,
+        questId = pending.questId,
+      })
+    end
+    return true
+  end
+
+  local questId = parseBoundedInteger(fields[2], 1, 4294967295)
+  local status = string.upper(trim(fields[3]))
+  local reason = urlDecodeFieldStrict(fields[4], 64, false)
+  local matched = parseBoundedInteger(fields[5], 0, 128)
+  local abandoned = parseBoundedInteger(fields[6], 0, 128)
+
+  if not isValidStateToken(token)
+      or questId == nil
+      or (status ~= "OK" and status ~= "ERR")
+      or reason == nil
+      or matched == nil
+      or abandoned == nil
+      or abandoned > matched
+      or type(pending) ~= "table"
+      or pending.questId ~= questId then
+    state.lastError = "QUEST_ABANDON_BAD_RESPONSE"
+    if type(pending) == "table" then
+      finishQuestAbandonCommand(token, {
+        status = "error",
+        reason = "BAD_RESPONSE",
+        matched = 0,
+        abandoned = 0,
+        questId = pending.questId,
+      })
+    end
+    return true
+  end
+
+  state.connected = true
+  state.lastError = status == "OK" and nil or ("QUEST_ABANDON_" .. reason)
+  finishQuestAbandonCommand(token, {
+    status = status == "OK" and "ok" or "error",
+    reason = reason,
+    matched = matched,
+    abandoned = abandoned,
+    questId = questId,
+  })
+  return true
+end
+-- MB_QUEST_ABANDON_V1_END
+-- MB_QUEST_ABANDON_TARGET_V1_BEGIN
+function Comm._FinishQuestAbandonTargetCommand(token, result)
+  local state = ensureBridgeState()
+  local pending = state.questAbandonTargetCommands[token]
+  if type(pending) ~= "table" then
+    return false
+  end
+
+  state.questAbandonTargetCommands[token] = nil
+  result = type(result) == "table" and result or {}
+  result.token = token
+  result.botName = result.botName or pending.botName
+  result.questId = result.questId or pending.questId
+
+  if type(pending.callback) == "function" then
+    pending.callback(result)
+  end
+
+  if MultiBot.OnBridgeQuestAbandonTargetResult then
+    MultiBot.OnBridgeQuestAbandonTargetResult(result)
+  end
+
+  return true
+end
+
+function Comm.IsQuestAbandonTargetCapable()
+  local state = ensureBridgeState()
+  return state.connected == true and state.questAbandonTargetCapable == true
+end
+
+function Comm.RunQuestAbandonTarget(botName, questId, callback)
+  local state = ensureBridgeState()
+  botName = trim(tostring(botName or ""))
+  questId = tonumber(questId or 0) or 0
+
+  if not state.connected or state.questAbandonTargetCapable ~= true then
+    state.lastError = "QUEST_ABANDON_TARGET_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+  if botName == "" or #botName > 64 then
+    state.lastError = "QUEST_ABANDON_TARGET_BAD_BOT"
+    return false
+  end
+  if questId <= 0 or questId > 4294967295 or math.floor(questId) ~= questId then
+    state.lastError = "QUEST_ABANDON_TARGET_BAD_QUEST"
+    return false
+  end
+  if countTableEntries(state.questAbandonTargetCommands) >= 8 then
+    state.lastError = "QUEST_ABANDON_TARGET_TOO_MANY_REQUESTS"
+    return false
+  end
+
+  state.questAbandonTargetSeq = (tonumber(state.questAbandonTargetSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-quest-abandon-target-" .. tostring(state.questAbandonTargetSeq)
+  state.questAbandonTargetCommands[token] = {
+    botName = botName,
+    botNameKey = string.lower(botName),
+    questId = questId,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "QUEST_ABANDON_TARGET~" .. token .. "~" .. urlEncodeField(botName) .. "~" .. tostring(questId)
+  if not Comm.Send("RUN", payload) then
+    state.questAbandonTargetCommands[token] = nil
+    state.lastError = "QUEST_ABANDON_TARGET_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(QUEST_ABANDON_TIMEOUT_SECONDS, function()
+    local bridgeState = ensureBridgeState()
+    if not bridgeState.questAbandonTargetCommands[token] then
+      return
+    end
+
+    bridgeState.lastError = "QUEST_ABANDON_TARGET_TIMEOUT"
+    Comm._FinishQuestAbandonTargetCommand(token, {
+      status = "error",
+      reason = "TIMEOUT",
+      abandoned = 0,
+      botName = botName,
+      questId = questId,
+    })
+  end)
+
+  return token
+end
+
+function Comm.HandleQuestAbandonTargetResponse(payload, state)
+  local fields = splitFields(payload or "")
+  local token = trim(fields[1] or "")
+  local pending = isValidStateToken(token) and state.questAbandonTargetCommands[token] or nil
+
+  if #fields ~= 6 then
+    state.lastError = "QUEST_ABANDON_TARGET_BAD_FIELD_COUNT"
+    if type(pending) == "table" then
+      Comm._FinishQuestAbandonTargetCommand(token, {
+        status = "error",
+        reason = "BAD_RESPONSE",
+        abandoned = 0,
+        botName = pending.botName,
+        questId = pending.questId,
+      })
+    end
+    return true
+  end
+
+  local botName = urlDecodeFieldStrict(fields[2], 64, false)
+  local questId = parseBoundedInteger(fields[3], 1, 4294967295)
+  local status = string.upper(trim(fields[4]))
+  local reason = urlDecodeFieldStrict(fields[5], 64, false)
+  local abandoned = parseBoundedInteger(fields[6], 0, 1)
+
+  local valid = botName ~= nil
+      and questId ~= nil
+      and (status == "OK" or status == "ERR")
+      and reason ~= nil
+      and abandoned ~= nil
+      and type(pending) == "table"
+      and pending.botNameKey == string.lower(botName)
+      and pending.questId == questId
+      and ((status == "OK" and abandoned == 1) or (status == "ERR" and abandoned == 0))
+
+  if not valid then
+    state.lastError = "QUEST_ABANDON_TARGET_BAD_RESPONSE"
+    if type(pending) == "table" then
+      Comm._FinishQuestAbandonTargetCommand(token, {
+        status = "error",
+        reason = "BAD_RESPONSE",
+        abandoned = 0,
+        botName = pending.botName,
+        questId = pending.questId,
+      })
+    end
+    return true
+  end
+
+  state.connected = true
+  state.lastError = status == "OK" and nil or ("QUEST_ABANDON_TARGET_" .. reason)
+  Comm._FinishQuestAbandonTargetCommand(token, {
+    status = status == "OK" and "ok" or "error",
+    reason = reason,
+    abandoned = abandoned,
+    botName = botName,
+    questId = questId,
+  })
+  return true
+end
+-- MB_QUEST_ABANDON_TARGET_V1_END
+local function finishGroupRollCommand(token, result)
+  local state = ensureBridgeState()
+  local pending = state.groupRollCommands[token]
+  if not pending then
+    return false
+  end
+
+  state.groupRollCommands[token] = nil
+  result = type(result) == "table" and result or {}
+  result.token = token
+  result.mode = result.mode or pending.mode
+
+  if type(pending.callback) == "function" then
+    pending.callback(result)
+  end
+
+  if MultiBot.OnGroupRollResult then
+    MultiBot.OnGroupRollResult(result)
+  end
+
+  return true
+end
+
+function Comm.RunGroupRoll(itemLink, callback)
+  local state = ensureBridgeState()
+  if not state.connected or state.groupRollCapable ~= true then
+    return false
+  end
+
+  itemLink = trim(itemLink or "")
+  local mode = "NORMAL"
+  if itemLink ~= "" then
+    if #itemLink > GROUP_ROLL_MAX_ITEM_LINK_LENGTH or not string.find(itemLink, "|Hitem:", 1, true) then
+      return false
+    end
+    mode = "ITEM"
+  end
+
+  state.groupRollSeq = (tonumber(state.groupRollSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-roll-" .. tostring(state.groupRollSeq)
+  state.groupRollCommands[token] = {
+    mode = mode,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "GROUP_ROLL~" .. token .. "~" .. mode
+  if mode == "ITEM" then
+    payload = payload .. "~" .. urlEncodeField(itemLink)
+  end
+
+  if not Comm.Send("RUN", payload) then
+    state.groupRollCommands[token] = nil
+    return false
+  end
+
+  safeDelay(GROUP_ROLL_TIMEOUT_SECONDS, function()
+    local bridge = ensureBridgeState()
+    if not bridge.groupRollCommands[token] then
+      return
+    end
+
+    finishGroupRollCommand(token, {
+      status = "timeout",
+      matched = 0,
+      invoked = 0,
+      reason = "TIMEOUT",
+    })
+  end)
+
+  return token
+end
+
+function Comm.RunInventoryItemAction(name, action, itemId, count, callback, options)
+  local state = ensureBridgeState()
+  name = trim(name)
+  action = string.upper(trim(action))
+  itemId = tonumber(itemId or 0) or 0
+  count = tonumber(count or 0) or 0
+
+  local isBulkSellAction = action == "SELL_GREY" or action == "SELL_VENDOR"
+  local isOpenItemsAction = action == "OPEN_ITEMS"
+  local allowsZeroItemId = isBulkSellAction or isOpenItemsAction
+  if name == "" or action == "" or itemId < 0 or count < 0 or not state.connected then
+    return false
+  end
+  if allowsZeroItemId then
+    if state.inventoryCapable ~= true then
+      return false
+    end
+    if isBulkSellAction and state.inventoryBulkSellCapable ~= true then
+      return false
+    end
+    if isOpenItemsAction and state.inventoryOpenCapable ~= true then
+      return false
+    end
+    if itemId ~= 0 or count ~= 0 then
+      return false
+    end
+  elseif itemId <= 0 then
+    return false
+  end
+
+  state.inventoryItemActionSeq = (tonumber(state.inventoryItemActionSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-item-" .. tostring(state.inventoryItemActionSeq)
+  state.inventoryItemActions[token] = {
+    botName = name,
+    botNameKey = string.lower(name),
+    action = action,
+    itemId = itemId,
+    count = count,
+    callback = type(callback) == "function" and callback or nil,
+    silentFeedback = type(options) == "table" and options.silentFeedback == true or false,
+    startedAt = safeNow(),
+  }
+
+  if not Comm.Send("RUN", "ITEM_ACTION~" .. name .. "~" .. token .. "~" .. action .. "~" .. itemId .. "~" .. count) then
+    state.inventoryItemActions[token] = nil
+    return false
+  end
+
+  return token
+end
+
+function Comm.MarkDisconnected(reason)
+  ensureBridgeState().randomBotDirectoryCapable = false
+  if MultiBot.RandomBotDirectory then MultiBot.RandomBotDirectory.Cancel("DISCONNECTED") end
+  local state = ensureBridgeState()
+  state.autogearOptionsCapable = false
+  if MultiBot.Autogear then MultiBot.Autogear.OnDisconnect() end
+  state.connectionGeneration = state.connectionGeneration + 1
+  state.equipObserveCapable = false
+  state.equipEventsCapable = false
+  state.equipEventBatches = {}
+  state.equipObserveScheduled = false
+  state.equipObservePending = nil
+  state.connected = false
+  state.fleeOrderCapable = false
+  state.grindOrderCapable = false
+  state.server = nil
+  state.protocol = nil
+  state.lastError = reason or nil
+  state.capabilityBatchActive = false
+  -- MB_BOT_LIFECYCLE_DISCONNECT_CLEANUP_V1_BEGIN
+  -- Complete pending structured lifecycle work before discarding request
+  -- tables. This lets existing roster callbacks clear their own pending UI
+  -- flags instead of leaving shared buttons locked across world transitions.
+  local pendingResolveTokens = {}
+  for token in pairs(state.botTargetResolveCommands or {}) do
+    pendingResolveTokens[#pendingResolveTokens + 1] = token
+  end
+  for _, token in ipairs(pendingResolveTokens) do
+    finishBotTargetResolveCommand(state, token, {
+      token = token,
+      status = "ERR",
+      reason = "BRIDGE_DISCONNECTED",
+      name = "",
+      guid = 0,
+      lifecycleState = "UNKNOWN",
+      final = true,
+    })
+  end
+  state.botTargetResolveCommands = {}
+
+  local pendingLifecycleTokens = {}
+  for token in pairs(state.botLifecycleCommands or {}) do
+    pendingLifecycleTokens[#pendingLifecycleTokens + 1] = token
+  end
+  for _, token in ipairs(pendingLifecycleTokens) do
+    local command = state.botLifecycleCommands[token]
+    if type(command) == "table" then
+      finishBotLifecycleCommand(state, token, {
+        token = token,
+        guid = command.guid,
+        action = command.action,
+        status = "ERR",
+        reason = "BRIDGE_DISCONNECTED",
+        lifecycleState = command.action == "CONNECT" and "OFFLINE" or "ONLINE",
+        final = true,
+      })
+    end
+  end
+  state.botLifecycleCommands = {}
+  -- MB_BOT_LIFECYCLE_DISCONNECT_CLEANUP_V1_END
+  state.inventoryActive = nil
+  state.inventoryExactActive = nil
+  state.inventoryExactSnapshots = {}
+
+  local selfBotStatePending = state.selfBotStateActive
+  local selfBotCommandPending = state.selfBotCommandActive
+  state.selfBotStateActive = nil
+  state.selfBotCommandActive = nil
+  state.selfBotLastActive = nil
+  if MultiBot and type(MultiBot.OnBridgeSelfBotState) == "function" then
+    MultiBot.OnBridgeSelfBotState(false, reason or "DISCONNECTED")
+  end
+  state.selfBotMountNormalizeEpoch = (tonumber(state.selfBotMountNormalizeEpoch) or 0) + 1
+  state.selfBotMountNormalizePending = false
+  state.selfBotMountNormalized = false
+
+  if type(selfBotStatePending) == "table" and type(selfBotStatePending.callback) == "function" then
+    selfBotStatePending.callback({
+      status = "error",
+      active = nil,
+      reason = "DISCONNECTED",
+      token = selfBotStatePending.token,
+      kind = "state",
+    })
+  end
+
+  if type(selfBotCommandPending) == "table" and type(selfBotCommandPending.callback) == "function" then
+    selfBotCommandPending.callback({
+      status = "error",
+      active = nil,
+      reason = "DISCONNECTED",
+      token = selfBotCommandPending.token,
+      kind = "command",
+      desiredState = selfBotCommandPending.desiredState,
+    })
+  end
+
+  for _, command in pairs(state.inventoryItemMoves or {}) do
+    if MultiBot.OnBridgeInventoryItemMoveResult then
+      MultiBot.OnBridgeInventoryItemMoveResult(
+        command.botName or "", "ERR", "DISCONNECTED",
+        command.srcBag or 0, command.srcSlot or 0, command.dstBag or 0, command.dstSlot or 0, command
+      )
+    end
+  end
+  state.inventoryItemMoves = {}
+  for _, command in pairs(state.inventoryItemTrades or {}) do
+    if MultiBot.OnBridgeInventoryItemTradeResult then
+      MultiBot.OnBridgeInventoryItemTradeResult(
+        command.botName or "", "ERR", "DISCONNECTED",
+        command.srcBag or 0, command.srcSlot or 0, command.srcItemId or 0, command.srcCount or 0, 255, command
+      )
+    end
+  end
+  state.inventoryItemTrades = {}
+  for _, command in pairs(state.inventoryItemDepositExacts or {}) do
+    if MultiBot.OnBridgeInventoryItemActionResult then
+      MultiBot.OnBridgeInventoryItemActionResult(
+        command.botName or "", command.action or "BANK_DEPOSIT", command.srcItemId or 0,
+        "ERR", "DISCONNECTED", 0, command
+      )
+    end
+  end
+  state.inventoryItemDepositExacts = {}
+  state.inventoryItemEquips = {}
+  for _, command in pairs(state.inventoryItemUnequips or {}) do
+    if MultiBot.OnBridgeInventoryItemUnequipResult then
+      MultiBot.OnBridgeInventoryItemUnequipResult(
+        command.botName or "", "ERR", "DISCONNECTED", command.srcSlot or 0, command.srcItemId or 0, command
+      )
+    end
+  end
+  state.inventoryItemUnequips = {}
+  for _, command in pairs(state.inventoryItemDestroys or {}) do
+    if MultiBot.OnBridgeInventoryItemDestroyResult then
+      MultiBot.OnBridgeInventoryItemDestroyResult(
+        command.botName or "", "ERR", "DISCONNECTED",
+        command.srcBag or 0, command.srcSlot or 0, command.srcItemId or 0, command
+      )
+    end
+  end
+  state.inventoryItemDestroys = {}
+  for _, command in pairs(state.inventoryItemUses or {}) do
+    if MultiBot.OnBridgeInventoryItemUseResult then
+      MultiBot.OnBridgeInventoryItemUseResult(
+        command.botName or "", "ERR", "DISCONNECTED",
+        command.srcBag or 0, command.srcSlot or 0, command.srcItemId or 0, command
+      )
+    end
+  end
+  state.inventoryItemUses = {}
+  for _, command in pairs(state.inventoryItemSells or {}) do
+    if MultiBot.OnBridgeInventoryItemSellResult then
+      MultiBot.OnBridgeInventoryItemSellResult(
+        command.botName or "", "ERR", "DISCONNECTED",
+        command.srcBag or 0, command.srcSlot or 0, command.srcItemId or 0, 0, command
+      )
+    end
+  end
+  state.inventoryItemSells = {}
+  if type(state.inventoryBuybackActive) == "table" and MultiBot.OnBridgeInventoryBuybackList then
+    MultiBot.OnBridgeInventoryBuybackList(state.inventoryBuybackActive.botName or "", {}, {
+      token = state.inventoryBuybackActive.token or "",
+      status = "ERR",
+      reason = "DISCONNECTED",
+    })
+  end
+  state.inventoryBuybackActive = nil
+  for _, command in pairs(state.inventoryBuybackCommands or {}) do
+    if MultiBot.OnBridgeInventoryBuybackResult then
+      MultiBot.OnBridgeInventoryBuybackResult(
+        command.botName or "", "ERR", "DISCONNECTED",
+        command.slot or 74, command.itemId or 0, command.count or 0, command.price or 0, command
+      )
+    end
+  end
+  state.inventoryBuybackCommands = {}
+
+
+  state.bankActive = nil
+  state.guildBankActive = nil
+  state.inventoryItemActions = {}
+
+  local pendingTalentApplyTokens = {}
+  for token in pairs(state.talentApplyCommands or {}) do
+    pendingTalentApplyTokens[#pendingTalentApplyTokens + 1] = token
+  end
+  for _, token in ipairs(pendingTalentApplyTokens) do
+    local pending = state.talentApplyCommands[token]
+    finishTalentApplyCommand(token, {
+      status = "error",
+      reason = "DISCONNECTED",
+      botName = pending and pending.botName or "",
+      build = pending and pending.build or "",
+      treePoints = {0, 0, 0},
+    })
+  end
+  state.talentApplyCommands = {}
+
+  local pendingTalentSpecApplyTokens = {}
+  for token in pairs(state.talentSpecApplyCommands or {}) do
+    pendingTalentSpecApplyTokens[#pendingTalentSpecApplyTokens + 1] = token
+  end
+  for _, token in ipairs(pendingTalentSpecApplyTokens) do
+    local pending = state.talentSpecApplyCommands[token]
+    finishTalentSpecApplyCommand(token, {
+      status = "error",
+      reason = "DISCONNECTED",
+      botName = pending and pending.botName or "",
+      slot = pending and pending.slot or 1,
+      specIndex = pending and pending.specIndex or 0,
+      specName = pending and pending.specName or "",
+      treePoints = {0, 0, 0},
+    })
+  end
+  state.talentSpecApplyCommands = {}
+
+  local pendingGlyphEquipTokens = {}
+  for token in pairs(state.glyphEquipCommands or {}) do
+    pendingGlyphEquipTokens[#pendingGlyphEquipTokens + 1] = token
+  end
+  for _, token in ipairs(pendingGlyphEquipTokens) do
+    local pending = state.glyphEquipCommands[token]
+    Comm.FinishGlyphEquipCommand(token, {
+      status = "error",
+      reason = "DISCONNECTED",
+      botName = pending and pending.botName or "",
+      itemIds = pending and pending.itemIds or {},
+    })
+  end
+  state.glyphEquipCommands = {}
+
+  local pendingQuestAbandonTokens = {}
+  for token in pairs(state.questAbandonCommands or {}) do
+    pendingQuestAbandonTokens[#pendingQuestAbandonTokens + 1] = token
+  end
+  for _, token in ipairs(pendingQuestAbandonTokens) do
+    local pending = state.questAbandonCommands[token]
+    finishQuestAbandonCommand(token, {
+      status = "error",
+      reason = "DISCONNECTED",
+      matched = 0,
+      abandoned = 0,
+      questId = pending and pending.questId or 0,
+    })
+  end
+  state.questAbandonCommands = {}
+
+  local pendingRollTokens = {}
+  for token in pairs(state.groupRollCommands or {}) do
+    pendingRollTokens[#pendingRollTokens + 1] = token
+  end
+  for _, token in ipairs(pendingRollTokens) do
+    finishGroupRollCommand(token, {
+      status = "error",
+      matched = 0,
+      invoked = 0,
+      reason = "DISCONNECTED",
+    })
+  end
+  state.groupRollCommands = {}
+
+  for _, pending in pairs(state.lootRuleItemCommands or {}) do
+    if MultiBot.OnLootRuleItemResult then
+      MultiBot.OnLootRuleItemResult(
+        pending.scope or "ALL", pending.target or "", pending.action or "ADD", pending.itemId or 0,
+        "ERR", "DISCONNECTED", 0, 0, pending
+      )
+    end
+  end
+  state.lootRuleItemCommands = {}
+
+  state.spellbookActive = nil
+  state.botSkillActive = nil
+  state.botReputationActive = nil
+  state.botEmblemActive = nil
+  state.professionRecipeActive = nil
+  local pendingProfessionRecipeCraftTokens = {}
+  for token in pairs(state.professionRecipeCrafts or {}) do
+    pendingProfessionRecipeCraftTokens[#pendingProfessionRecipeCraftTokens + 1] = token
+  end
+  for _, token in ipairs(pendingProfessionRecipeCraftTokens) do
+    local pending = state.professionRecipeCrafts[token]
+    finishProfessionRecipeCraftCommand(token, "ERR", "DISCONNECTED", pending and pending.itemId or 0)
+  end
+  state.professionRecipeCrafts = {}
+  for _, command in pairs(state.professionRecipeTargetCommands or {}) do
+    if MultiBot.OnBridgeProfessionRecipeTargetResult then
+      MultiBot.OnBridgeProfessionRecipeTargetResult(
+        command.botName or "", "ERR", "DISCONNECTED",
+        command.skillId or 0, command.spellId or 0,
+        command.targetBag or 0, command.targetSlot or 0, command.targetItemId or 0,
+        command
+      )
+    end
+  end
+  state.professionRecipeTargetCommands = {}
+
+  if type(state.enchantTradeActive) == "table" and MultiBot.OnBridgeEnchantTradeList then
+    MultiBot.OnBridgeEnchantTradeList(state.enchantTradeActive.botName or "", {}, {
+      token = state.enchantTradeActive.token or "",
+      status = "ERR",
+      reason = "DISCONNECTED",
+      skillValue = 0,
+      maxSkill = 0,
+    })
+  end
+  for _, command in pairs(state.enchantTradeCommands or {}) do
+    if MultiBot.OnBridgeEnchantTradeResult then
+      MultiBot.OnBridgeEnchantTradeResult(command.botName or "", command.spellId or 0, "ERR", "DISCONNECTED", command)
+    end
+  end
+  state.enchantTradeActive = nil
+  state.enchantTradeCommands = {}
+  state.enchantTradeLists = {}
+  if type(state.outfitActive) == "table" and MultiBot.OutfitUI and MultiBot.OutfitUI.HandleBridgeEnd then
+    MultiBot.OutfitUI:HandleBridgeEnd(
+      state.outfitActive.botName or "", state.outfitActive.token or "", "DISCONNECTED"
+    )
+  end
+  for token, command in pairs(state.outfitCommands or {}) do
+    if type(command) == "table" and MultiBot.OutfitUI and MultiBot.OutfitUI.HandleBridgeCommandResult then
+      MultiBot.OutfitUI:HandleBridgeCommandResult(
+        command.botName or "", token, "ERR", command.command or "",
+        command.wasCreate == true, "DISCONNECTED"
+      )
+    end
+  end
+  state.outfitActive = nil
+  state.outfitCommands = {}
+  if type(state.trainerActive) == "table" and MultiBot.TrainerUI and MultiBot.TrainerUI.HandleBridgeEnd then
+    MultiBot.TrainerUI:HandleBridgeEnd(
+      state.trainerActive.botName or "", state.trainerActive.token or "",
+      tonumber(state.trainerActive.trainerEntry or 0) or 0, state.trainerActive.trainerName or "",
+      state.trainerActive.spells or {}, "DISCONNECTED"
+    )
+  end
+  for token, command in pairs(state.trainerCommands or {}) do
+    if type(command) == "table" and MultiBot.TrainerUI and MultiBot.TrainerUI.HandleBridgeLearnResult then
+      MultiBot.TrainerUI:HandleBridgeLearnResult(
+        command.botName or "", token, tonumber(command.trainerEntry or 0) or 0,
+        command.spellId or "", "ERR", "DISCONNECTED", 0, 0
+      )
+    end
+  end
+  state.trainerActive = nil
+  state.trainerCommands = {}
+  state.formationCommands = {}
+  state.formationQueryActive = nil
+  if type(MultiBot.InvalidateFormationUI) == "function" then
+    MultiBot.InvalidateFormationUI("bridge-disconnected")
+  end
+  state.strategyMutationCapable = false
+state.selfStrategyCapable = false
+state.selfActionCapable = false
+state.botMaintenanceCapable = false
+state.botWipeCapable = false
+  state.botSummonCapable = false
+  state.spellbookCastCapable = false
+  state.spellbookIgnoreCapable = false
+  state.outfitCapable = false
+  state.outfitFramingCapable = false
+  state.inventoryCapable = false
+  state.inventoryExactCapable = false
+  state.inventoryItemMoveCapable = false
+  state.inventoryItemTradeCapable = false
+  state.inventoryItemDepositExactCapable = false
+  state.inventoryItemEquipCapable = false
+  state.inventoryItemUnequipCapable = false
+  state.inventoryItemDestroyCapable = false
+  state.inventoryItemUseCapable = false
+  state.inventoryItemSellCapable = false
+  state.inventoryBuybackCapable = false
+  state.inventoryBulkSellCapable = false
+  state.inventoryOpenCapable = false
+  state.lootRuleItemCapable = false
+  state.groupRollCapable = false
+  state.groupActionCapable = false
+  state.formationCapable = false
+  state.rtscOrderCapable = false
+  state.questAcceptAllCapable = false
+  state.enchantTradeCapable = false
+  state.questAbandonCapable = false
+  state.talentApplyCapable = false
+  state.talentSpecApplyCapable = false
+  state.craftRecipeTargetCapable = false
+  state.selfBotCapable = false
+  state.stateFramingCapable = false
+  state.capabilityFallbackDeadline = 0
+  state.capabilityFallbackGeneration = 0
+  state.capabilitiesResolved = false
+  state.bootstrapStatePending = false
+  state.bootstrapStateRequested = false
+  state.bootstrapStateToken = nil
+  state.bootstrapStateAttempts = 0
+  state.pendingStateRefreshAll = false
+  state.pendingStateRefreshByBot = {}
+
+  if MultiBot.RefreshEnchantingEveryButtons then
+    MultiBot.RefreshEnchantingEveryButtons()
+  end
+
+  local pendingSelfStrategyTokens = {}
+  for token in pairs(state.selfStrategyCommands or {}) do
+    pendingSelfStrategyTokens[#pendingSelfStrategyTokens + 1] = token
+  end
+  for _, token in ipairs(pendingSelfStrategyTokens) do
+    finishSelfStrategyCommand(token, {
+      status = "error",
+      reason = "DISCONNECTED",
+    })
+  end
+  state.selfStrategyCommands = {}
+
+  for token, pending in pairs(state.selfActionCommands or {}) do
+    if type(pending) == "table" and type(pending.callback) == "function" then
+      pending.callback({
+        status = "error",
+        action = pending.action,
+        reason = "DISCONNECTED",
+      })
+    end
+  end
+  state.selfActionCommands = {}
+
+  for token, pending in pairs(state.botMaintenanceCommands or {}) do
+    if type(pending) == "table" and type(pending.callback) == "function" then
+      pending.callback({
+        status = "error",
+        botName = pending.botName,
+        reason = "DISCONNECTED",
+      })
+    end
+  end
+  state.botMaintenanceCommands = {}
+
+  for token, pending in pairs(state.botWipeCommands or {}) do
+    if type(pending) == "table" and type(pending.callback) == "function" then
+      pending.callback({
+        status = "error",
+        botName = pending.botName,
+        reason = "DISCONNECTED",
+      })
+    end
+  end
+  state.botWipeCommands = {}
+
+  for token, pending in pairs(state.botSummonCommands or {}) do
+    if type(pending) == "table" and type(pending.callback) == "function" then
+      pending.callback({
+        status = "error",
+        botName = pending.botName,
+        reason = "DISCONNECTED",
+      })
+    end
+  end
+  state.botSummonCommands = {}
+
+  for token, pending in pairs(state.botReleaseCommands or {}) do
+    if type(pending) == "table" and type(pending.callback) == "function" then pending.callback({status="error", botName=pending.botName, reason="DISCONNECTED"}) end
+  end
+  state.botReleaseCommands = {}
+
+  for token, pending in pairs(state.spellbookCastCommands or {}) do
+    if type(pending) == "table" then
+      Comm.ShowSpellbookCastFeedback(pending, "ERR", "", "DISCONNECTED")
+      if type(pending.callback) == "function" then
+        pending.callback({
+          status = "error",
+          botName = pending.botName,
+          spellId = pending.spellId,
+          targetName = "",
+          reason = "DISCONNECTED",
+        })
+      end
+    end
+  end
+  state.spellbookCastCommands = {}
+  local pendingIgnoreCommands = state.spellbookIgnoreCommands or {}
+  state.spellbookIgnoreCommands = {}
+  for token, pending in pairs(pendingIgnoreCommands) do
+    if type(pending) == "table" and type(pending.callback) == "function" then
+      pending.callback({
+        token = token,
+        status = "error",
+        botName = pending.botName,
+        spellId = pending.spellId,
+        action = pending.action,
+        reason = "DISCONNECTED",
+      })
+    end
+  end
+
+  local pendingTokens = {}
+  for token in pairs(state.strategyMutationCommands or {}) do
+    pendingTokens[#pendingTokens + 1] = token
+  end
+  for _, token in ipairs(pendingTokens) do
+    finishStrategyMutationCommand(token, {
+      status = "error",
+      matched = 0,
+      succeeded = 0,
+      failed = 0,
+      reason = "DISCONNECTED",
+    })
+  end
+  state.strategyMutationCommands = {}
+
+  state.stateRequests = {}
+  state.stateActive = {}
+  state.selfStrategyStateToken = nil
+  state.stateLatestByBot = {}
+  state.stateLatestOrderByBot = {}
+  state.stateGlobalLatestToken = nil
+end
+
+local function parseBridgeDetailPayload(payload)
+  local name, rest = splitOnce(payload or "", "~")
+  local race, rest2 = splitOnce(rest or "", "~")
+  local gender, rest3 = splitOnce(rest2 or "", "~")
+  local className, rest4 = splitOnce(rest3 or "", "~")
+  local level, rest5 = splitOnce(rest4 or "", "~")
+  local talent1, rest6 = splitOnce(rest5 or "", "~")
+  local talent2, rest7 = splitOnce(rest6 or "", "~")
+  local talent3, score = splitOnce(rest7 or "", "~")
+
+  name = trim(urlDecodeField(name))
+  if name == "" then
+    return nil
+  end
+
+  return {
+    name = name,
+    race = urlDecodeField(race),
+    gender = urlDecodeField(gender),
+    className = urlDecodeField(className),
+    level = tonumber(level or "0") or 0,
+    talent1 = tonumber(talent1 or "0") or 0,
+    talent2 = tonumber(talent2 or "0") or 0,
+    talent3 = tonumber(talent3 or "0") or 0,
+    score = tonumber(score or "0") or 0,
+    lastUpdateAt = safeNow(),
+  }
+end
+
+local function parseBridgeProfessionPayload(payload)
+  local name, professionPayload = splitOnce(payload or "", "~")
+
+  name = trim(urlDecodeField(name))
+  if name == "" then
+    return nil
+  end
+
+  local professions = {}
+  for token in string.gmatch(professionPayload or "", "([^;]+)") do
+    token = trim(urlDecodeField(token))
+
+    local profession, value = splitOnce(token, ":")
+    profession = string.lower(trim(profession or ""))
+
+    if profession ~= "" then
+      professions[profession] = value ~= "" and value or true
+    end
+  end
+
+  return {
+    name = name,
+    professions = professions,
+    lastUpdateAt = safeNow(),
+  }
+end
+
+local function parseRosterEntry(entry)
+  local fields = {}
+  for value in string.gmatch(entry or "", "([^,]+)") do
+    fields[#fields + 1] = value
+  end
+
+  return {
+    name = fields[1],
+    classId = tonumber(fields[2] or "0") or 0,
+    level = tonumber(fields[3] or "0") or 0,
+    mapId = tonumber(fields[4] or "0") or 0,
+    alive = fields[5] == "1",
+    hpPct = tonumber(fields[6] or "0") or 0,
+    mpPct = tonumber(fields[7] or "0") or 0,
+  }
+end
+
+-- MB_INVENTORY_H1B1A_EQUIP_OBSERVE_V1_BEGIN
+-- Native Playerbots equipment polling through Bridge; no WHISPER parsing.
+-- R7: no background equipment polling; the bridge sends EQUIP_CHANGED on real changes.
+
+-- R7: one-shot event batches; no recurring timers and no background GET requests.
+function Comm._HandleEquipChangedPacket(payload, state)
+  if state.connected ~= true or state.equipEventsCapable ~= true then
+    return true
+  end
+  local parts = splitFields(payload or "")
+  if #parts ~= 4 then
+    return true
+  end
+  local name = urlDecodeFieldStrict(parts[1], 64, false)
+  local slot = parseBoundedInteger(parts[2], 0, 18)
+  local oldId = parseBoundedInteger(parts[3], 0, 4294967295)
+  local newId = parseBoundedInteger(parts[4], 0, 4294967295)
+  if not name or name == "" or slot == nil or oldId == nil or newId == nil then
+    return true
+  end
+
+  local key = string.lower(name)
+  local roster = state.roster or {}
+  local present = false
+  for i = 1, #roster do
+    local entry = roster[i]
+    if type(entry) == "table" and string.lower(trim(entry.name)) == key then
+      present = true
+      break
+    end
+  end
+  if not present then
+    return true
+  end
+
+  local batches = state.equipEventBatches or {}
+  state.equipEventBatches = batches
+  local batch = batches[key]
+  if not batch then
+    local active = 0
+    for _ in pairs(batches) do active = active + 1 end
+    if active >= 40 then
+      return true
+    end
+    batch = {name = name, changes = {}}
+    batches[key] = batch
+    local generation = state.connectionGeneration
+    safeDelay(0.35, function()
+      local live = ensureBridgeState()
+      if live.connectionGeneration ~= generation or live.connected ~= true or
+          live.equipEventBatches[key] ~= batch then
+        return
+      end
+      live.equipEventBatches[key] = nil
+
+      local equipped, removed = {}, {}
+      local function displayItem(itemId)
+        if type(GetItemInfo) == "function" then
+          local _, link = GetItemInfo(itemId)
+          if type(link) == "string" and link ~= "" then return link end
+        end
+        return "#" .. tostring(itemId)
+      end
+      for _, change in pairs(batch.changes) do
+        if change.oldId ~= change.newId then
+          if change.newId > 0 then
+            equipped[#equipped + 1] = displayItem(change.newId)
+          end
+          if change.oldId > 0 then
+            removed[#removed + 1] = displayItem(change.oldId)
+          end
+        end
+      end
+      if #equipped > 0 then
+        Comm.ShowSystemMessage(string.format(
+          L("creator.init_auto.feedback.equipped"), batch.name, table.concat(equipped, ", ")))
+      end
+      if #removed > 0 then
+        Comm.ShowSystemMessage(string.format(
+          L("inventory.equip_observe.unequipped"), batch.name, table.concat(removed, ", ")))
+      end
+
+      local inventory = MultiBot and MultiBot.inventory or nil
+      if inventory and type(inventory.IsVisible) == "function" and inventory:IsVisible() and
+          string.lower(trim(inventory.name)) == key and MultiBot.RequestInventoryRefresh then
+        MultiBot.RequestInventoryRefresh(batch.name, 0.30)
+      end
+    end)
+  end
+  local previous = batch.changes[slot]
+  if previous then
+    previous.newId = newId
+  else
+    batch.changes[slot] = {oldId = oldId, newId = newId}
+  end
+  return true
+end
+
+function Comm._HandleEquipObservePacket(opcode, payload, state)
+  if opcode == "EQUIP_CHANGED" then
+    return Comm._HandleEquipChangedPacket(payload, state)
+  end
+  if opcode ~= "EQUIP_OBSERVE_ITEM" and opcode ~= "EQUIP_OBSERVE_DONE" then
+    return false
+  end
+
+  local parts = splitFields(payload or "")
+  local name = urlDecodeFieldStrict(parts[1], 64, false)
+  local token = trim(parts[2])
+  local pending = state.equipObservePending
+  if not pending or not name or token ~= pending.token or
+      string.lower(name) ~= pending.key then
+    return true
+  end
+
+  if opcode == "EQUIP_OBSERVE_ITEM" then
+    if #parts ~= 5 or #pending.items >= 19 then
+      return true
+    end
+    local slot = parseBoundedInteger(parts[3], 0, 18)
+    local oldId = parseBoundedInteger(parts[4], 0, 4294967295)
+    local newId = parseBoundedInteger(parts[5], 0, 4294967295)
+    if slot ~= nil and oldId ~= nil and newId ~= nil then
+      pending.items[#pending.items + 1] = {slot = slot, oldId = oldId, newId = newId}
+    end
+    return true
+  end
+
+  if #parts ~= 3 then
+    return true
+  end
+  local status = parts[3]
+  state.equipObservePending = nil
+  if status ~= "OK" or #pending.items == 0 then
+    return true
+  end
+
+  local equipped, removed = {}, {}
+  local function itemDisplay(itemId)
+    if type(GetItemInfo) == "function" then
+      local _, link = GetItemInfo(itemId)
+      if type(link) == "string" and link ~= "" then
+        return link
+      end
+    end
+    return "#" .. tostring(itemId)
+  end
+
+  for _, change in ipairs(pending.items) do
+    if change.newId > 0 then
+      equipped[#equipped + 1] = itemDisplay(change.newId)
+    elseif change.oldId > 0 then
+      removed[#removed + 1] = itemDisplay(change.oldId)
+    end
+  end
+
+  if #equipped > 0 then
+    Comm.ShowSystemMessage(string.format(
+      L("creator.init_auto.feedback.equipped", "[MultiBot] %s equips: %s"),
+      pending.name, table.concat(equipped, ", ")))
+  end
+  if #removed > 0 then
+    Comm.ShowSystemMessage(string.format(
+      L("inventory.equip_observe.unequipped", "[MultiBot] %s déséquipe : %s"),
+      pending.name, table.concat(removed, ", ")))
+  end
+
+  -- Refresh only if the bot's inventory window is actually visible.
+  local inventory = MultiBot and MultiBot.inventory or nil
+  if inventory and type(inventory.IsVisible) == "function" and inventory:IsVisible()
+      and string.lower(trim(inventory.name)) == pending.key then
+    if MultiBot.RequestInventoryRefresh then
+      MultiBot.RequestInventoryRefresh(pending.name, 0.30)
+    end
+  end
+  debugPrint("ADDON:RX", "EQUIP_OBSERVE_CHANGED", pending.name, tostring(#pending.items))
+  return true
+end
+-- MB_INVENTORY_H1B1A_EQUIP_OBSERVE_V1_END
+
+function Comm.ApplyRosterPayload(payload)
+  local state = ensureBridgeState()
+  local roster = {}
+
+  if type(payload) == "string" and payload ~= "" then
+    for entry in string.gmatch(payload, "([^;]+)") do
+      roster[#roster + 1] = parseRosterEntry(entry)
+    end
+  end
+
+  state.roster = roster
+
+  if MultiBot.SyncBridgeRosterToPlayers then
+    MultiBot.SyncBridgeRosterToPlayers(roster)
+  end
+
+  if state.connected and Comm.RequestBotDetails then
+    Comm.RequestBotDetails()
+  end
+
+  debugPrint("ADDON:RX", "ROSTER", tostring(#roster))
+  return roster
+end
+
+local function applyStateEntry(name, combat, normal)
+  local state = ensureBridgeState()
+  name = trim(name)
+  if name == "" then
+    return nil
+  end
+
+  local entry = {
+    name = name,
+    combat = combat or "",
+    normal = normal or "",
+    lastUpdateAt = safeNow(),
+  }
+
+  state.states[string.lower(name)] = entry
+
+  if MultiBot.ApplyBridgeBotState then
+    MultiBot.ApplyBridgeBotState(name, entry.combat, entry.normal)
+  end
+
+  debugPrint("ADDON:RX", "STATE", name, entry.combat, entry.normal)
+  return entry
+end
+
+function Comm.ApplyStatePayload(payload)
+  local name, rest = splitOnce(payload or "", "~")
+  local combat, normal = splitOnce(rest or "", "~")
+  return applyStateEntry(name, combat, normal)
+end
+
+function Comm.ApplyStatesPayload(payload)
+  local applied = 0
+
+  if type(payload) == "string" and payload ~= "" then
+    for entryPayload in string.gmatch(payload, "([^;]+)") do
+      if Comm.ApplyStatePayload(entryPayload) then
+        applied = applied + 1
+      end
+    end
+  end
+
+  debugPrint("ADDON:RX", "STATES", tostring(applied))
+  return applied
+end
+
+local function getStateRequest(token)
+  local state = ensureBridgeState()
+  token = trim(token)
+  if not isValidStateToken(token) then
+    return nil
+  end
+  return state.stateRequests[token]
+end
+
+local function abortStateRequest(token, reason)
+  local state = ensureBridgeState()
+  token = trim(token)
+  if token == "" then
+    return false
+  end
+
+  failBootstrapStateRequest(state, token)
+  clearStateRequest(state, token)
+  state.lastError = "STATE_ABORT~" .. token .. "~" .. tostring(reason or "UNKNOWN")
+  debugPrint("ADDON:RX", "STATE_ABORT", token, reason or "UNKNOWN")
+  return true
+end
+
+function Comm.ApplyStateBeginPayload(payload)
+  local fields = splitFields(payload)
+  if #fields ~= 4 then
+    return false
+  end
+
+  local token = trim(fields[1])
+  local botName = urlDecodeFieldStrict(fields[2], 64, false)
+  local combatCount = parseBoundedInteger(fields[3], 0, STATE_MAX_STRATEGIES_PER_SCOPE)
+  local normalCount = parseBoundedInteger(fields[4], 0, STATE_MAX_STRATEGIES_PER_SCOPE)
+  local state = ensureBridgeState()
+  local request = getStateRequest(token)
+
+  if not request or not botName or combatCount == nil or normalCount == nil then
+    return false
+  end
+
+  local botKey = string.lower(botName)
+  if request.global then
+    if not request.begun then
+      return abortStateRequest(token, "GLOBAL_NOT_BEGUN")
+    end
+    if request.completedBotKeys[botKey] then
+      return abortStateRequest(token, "DUPLICATE_BOT")
+    end
+  elseif string.lower(request.botName or "") ~= botKey then
+    return abortStateRequest(token, "BOT_MISMATCH")
+  end
+
+  local key = stateTransactionKey(token, botName)
+  if state.stateActive[key] then
+    return abortStateRequest(token, "DUPLICATE_BEGIN")
+  end
+
+  if countTableEntries(state.stateActive) >= STATE_MAX_ACTIVE then
+    return abortStateRequest(token, "TOO_MANY_ACTIVE")
+  end
+
+  state.stateActive[key] = {
+    token = token,
+    botName = botName,
+    botKey = botKey,
+    combatExpected = combatCount,
+    normalExpected = normalCount,
+    combatReceived = 0,
+    normalReceived = 0,
+    combat = {},
+    normal = {},
+    totalBytes = 0,
+  }
+
+  debugPrint("ADDON:RX", "STATE_BEGIN", token, botName, combatCount, normalCount)
+  return true
+end
+
+function Comm.ApplyStateItemPayload(payload)
+  local fields = splitFields(payload)
+  if #fields ~= 5 then
+    return false
+  end
+
+  local token = trim(fields[1])
+  local botName = urlDecodeFieldStrict(fields[2], 64, false)
+  local scope = string.upper(trim(fields[3]))
+  local index = parseBoundedInteger(fields[4], 1, STATE_MAX_STRATEGIES_PER_SCOPE)
+  local strategy = urlDecodeFieldStrict(fields[5], STATE_MAX_STRATEGY_LENGTH, false)
+  if not botName or not index or not strategy or (scope ~= "C" and scope ~= "N") then
+    return false
+  end
+
+  local state = ensureBridgeState()
+  local transaction = state.stateActive[stateTransactionKey(token, botName)]
+  if not transaction then
+    return false
+  end
+
+  local expected = scope == "C" and transaction.combatExpected or transaction.normalExpected
+  local items = scope == "C" and transaction.combat or transaction.normal
+  if index > expected then
+    return abortStateRequest(token, "INDEX_OUT_OF_RANGE")
+  end
+
+  if items[index] ~= nil then
+    if items[index] == strategy then
+      return true
+    end
+    return abortStateRequest(token, "CONFLICTING_DUPLICATE")
+  end
+
+  transaction.totalBytes = transaction.totalBytes + #strategy
+  if transaction.totalBytes > STATE_MAX_TOTAL_BYTES then
+    return abortStateRequest(token, "STATE_TOO_LARGE")
+  end
+
+  items[index] = strategy
+  if scope == "C" then
+    transaction.combatReceived = transaction.combatReceived + 1
+  else
+    transaction.normalReceived = transaction.normalReceived + 1
+  end
+
+  debugPrint("ADDON:RX", "STATE_ITEM", token, botName, scope, index, strategy)
+  return true
+end
+
+function Comm.ApplyStateEndPayload(payload)
+  local fields = splitFields(payload)
+  if #fields ~= 4 then
+    return false
+  end
+
+  local token = trim(fields[1])
+  local botName = urlDecodeFieldStrict(fields[2], 64, false)
+  local combatCount = parseBoundedInteger(fields[3], 0, STATE_MAX_STRATEGIES_PER_SCOPE)
+  local normalCount = parseBoundedInteger(fields[4], 0, STATE_MAX_STRATEGIES_PER_SCOPE)
+  if not botName or combatCount == nil or normalCount == nil then
+    return false
+  end
+
+  local state = ensureBridgeState()
+  local key = stateTransactionKey(token, botName)
+  local transaction = state.stateActive[key]
+  local request = getStateRequest(token)
+  if not transaction or not request then
+    return false
+  end
+
+  if combatCount ~= transaction.combatExpected or normalCount ~= transaction.normalExpected or
+      transaction.combatReceived ~= combatCount or transaction.normalReceived ~= normalCount then
+    return abortStateRequest(token, "COUNT_MISMATCH")
+  end
+
+  for index = 1, combatCount do
+    if transaction.combat[index] == nil then
+      return abortStateRequest(token, "MISSING_COMBAT_ITEM")
+    end
+  end
+  for index = 1, normalCount do
+    if transaction.normal[index] == nil then
+      return abortStateRequest(token, "MISSING_NORMAL_ITEM")
+    end
+  end
+
+  if request.global then
+    if state.stateGlobalLatestToken ~= token then
+      return abortStateRequest(token, "STALE_GLOBAL")
+    end
+  elseif state.stateLatestByBot[transaction.botKey] ~= token then
+    return abortStateRequest(token, "STALE_BOT")
+  end
+
+  local requestOrder = tonumber(request.order) or 0
+  local latestOrder = tonumber(state.stateLatestOrderByBot[transaction.botKey]) or 0
+  if requestOrder < latestOrder then
+    state.stateActive[key] = nil
+    if request.global then
+      if not request.completedBotKeys[transaction.botKey] then
+        request.completedBotKeys[transaction.botKey] = true
+        request.completedBots = request.completedBots + 1
+      end
+    else
+      clearStateRequest(state, token)
+    end
+
+    debugPrint("ADDON:RX", "STATE_END_STALE", token, botName, requestOrder, latestOrder)
+    return true
+  end
+
+  state.stateLatestOrderByBot[transaction.botKey] = requestOrder
+
+  local entry = applyStateEntry(transaction.botName, table.concat(transaction.combat, ", "), table.concat(transaction.normal, ", "))
+  if not entry then
+    return abortStateRequest(token, "APPLY_FAILED")
+  end
+
+  state.stateActive[key] = nil
+  if request.global then
+    if not request.completedBotKeys[transaction.botKey] then
+      request.completedBotKeys[transaction.botKey] = true
+      request.completedBots = request.completedBots + 1
+    end
+  else
+    clearStateRequest(state, token)
+  end
+
+  debugPrint("ADDON:RX", "STATE_END", token, botName, combatCount, normalCount)
+  return true
+end
+
+function Comm.ApplyStateAbortPayload(payload)
+  local fields = splitFields(payload)
+  if #fields ~= 3 then
+    return false
+  end
+
+  local token = trim(fields[1])
+  local reason = urlDecodeFieldStrict(fields[3], 64, false) or "UNKNOWN"
+  if not getStateRequest(token) then
+    return false
+  end
+
+  return abortStateRequest(token, reason)
+end
+
+function Comm.ApplyStatesBeginPayload(payload)
+  local fields = splitFields(payload)
+  if #fields ~= 2 then
+    return false
+  end
+
+  local token = trim(fields[1])
+  local botCount = parseBoundedInteger(fields[2], 0, STATE_MAX_BOTS)
+  local request = getStateRequest(token)
+  if not request or not request.global or botCount == nil or request.begun then
+    return false
+  end
+
+  request.begun = true
+  request.expectedBots = botCount
+  request.completedBots = 0
+  request.completedBotKeys = {}
+  debugPrint("ADDON:RX", "STATES_BEGIN", token, botCount)
+  return true
+end
+
+function Comm.ApplyStatesEndPayload(payload)
+  local fields = splitFields(payload)
+  if #fields ~= 2 then
+    return false
+  end
+
+  local token = trim(fields[1])
+  local sentCount = parseBoundedInteger(fields[2], 0, STATE_MAX_BOTS)
+  local state = ensureBridgeState()
+  local request = getStateRequest(token)
+  if not request or not request.global or not request.begun or sentCount == nil then
+    return false
+  end
+
+  for _, transaction in pairs(state.stateActive) do
+    if type(transaction) == "table" and transaction.token == token then
+      return abortStateRequest(token, "INCOMPLETE_TRANSACTION")
+    end
+  end
+
+  if sentCount ~= request.expectedBots or request.completedBots ~= request.expectedBots then
+    return abortStateRequest(token, "GLOBAL_COUNT_MISMATCH")
+  end
+
+  clearStateRequest(state, token)
+  debugPrint("ADDON:RX", "STATES_END", token, sentCount)
+  return true
+end
+
+function Comm.ApplyBotDetailPayload(payload)
+  local state = ensureBridgeState()
+  local detail = parseBridgeDetailPayload(payload)
+  if not detail then
+    return nil
+  end
+
+  local key = string.lower(detail.name)
+  local existing = state.details[key]
+  local professionEntry = state.professions[key]
+
+  if type(existing) == "table" and type(existing.professions) == "table" then
+    detail.professions = existing.professions
+  end
+
+  if type(professionEntry) == "table" and type(professionEntry.professions) == "table" then
+    detail.professions = professionEntry.professions
+  end
+
+  state.details[key] = detail
+
+  if MultiBot.ApplyBridgeBotDetail then
+    MultiBot.ApplyBridgeBotDetail(detail)
+  end
+
+  debugPrint("ADDON:RX", "DETAIL", detail.name, detail.className or "", tostring(detail.level or 0), tostring(detail.score or 0))
+  return detail
+end
+
+function Comm.ApplyBotProfessionPayload(payload)
+  local state = ensureBridgeState()
+  local entry = parseBridgeProfessionPayload(payload)
+  if not entry then
+    return nil
+  end
+
+  local key = string.lower(entry.name)
+  state.professions[key] = entry
+
+  local detail = state.details[key]
+  if type(detail) == "table" then
+    detail.professions = entry.professions
+    detail.lastProfessionUpdateAt = entry.lastUpdateAt
+  end
+
+  if MultiBot.ApplyBridgeBotProfession then
+    MultiBot.ApplyBridgeBotProfession(entry.name, entry.professions)
+  end
+
+  debugPrint("ADDON:RX", "PROFESSION", entry.name)
+  return entry
+end
+
+function Comm.ApplyBotProfessionsPayload(payload)
+  local applied = 0
+
+  if type(payload) == "string" and payload ~= "" then
+    for entryPayload in string.gmatch(payload, "([^|]+)") do
+      if Comm.ApplyBotProfessionPayload(entryPayload) then
+        applied = applied + 1
+      end
+    end
+  end
+
+  debugPrint("ADDON:RX", "PROFESSIONS", tostring(applied))
+  return applied
+end
+
+function Comm.ApplyBotDetailsPayload(payload)
+  local applied = 0
+
+  if type(payload) == "string" and payload ~= "" then
+    for entryPayload in string.gmatch(payload, "([^;]+)") do
+      if Comm.ApplyBotDetailPayload(entryPayload) then
+        applied = applied + 1
+      end
+    end
+  end
+
+  debugPrint("ADDON:RX", "DETAILS", tostring(applied))
+  return applied
+end
+
+local function parseStatsPayload(payload)
+  local name, rest = splitOnce(payload or "", "~")
+  local level, rest2 = splitOnce(rest or "", "~")
+  local gold, rest3 = splitOnce(rest2 or "", "~")
+  local silver, rest4 = splitOnce(rest3 or "", "~")
+  local copper, rest5 = splitOnce(rest4 or "", "~")
+  local bagUsed, rest6 = splitOnce(rest5 or "", "~")
+  local bagTotal, rest7 = splitOnce(rest6 or "", "~")
+  local durabilityPct, rest8 = splitOnce(rest7 or "", "~")
+  local xpPct, manaPct = splitOnce(rest8 or "", "~")
+
+  name = trim(urlDecodeField(name))
+  if name == "" then
+    return nil
+  end
+
+  return {
+    name = name,
+    level = tonumber(level or "0") or 0,
+    gold = tonumber(gold or "0") or 0,
+    silver = tonumber(silver or "0") or 0,
+    copper = tonumber(copper or "0") or 0,
+    bagUsed = tonumber(bagUsed or "0") or 0,
+    bagTotal = tonumber(bagTotal or "0") or 0,
+    durabilityPct = tonumber(durabilityPct or "0") or 0,
+    xpPct = tonumber(xpPct or "0") or 0,
+    manaPct = tonumber(manaPct or "0") or 0,
+    lastUpdateAt = safeNow(),
+  }
+end
+
+function Comm.ApplyStatsPayload(payload)
+  local state = ensureBridgeState()
+  local stats = parseStatsPayload(payload)
+  if not stats then
+    return nil
+  end
+
+  state.stats[string.lower(stats.name)] = stats
+
+  if MultiBot.ApplyBridgeStats then
+    MultiBot.ApplyBridgeStats(stats)
+  end
+
+  debugPrint(
+    "ADDON:RX",
+    "STATS",
+    stats.name,
+    tostring(stats.level or 0),
+    tostring(stats.bagUsed or 0) .. "/" .. tostring(stats.bagTotal or 0),
+    tostring(stats.durabilityPct or 0)
+  )
+
+  return stats
+end
+
+local function parsePvpStatsPayload(payload)
+  local name, rest = splitOnce(payload or "", "~")
+  local arenaPoints, rest2 = splitOnce(rest or "", "~")
+  local honorPoints, rest3 = splitOnce(rest2 or "", "~")
+  local team2v2, rest4 = splitOnce(rest3 or "", "~")
+  local rating2v2, rest5 = splitOnce(rest4 or "", "~")
+  local team3v3, rest6 = splitOnce(rest5 or "", "~")
+  local rating3v3, rest7 = splitOnce(rest6 or "", "~")
+  local team5v5, rating5v5 = splitOnce(rest7 or "", "~")
+
+  name = trim(urlDecodeField(name))
+  if name == "" then
+    return nil
+  end
+
+  return {
+    name = name,
+    arenaPoints = tonumber(arenaPoints or "0") or 0,
+    honorPoints = tonumber(honorPoints or "0") or 0,
+    teams = {
+      ["2v2"] = {
+        team = urlDecodeField(team2v2),
+        rating = tonumber(rating2v2 or "0") or 0,
+      },
+      ["3v3"] = {
+        team = urlDecodeField(team3v3),
+        rating = tonumber(rating3v3 or "0") or 0,
+      },
+      ["5v5"] = {
+        team = urlDecodeField(team5v5),
+        rating = tonumber(rating5v5 or "0") or 0,
+      },
+    },
+    lastUpdateAt = safeNow(),
+  }
+end
+
+function Comm.ApplyPvpStatsPayload(payload)
+  local state = ensureBridgeState()
+  local stats = parsePvpStatsPayload(payload)
+  if not stats then
+    return nil
+  end
+
+  state.pvpStats[string.lower(stats.name)] = stats
+
+  if MultiBot.ApplyBridgePvpStats then
+    MultiBot.ApplyBridgePvpStats(stats)
+  end
+
+  debugPrint(
+    "ADDON:RX",
+    "PVP_STATS",
+    stats.name,
+    tostring(stats.arenaPoints or 0),
+    tostring(stats.honorPoints or 0)
+  )
+
+  return stats
+end
+
+local function ensureRuntimeTable(key)
+  if MultiBot.Store and MultiBot.Store.EnsureRuntimeTable then
+    return MultiBot.Store.EnsureRuntimeTable(key)
+  end
+
+  MultiBot[key] = type(MultiBot[key]) == "table" and MultiBot[key] or {}
+  return MultiBot[key]
+end
+
+local function normalizeQuestMode(mode)
+  mode = string.upper(trim(mode or "ALL"))
+  if mode ~= "INCOMPLETED" and mode ~= "COMPLETED" and mode ~= "ALL" then
+    mode = "ALL"
+  end
+  return mode
+end
+
+local function getActiveQuestRequest(token)
+  local state = ensureBridgeState()
+  token = trim(token)
+  if token == "" then
+    return nil
+  end
+
+  return state.questActive and state.questActive[token] or nil
+end
+
+local function buildQuestLink(questID, questName)
+  questID = tonumber(questID or 0) or 0
+  questName = tostring(questName or questID)
+  return "|Hquest:" .. tostring(questID) .. ":0|h[" .. questName .. "]|h"
+end
+
+local function clearQuestStoresForMode(botName, mode)
+  if type(botName) ~= "string" or botName == "" then
+    return
+  end
+
+  mode = normalizeQuestMode(mode)
+
+  if mode == "INCOMPLETED" or mode == "ALL" then
+    ensureRuntimeTable("BotQuestsIncompleted")[botName] = {}
+  end
+
+  if mode == "COMPLETED" or mode == "ALL" then
+    ensureRuntimeTable("BotQuestsCompleted")[botName] = {}
+  end
+
+  if mode == "ALL" then
+    ensureRuntimeTable("BotQuestsAll")[botName] = {}
+  end
+end
+
+function Comm.ApplyQuestBeginPayload(payload)
+  local botName, rest = splitOnce(payload or "", "~")
+  local token, mode = splitOnce(rest or "", "~")
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+  mode = normalizeQuestMode(mode)
+
+  if botName == "" or not getActiveQuestRequest(token) then
+    return false
+  end
+
+  clearQuestStoresForMode(botName, mode)
+  debugPrint("ADDON:RX", "QUESTS_BEGIN", botName, mode)
+  return true
+end
+
+function Comm.ApplyQuestItemPayload(payload)
+  local botName, rest = splitOnce(payload or "", "~")
+  local token, rest2 = splitOnce(rest or "", "~")
+  local mode, rest3 = splitOnce(rest2 or "", "~")
+  local status, rest4 = splitOnce(rest3 or "", "~")
+  local questID, questName = splitOnce(rest4 or "", "~")
+
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+  mode = normalizeQuestMode(mode)
+  status = string.upper(trim(status))
+  questID = tonumber(questID or "0") or 0
+  questName = trim(urlDecodeField(questName))
+  if questName == "" then
+    questName = tostring(questID)
+  end
+
+  if botName == "" or questID <= 0 or not getActiveQuestRequest(token) then
+    return false
+  end
+
+  local incompletedStore = ensureRuntimeTable("BotQuestsIncompleted")
+  local completedStore = ensureRuntimeTable("BotQuestsCompleted")
+  local allStore = ensureRuntimeTable("BotQuestsAll")
+
+  if status == "I" then
+    incompletedStore[botName] = incompletedStore[botName] or {}
+    incompletedStore[botName][questID] = questName
+  elseif status == "C" then
+    completedStore[botName] = completedStore[botName] or {}
+    completedStore[botName][questID] = questName
+  else
+    return false
+  end
+
+  if mode == "ALL" then
+    allStore[botName] = allStore[botName] or {}
+    table.insert(allStore[botName], buildQuestLink(questID, questName))
+  end
+
+  debugPrint("ADDON:RX", "QUESTS_ITEM", botName, mode, status, tostring(questID))
+  return true
+end
+
+function Comm.ApplyQuestEndPayload(payload)
+  local botName, rest = splitOnce(payload or "", "~")
+  local token, mode = splitOnce(rest or "", "~")
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+  mode = normalizeQuestMode(mode)
+
+  if botName == "" or not getActiveQuestRequest(token) then
+    return false
+  end
+
+  debugPrint("ADDON:RX", "QUESTS_END", botName, mode)
+  return true
+end
+
+function Comm.ApplyQuestDonePayload(payload)
+  local token, mode = splitOnce(payload or "", "~")
+  token = trim(token)
+  mode = normalizeQuestMode(mode)
+
+  local state = ensureBridgeState()
+  local request = getActiveQuestRequest(token)
+  if not request then
+    return false
+  end
+
+  state.questActive[token] = nil
+  state.quests.lastMode = mode
+  state.quests.lastDoneAt = safeNow()
+
+  if MultiBot.OnBridgeQuestsDone then
+    MultiBot.OnBridgeQuestsDone(mode, request)
+  end
+
+  debugPrint("ADDON:RX", "QUESTS_DONE", mode)
+  return true
+end
+
+local function getActiveGameObjectRequest(token)
+  local state = ensureBridgeState()
+  token = trim(token)
+  if token == "" then
+    return nil
+  end
+  return state.gameObjectActive and state.gameObjectActive[token] or nil
+end
+
+function Comm.ApplyGameObjectBeginPayload(payload)
+  local botName, token = splitOnce(payload or "", "~")
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+  if botName == "" or not getActiveGameObjectRequest(token) then
+    return false
+  end
+  ensureRuntimeTable("LastGameObjectSearch")[botName] = {}
+  debugPrint("ADDON:RX", "GAMEOBJECTS_BEGIN", botName)
+  return true
+end
+
+function Comm.ApplyGameObjectItemPayload(payload)
+  local botName, rest = splitOnce(payload or "", "~")
+  local token, encodedLine = splitOnce(rest or "", "~")
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+  if botName == "" or not getActiveGameObjectRequest(token) then
+    return false
+  end
+  local store = ensureRuntimeTable("LastGameObjectSearch")
+  store[botName] = store[botName] or {}
+  table.insert(store[botName], urlDecodeField(encodedLine))
+  return true
+end
+
+function Comm.ApplyGameObjectEndPayload(payload)
+  local botName, token = splitOnce(payload or "", "~")
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+  if botName == "" or not getActiveGameObjectRequest(token) then
+    return false
+  end
+  debugPrint("ADDON:RX", "GAMEOBJECTS_END", botName)
+  return true
+end
+
+function Comm.ApplyGameObjectDonePayload(payload)
+  local token = trim(payload or "")
+  local state = ensureBridgeState()
+  local request = getActiveGameObjectRequest(token)
+  if not request then
+    return false
+  end
+  state.gameObjectActive[token] = nil
+  state.gameObjects.lastDoneAt = safeNow()
+  if MultiBot.OnBridgeGameObjectsDone then
+    MultiBot.OnBridgeGameObjectsDone(request)
+  end
+  debugPrint("ADDON:RX", "GAMEOBJECTS_DONE")
+  return true
+end
+
+local function getActiveTalentSpecRequest(botName, token)
+  local state = ensureBridgeState()
+  local active = state.talentSpecActive
+  if type(active) ~= "table" then
+    return nil
+  end
+
+  if trim(token) ~= trim(active.token or "") then
+    return nil
+  end
+
+  if string.lower(trim(botName)) ~= tostring(active.botNameKey or "") then
+    return nil
+  end
+
+  return active
+end
+
+function Comm.ApplyTalentSpecBeginPayload(payload)
+  local botName, token = splitOnce(payload or "", "~")
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+
+  if botName == "" or not getActiveTalentSpecRequest(botName, token) then
+    return false
+  end
+
+  local state = ensureBridgeState()
+  state.talentSpecs[string.lower(botName)] = {}
+
+  if MultiBot.ApplyBridgeTalentSpecBegin then
+    MultiBot.ApplyBridgeTalentSpecBegin(botName, token)
+  end
+
+  debugPrint("ADDON:RX", "TALENT_SPEC_BEGIN", botName)
+  return true
+end
+
+local function handleTalentSpecCurrentResponse(payload, state)
+  local fields = splitFields(payload or "")
+  if #fields ~= 6 then
+    state.lastError = "TALENT_SPEC_CURRENT_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local botName = urlDecodeFieldStrict(fields[1], 64, false)
+  local token = trim(fields[2])
+  local slot = parseBoundedInteger(fields[3], 1, 2)
+  local tree0 = parseBoundedInteger(fields[4], 0, 255)
+  local tree1 = parseBoundedInteger(fields[5], 0, 255)
+  local tree2 = parseBoundedInteger(fields[6], 0, 255)
+
+  if not botName or not isValidStateToken(token) or not slot
+      or tree0 == nil or tree1 == nil or tree2 == nil
+      or not getActiveTalentSpecRequest(botName, token) then
+    state.lastError = "TALENT_SPEC_CURRENT_BAD_RESPONSE"
+    return true
+  end
+
+  state.connected = true
+  state.lastError = nil
+  if MultiBot.ApplyBridgeTalentSpecCurrent then
+    MultiBot.ApplyBridgeTalentSpecCurrent(botName, token, slot, tree0, tree1, tree2)
+  end
+
+  debugPrint("ADDON:RX", "TALENT_SPEC_CURRENT", botName, slot, tree0, tree1, tree2)
+  return true
+end
+function Comm.ApplyTalentSpecItemPayload(payload)
+
+  local botName, rest = splitOnce(payload or "", "~")
+  local token, rest2 = splitOnce(rest or "", "~")
+  local index, rest3 = splitOnce(rest2 or "", "~")
+  local specName, build = splitOnce(rest3 or "", "~")
+
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+  index = tonumber(index or "0") or 0
+  specName = trim(urlDecodeField(specName))
+  build = trim(build)
+
+  if botName == "" or specName == "" or not getActiveTalentSpecRequest(botName, token) then
+    return false
+  end
+
+  local entry = {
+    index = index,
+    name = specName,
+    build = build,
+  }
+
+  local state = ensureBridgeState()
+  local key = string.lower(botName)
+  state.talentSpecs[key] = state.talentSpecs[key] or {}
+  table.insert(state.talentSpecs[key], entry)
+
+  if MultiBot.ApplyBridgeTalentSpecItem then
+    MultiBot.ApplyBridgeTalentSpecItem(botName, token, entry)
+  end
+
+  debugPrint("ADDON:RX", "TALENT_SPEC_ITEM", botName, specName, build)
+  return true
+end
+
+local function getActiveGlyphRequest(botName, token)
+  local state = ensureBridgeState()
+  local active = state.glyphActive
+  if type(active) ~= "table" then
+    return nil
+  end
+
+  if trim(token) ~= trim(active.token or "") then
+    return nil
+  end
+
+  if string.lower(trim(botName)) ~= tostring(active.botNameKey or "") then
+    return nil
+  end
+
+  return active
+end
+
+local function applyBridgeGlyphs(botName, token)
+  local state = ensureBridgeState()
+  local key = string.lower(botName)
+  local glyphs = state.glyphs[key] or {}
+
+  table.sort(glyphs, function(a, b)
+    return (tonumber(a.index) or 0) < (tonumber(b.index) or 0)
+  end)
+
+  MultiBot.receivedGlyphs = MultiBot.receivedGlyphs or {}
+  MultiBot.receivedGlyphs[botName] = glyphs
+
+  if MultiBot.awaitGlyphs == botName then
+    MultiBot.awaitGlyphs = nil
+  end
+
+  if MultiBot.ApplyBridgeGlyphs then
+    MultiBot.ApplyBridgeGlyphs(botName, glyphs, token)
+  elseif MultiBot.talent and MultiBot.talent.OnBridgeGlyphs then
+    MultiBot.talent.OnBridgeGlyphs(botName, token, glyphs)
+  elseif MultiBot.talent and MultiBot.talent.name == botName and MultiBot.FillDefaultGlyphs then
+    MultiBot.FillDefaultGlyphs()
+  end
+end
+
+local function getActiveOutfitRequest(botName, token)
+  local active = ensureBridgeState().outfitActive
+  if not active then return nil end
+  botName = trim(botName)
+  token = trim(token)
+  if token ~= active.token then return nil end
+  if botName ~= "" and string.lower(botName) ~= active.botNameKey then return nil end
+  return active
+end
+
+local function clearActiveOutfitRequest(botName, token)
+  local state = ensureBridgeState()
+  if getActiveOutfitRequest(botName, token) then
+    state.outfitActive = nil
+  end
+end
+
+function Comm.ApplyOutfitsBeginPayload(payload)
+  local botName, token = splitOnce(payload or "", "~")
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+
+  local active = getActiveOutfitRequest(botName, token)
+  if botName == "" or not active or active.framed == true then
+    return false
+  end
+
+  active.botName = botName
+  active.botNameKey = string.lower(botName)
+  active.lines = {}
+
+  if MultiBot.OutfitUI and MultiBot.OutfitUI.HandleBridgeBegin then
+    MultiBot.OutfitUI:HandleBridgeBegin(botName, token)
+  end
+
+  debugPrint("ADDON:RX", "OUTFITS_BEGIN", botName)
+  return true
+end
+
+function Comm.ApplyOutfitsItemPayload(payload)
+  local botName, rest = splitOnce(payload or "", "~")
+  local token, encodedLine = splitOnce(rest or "", "~")
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+
+  local active = getActiveOutfitRequest(botName, token)
+  if botName == "" or not active or active.framed == true then
+    return false
+  end
+
+  local rawLine = urlDecodeField(encodedLine)
+  active.lines[#active.lines + 1] = rawLine
+
+  if MultiBot.OutfitUI and MultiBot.OutfitUI.HandleBridgeLine then
+    MultiBot.OutfitUI:HandleBridgeLine(botName, token, rawLine)
+  end
+
+  debugPrint("ADDON:RX", "OUTFITS_ITEM", botName, rawLine)
+  return true
+end
+
+function Comm.ApplyOutfitsEndPayload(payload)
+  local botName, token = splitOnce(payload or "", "~")
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+
+  local active = getActiveOutfitRequest(botName, token)
+  if botName == "" or not active or active.framed == true then
+    return false
+  end
+
+  if MultiBot.OutfitUI and MultiBot.OutfitUI.HandleBridgeEnd then
+    MultiBot.OutfitUI:HandleBridgeEnd(botName, token)
+  end
+
+  clearActiveOutfitRequest(botName, token)
+  debugPrint("ADDON:RX", "OUTFITS_END", botName)
+  return true
+end
+
+function Comm.ApplyOutfitsFramedBeginPayload(payload)
+  local fields = splitFields(payload or "")
+  if #fields ~= 3 then
+    return false
+  end
+
+  local botName = trim(urlDecodeField(fields[1] or ""))
+  local token = trim(fields[2] or "")
+  local outfitCount = parseBoundedInteger(fields[3], 0, 128)
+  local active = getActiveOutfitRequest(botName, token)
+
+  if botName == "" or outfitCount == nil or not active or active.framed ~= true then
+    return false
+  end
+
+  active.botName = botName
+  active.botNameKey = string.lower(botName)
+  active.lines = {}
+  active.expectedOutfits = outfitCount
+  active.completedOutfits = 0
+  active.frameOutfits = {}
+
+  if MultiBot.OutfitUI and MultiBot.OutfitUI.HandleBridgeBegin then
+    MultiBot.OutfitUI:HandleBridgeBegin(botName, token)
+  end
+
+  debugPrint("ADDON:RX", "OUTFITS_FBEGIN", botName, outfitCount)
+  return true
+end
+
+function Comm.ApplyOutfitsFramedPartPayload(payload)
+  local fields = splitFields(payload or "")
+  if #fields ~= 6 then
+    return false
+  end
+
+  local botName = trim(urlDecodeField(fields[1] or ""))
+  local token = trim(fields[2] or "")
+  local outfitIndex = parseBoundedInteger(fields[3], 1, 128)
+  local partIndex = parseBoundedInteger(fields[4], 1, 128)
+  local finalFlag = trim(fields[5] or "")
+  local chunk = fields[6] or ""
+  local active = getActiveOutfitRequest(botName, token)
+
+  if botName == ""
+      or not active
+      or active.framed ~= true
+      or type(active.expectedOutfits) ~= "number"
+      or outfitIndex == nil
+      or outfitIndex > active.expectedOutfits
+      or partIndex == nil
+      or (finalFlag ~= "0" and finalFlag ~= "1")
+      or chunk == ""
+      or #chunk > 192 then
+    return false
+  end
+
+  local frame = active.frameOutfits[outfitIndex]
+  if type(frame) ~= "table" then
+    frame = {
+      parts = {},
+      finalFlags = {},
+      finalPart = nil,
+      complete = false,
+      rawLine = nil,
+    }
+    active.frameOutfits[outfitIndex] = frame
+  end
+
+  local existing = frame.parts[partIndex]
+  local existingFinal = frame.finalFlags[partIndex]
+  if existing ~= nil and (existing ~= chunk or existingFinal ~= finalFlag) then
+    return false
+  end
+
+  frame.parts[partIndex] = chunk
+  frame.finalFlags[partIndex] = finalFlag
+
+  if finalFlag == "1" then
+    if frame.finalPart ~= nil and frame.finalPart ~= partIndex then
+      return false
+    end
+    frame.finalPart = partIndex
+  end
+
+  if not frame.complete and frame.finalPart ~= nil then
+    for index = 1, frame.finalPart do
+      if frame.parts[index] == nil then
+        debugPrint("ADDON:RX", "OUTFITS_FPART", botName, outfitIndex, partIndex)
+        return true
+      end
+    end
+
+    frame.rawLine = urlDecodeField(table.concat(frame.parts, "", 1, frame.finalPart))
+    frame.complete = true
+    active.completedOutfits = (tonumber(active.completedOutfits) or 0) + 1
+  end
+
+  debugPrint("ADDON:RX", "OUTFITS_FPART", botName, outfitIndex, partIndex)
+  return true
+end
+
+function Comm.ApplyOutfitsFramedEndPayload(payload)
+  local fields = splitFields(payload or "")
+  if #fields ~= 3 then
+    return false
+  end
+
+  local botName = trim(urlDecodeField(fields[1] or ""))
+  local token = trim(fields[2] or "")
+  local outfitCount = parseBoundedInteger(fields[3], 0, 128)
+  local active = getActiveOutfitRequest(botName, token)
+
+  if botName == ""
+      or outfitCount == nil
+      or not active
+      or active.framed ~= true
+      or active.expectedOutfits ~= outfitCount
+      or (tonumber(active.completedOutfits) or 0) ~= outfitCount then
+    return false
+  end
+
+  for outfitIndex = 1, outfitCount do
+    local frame = active.frameOutfits[outfitIndex]
+    if type(frame) ~= "table" or frame.complete ~= true or type(frame.rawLine) ~= "string" then
+      return false
+    end
+
+    active.lines[#active.lines + 1] = frame.rawLine
+    if MultiBot.OutfitUI and MultiBot.OutfitUI.HandleBridgeLine then
+      if MultiBot.OutfitUI:HandleBridgeLine(botName, token, frame.rawLine) == false then
+        return false
+      end
+    end
+  end
+
+  if MultiBot.OutfitUI and MultiBot.OutfitUI.HandleBridgeEnd then
+    MultiBot.OutfitUI:HandleBridgeEnd(botName, token)
+  end
+
+  clearActiveOutfitRequest(botName, token)
+  debugPrint("ADDON:RX", "OUTFITS_FEND", botName, outfitCount)
+  return true
+end
+
+function Comm.ApplyOutfitCommandPayload(payload)
+  local botName, rest = splitOnce(payload or "", "~")
+  local token, result = splitOnce(rest or "", "~")
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+  result = trim(result)
+
+  local state = ensureBridgeState()
+  local command = state.outfitCommands and state.outfitCommands[token] or nil
+  if not command or botName == "" or string.lower(botName) ~= command.botNameKey then
+    return false
+  end
+
+  command.result = result
+  state.outfitCommands[token] = nil
+
+  if MultiBot.OutfitUI and MultiBot.OutfitUI.HandleBridgeCommandResult then
+    MultiBot.OutfitUI:HandleBridgeCommandResult(command.botName, token, result, command.command, command.wasCreate == true)
+  end
+
+  debugPrint("ADDON:RX", "OUTFITS_CMD", command.botName, result)
+  return true
+end
+
+local function getActiveTrainerRequest(botName, token)
+  local active = ensureBridgeState().trainerActive
+  if not active then return nil end
+  botName = trim(botName)
+  token = trim(token)
+  if token ~= active.token then return nil end
+  if botName ~= "" and string.lower(botName) ~= active.botNameKey then return nil end
+  return active
+end
+
+local function clearActiveTrainerRequest(botName, token)
+  local state = ensureBridgeState()
+  if getActiveTrainerRequest(botName, token) then
+    state.trainerActive = nil
+  end
+end
+
+function Comm.ApplyTrainerBeginPayload(payload)
+  local botName, rest = splitOnce(payload or "", "~")
+  local token, rest2 = splitOnce(rest or "", "~")
+  local trainerEntry, trainerName = splitOnce(rest2 or "", "~")
+
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+  trainerEntry = tonumber(trainerEntry or "0") or 0
+  trainerName = trim(urlDecodeField(trainerName))
+
+  local active = getActiveTrainerRequest(botName, token)
+  if botName == "" or not active then
+    return false
+  end
+
+  active.botName = botName
+  active.botNameKey = string.lower(botName)
+  active.trainerEntry = trainerEntry
+  active.trainerName = trainerName
+  active.spells = {}
+
+  if MultiBot.TrainerUI and MultiBot.TrainerUI.HandleBridgeBegin then
+    MultiBot.TrainerUI:HandleBridgeBegin(botName, token, trainerEntry, trainerName)
+  end
+
+  debugPrint("ADDON:RX", "TRAINER_BEGIN", botName, trainerEntry)
+  return true
+end
+
+function Comm.ApplyTrainerItemPayload(payload)
+  local botName, rest = splitOnce(payload or "", "~")
+  local token, rest2 = splitOnce(rest or "", "~")
+  local trainerEntry, rest3 = splitOnce(rest2 or "", "~")
+  local spellId, rest4 = splitOnce(rest3 or "", "~")
+  local cost, canAfford = splitOnce(rest4 or "", "~")
+
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+  trainerEntry = tonumber(trainerEntry or "0") or 0
+  spellId = tonumber(spellId or "0") or 0
+  cost = tonumber(cost or "0") or 0
+  canAfford = tostring(canAfford or "0") == "1"
+
+  local active = getActiveTrainerRequest(botName, token)
+  if botName == "" or not active or spellId <= 0 then
+    return false
+  end
+
+  local entry = {
+    spellId = spellId,
+    cost = cost,
+    canAfford = canAfford,
+    trainerEntry = trainerEntry,
+  }
+  active.spells[#active.spells + 1] = entry
+
+  if MultiBot.TrainerUI and MultiBot.TrainerUI.HandleBridgeLine then
+    MultiBot.TrainerUI:HandleBridgeLine(botName, token, entry)
+  end
+
+  debugPrint("ADDON:RX", "TRAINER_ITEM", botName, spellId, cost, canAfford and 1 or 0)
+  return true
+end
+
+function Comm.ApplyTrainerErrorPayload(payload)
+  local botName, rest = splitOnce(payload or "", "~")
+  local token, rest2 = splitOnce(rest or "", "~")
+  local trainerEntry, reason = splitOnce(rest2 or "", "~")
+
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+  trainerEntry = tonumber(trainerEntry or "0") or 0
+  reason = trim(urlDecodeField(reason))
+
+  local active = getActiveTrainerRequest(botName, token)
+  if botName == "" or not active then
+    return false
+  end
+
+  active.error = reason
+  active.trainerEntry = trainerEntry
+
+  if MultiBot.TrainerUI and MultiBot.TrainerUI.HandleBridgeError then
+    MultiBot.TrainerUI:HandleBridgeError(botName, token, reason, trainerEntry)
+  end
+
+  debugPrint("ADDON:RX", "TRAINER_ERROR", botName, reason)
+  return true
+end
+
+function Comm.ApplyTrainerEndPayload(payload)
+  local botName, rest = splitOnce(payload or "", "~")
+  local token, rest2 = splitOnce(rest or "", "~")
+  local trainerEntry, trainerName = splitOnce(rest2 or "", "~")
+
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+  trainerEntry = tonumber(trainerEntry or "0") or 0
+  trainerName = trim(urlDecodeField(trainerName))
+
+  local active = getActiveTrainerRequest(botName, token)
+  if botName == "" or not active then
+    return false
+  end
+
+  local state = ensureBridgeState()
+  state.trainerSpells[string.lower(botName)] = active.spells or {}
+
+  if MultiBot.TrainerUI and MultiBot.TrainerUI.HandleBridgeEnd then
+    MultiBot.TrainerUI:HandleBridgeEnd(botName, token, trainerEntry, trainerName, active.spells or {}, active.error)
+  end
+
+  clearActiveTrainerRequest(botName, token)
+  debugPrint("ADDON:RX", "TRAINER_END", botName)
+  return true
+end
+
+function Comm.ApplyTrainerLearnPayload(payload)
+  local botName, rest = splitOnce(payload or "", "~")
+  local token, rest2 = splitOnce(rest or "", "~")
+  local trainerEntry, rest3 = splitOnce(rest2 or "", "~")
+  local spellId, rest4 = splitOnce(rest3 or "", "~")
+  local result, rest5 = splitOnce(rest4 or "", "~")
+  local reason, rest6 = splitOnce(rest5 or "", "~")
+  local learnedCount, spent = splitOnce(rest6 or "", "~")
+
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+  trainerEntry = tonumber(trainerEntry or "0") or 0
+  spellId = trim(urlDecodeField(spellId))
+  result = trim(result)
+  reason = trim(urlDecodeField(reason))
+  learnedCount = tonumber(learnedCount or "0") or 0
+  spent = tonumber(spent or "0") or 0
+
+  local state = ensureBridgeState()
+  local command = state.trainerCommands and state.trainerCommands[token] or nil
+  if not command then
+    return false
+  end
+
+  command.botName = botName ~= "" and botName or command.botName
+  command.botNameKey = string.lower(command.botName or "")
+  command.trainerEntry = trainerEntry
+  command.spellId = spellId
+  command.result = result
+  command.reason = reason
+  command.learnedCount = learnedCount
+  command.spent = spent
+
+  if MultiBot.TrainerUI and MultiBot.TrainerUI.HandleBridgeLearnResult then
+    MultiBot.TrainerUI:HandleBridgeLearnResult(command.botName, token, trainerEntry, spellId, result, reason, learnedCount, spent)
+  end
+
+  state.trainerCommands[token] = nil
+  debugPrint("ADDON:RX", "TRAINER_LEARN", command.botName, spellId, result, reason)
+  return true
+end
+
+function Comm.ApplyProfessionRecipeCraftPayload(payload)
+  local state = ensureBridgeState()
+  local fields = splitFields(payload or "")
+  local token = trim(fields[2] or "")
+  local pending = isValidStateToken(token) and state.professionRecipeCrafts[token] or nil
+
+  if #fields ~= 7 then
+    state.lastError = "PROFESSION_RECIPE_CRAFT_BAD_FIELD_COUNT"
+    if type(pending) == "table" then
+      finishProfessionRecipeCraftCommand(token, "ERR", "BAD_RESPONSE", pending.itemId)
+    end
+    return true
+  end
+
+  local botName = urlDecodeFieldStrict(fields[1], 64, false)
+  local skillId = parseBoundedInteger(fields[3], 1, 4294967295)
+  local spellId = parseBoundedInteger(fields[4], 1, 4294967295)
+  local itemId = parseBoundedInteger(fields[5], 0, 4294967295)
+  local status = string.upper(trim(fields[6]))
+  local reason = urlDecodeFieldStrict(fields[7], 64, false)
+
+  local valid = isValidStateToken(token)
+      and botName ~= nil
+      and skillId ~= nil
+      and spellId ~= nil
+      and itemId ~= nil
+      and (status == "OK" or status == "ERR")
+      and reason ~= nil
+      and type(pending) == "table"
+      and string.lower(botName) == pending.botNameKey
+      and skillId == pending.skillId
+      and spellId == pending.spellId
+
+  if not valid then
+    state.lastError = "PROFESSION_RECIPE_CRAFT_BAD_RESPONSE"
+    if type(pending) == "table" then
+      finishProfessionRecipeCraftCommand(token, "ERR", "BAD_RESPONSE", pending.itemId)
+    end
+    return true
+  end
+
+  state.connected = true
+  finishProfessionRecipeCraftCommand(token, status, reason, itemId)
+  return true
+end
+
+function Comm.ApplyGlyphsBeginPayload(payload)
+  local botName, token = splitOnce(payload or "", "~")
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+
+  if botName == "" or not getActiveGlyphRequest(botName, token) then
+    return false
+  end
+
+  local state = ensureBridgeState()
+  state.glyphs[string.lower(botName)] = {}
+
+  debugPrint("ADDON:RX", "GLYPHS_BEGIN", botName)
+  return true
+end
+
+function Comm.ApplyGlyphsItemPayload(payload)
+  local botName, rest = splitOnce(payload or "", "~")
+  local token, rest2 = splitOnce(rest or "", "~")
+  local index, rest3 = splitOnce(rest2 or "", "~")
+  local itemId, rest4 = splitOnce(rest3 or "", "~")
+  local glyphId, rest5 = splitOnce(rest4 or "", "~")
+  local spellId, glyphType = splitOnce(rest5 or "", "~")
+
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+
+  if botName == "" or not getActiveGlyphRequest(botName, token) then
+    return false
+  end
+
+  local entry = {
+    index = tonumber(index or "0") or 0,
+    id = tonumber(itemId or "0") or 0,
+    itemId = tonumber(itemId or "0") or 0,
+    glyphId = tonumber(glyphId or "0") or 0,
+    spellId = tonumber(spellId or "0") or 0,
+    type = trim(urlDecodeField(glyphType or "")),
+  }
+
+  local state = ensureBridgeState()
+  local key = string.lower(botName)
+  state.glyphs[key] = state.glyphs[key] or {}
+  table.insert(state.glyphs[key], entry)
+
+  debugPrint("ADDON:RX", "GLYPHS_ITEM", botName, entry.index, entry.itemId, entry.glyphId, entry.spellId, entry.type)
+  return true
+end
+
+function Comm.ApplyGlyphsPayload(payload)
+  local botName, rest = splitOnce(payload or "", "~")
+  local token, entries = splitOnce(rest or "", "~")
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+
+  if botName == "" then
+    return false
+  end
+
+  local state = ensureBridgeState()
+  local key = string.lower(botName)
+  state.glyphs[key] = {}
+
+  local fields = { strsplit("~", entries or "") }
+  for i = 1, #fields do
+    local raw = fields[i]
+    if raw and raw ~= "" then
+      local itemId, r1 = splitOnce(raw, ":")
+      local glyphId, r2 = splitOnce(r1 or "", ":")
+      local spellId, glyphType = splitOnce(r2 or "", ":")
+      table.insert(state.glyphs[key], {
+        index = #state.glyphs[key] + 1,
+        id = tonumber(itemId or "0") or 0,
+        itemId = tonumber(itemId or "0") or 0,
+        glyphId = tonumber(glyphId or "0") or 0,
+        spellId = tonumber(spellId or "0") or 0,
+        type = trim(urlDecodeField(glyphType or "")),
+      })
+    end
+  end
+
+  applyBridgeGlyphs(botName, token)
+  debugPrint("ADDON:RX", "GLYPHS", botName, #state.glyphs[key])
+  return true
+end
+
+function Comm.ApplyGlyphsEndPayload(payload)
+  local botName, token = splitOnce(payload or "", "~")
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+
+  if botName == "" or not getActiveGlyphRequest(botName, token) then
+    return false
+  end
+
+  applyBridgeGlyphs(botName, token)
+
+  local state = ensureBridgeState()
+  state.glyphActive = nil
+
+  debugPrint("ADDON:RX", "GLYPHS_END", botName)
+  return true
+end
+
+function Comm.ApplyTalentSpecEndPayload(payload)
+  local botName, token = splitOnce(payload or "", "~")
+  botName = trim(urlDecodeField(botName))
+  token = trim(token)
+
+  if botName == "" or not getActiveTalentSpecRequest(botName, token) then
+    return false
+  end
+
+  local state = ensureBridgeState()
+  state.talentSpecActive = nil
+
+  if MultiBot.ApplyBridgeTalentSpecEnd then
+    MultiBot.ApplyBridgeTalentSpecEnd(botName, token)
+  end
+
+  debugPrint("ADDON:RX", "TALENT_SPEC_END", botName)
+  return true
+end
+
+local function getActiveInventoryRequest(botName, token)
+  local state = ensureBridgeState()
+  local active = state.inventoryActive
+  if not active then
+    return nil
+  end
+
+  if trim(token) ~= trim(active.token) then
+    return nil
+  end
+
+  if string.lower(trim(botName)) ~= tostring(active.botNameKey or "") then
+    return nil
+  end
+  if not isInventoryViewCurrent(active.botName) then
+    state.inventoryActive = nil
+    return nil
+  end
+
+  return active
+end
+
+local function clearActiveInventoryRequest(botName, token)
+  local state = ensureBridgeState()
+  if getActiveInventoryRequest(botName, token) then
+    state.inventoryActive = nil
+  end
+end
+
+local function getActiveInventoryExactRequest(botName, token)
+  local state = ensureBridgeState()
+  local active = state.inventoryExactActive
+  if type(active) ~= "table" then
+    return nil
+  end
+
+  if trim(token) ~= trim(active.token) then
+    return nil
+  end
+
+  if string.lower(trim(botName)) ~= tostring(active.botNameKey or "") then
+    return nil
+  end
+  if not isInventoryViewCurrent(active.botName) then
+    state.inventoryExactActive = nil
+    return nil
+  end
+
+  return active
+end
+
+local function clearActiveInventoryExactRequest(botName, token)
+  local state = ensureBridgeState()
+  if getActiveInventoryExactRequest(botName, token) then
+    state.inventoryExactActive = nil
+  end
+end
+
+local function isWholeNumberInRange(value, minimum, maximum)
+  value = tonumber(value)
+  if not value or value ~= math.floor(value) then
+    return nil
+  end
+  if value < minimum or value > maximum then
+    return nil
+  end
+  return value
+end
+
+local function getActiveBankRequest(botName, token)
+  local state = ensureBridgeState()
+  local active = state.bankActive
+  if not active then
+    return nil
+  end
+
+  if trim(token) ~= trim(active.token) then
+    return nil
+  end
+
+  if string.lower(trim(urlDecodeField(botName))) ~= tostring(active.botNameKey or "") then
+    return nil
+  end
+
+  return active
+end
+
+local function clearActiveBankRequest(botName, token)
+  local state = ensureBridgeState()
+  if getActiveBankRequest(botName, token) then
+    state.bankActive = nil
+  end
+end
+
+local function getActiveGuildBankRequest(botName, token)
+  local state = ensureBridgeState()
+  local active = state.guildBankActive
+  if not active then
+    return nil
+  end
+
+  if trim(token) ~= trim(active.token) then
+    return nil
+  end
+
+  if string.lower(trim(urlDecodeField(botName))) ~= tostring(active.botNameKey or "") then
+    return nil
+  end
+
+  return active
+end
+
+local function clearActiveGuildBankRequest(botName, token)
+  local state = ensureBridgeState()
+  if getActiveGuildBankRequest(botName, token) then
+    state.guildBankActive = nil
+  end
+end
+
+local function getInventoryFrame()
+  return MultiBot and MultiBot.inventory or nil
+end
+
+local function getActiveSpellbookRequest(botName, token)
+  local state = ensureBridgeState()
+  local active = state.spellbookActive
+  if type(active) ~= "table" then
+    return nil
+  end
+
+  if botName and botName ~= "" and string.lower(trim(botName)) ~= trim(active.botNameKey or "") then
+    return nil
+  end
+
+  if token and token ~= "" and tostring(token) ~= tostring(active.token or "") then
+    return nil
+  end
+
+  return active
+end
+
+local function clearActiveSpellbookRequest(botName, token)
+  local state = ensureBridgeState()
+  if getActiveSpellbookRequest(botName, token) then
+    state.spellbookActive = nil
+  end
+end
+
+local function getSpellbookFrame()
+  return MultiBot and MultiBot.spellbook or nil
+end
+
+local function getActiveBotSkillRequest(botName, token)
+  local state = ensureBridgeState()
+  local active = state.botSkillActive
+  if type(active) ~= "table" then
+    return nil
+  end
+
+  if botName and botName ~= "" and string.lower(trim(botName)) ~= trim(active.botNameKey or "") then
+    return nil
+  end
+
+  if token and token ~= "" and tostring(token) ~= tostring(active.token or "") then
+    return nil
+  end
+
+  return active
+end
+
+local function getActiveBotReputationRequest(botName, token)
+  local state = ensureBridgeState()
+  local active = state.botReputationActive
+  if type(active) ~= "table" then
+    return nil
+  end
+
+  if botName and botName ~= "" and string.lower(trim(botName)) ~= trim(active.botNameKey or "") then
+    return nil
+  end
+
+  if token and token ~= "" and tostring(token) ~= tostring(active.token or "") then
+    return nil
+  end
+
+  return active
+end
+
+local function getActiveBotEmblemRequest(botName, token)
+  local state = ensureBridgeState()
+  local active = state.botEmblemActive
+  if type(active) ~= "table" then
+    return nil
+  end
+
+  if botName and botName ~= "" and string.lower(trim(botName)) ~= trim(active.botNameKey or "") then
+    return nil
+  end
+
+  if token and token ~= "" and tostring(token) ~= tostring(active.token or "") then
+    return nil
+  end
+
+  return active
+end
+
+local function getActiveProfessionRecipeRequest(botName, token, skillId)
+  local state = ensureBridgeState()
+  local active = state.professionRecipeActive
+  if type(active) ~= "table" then
+    return nil
+  end
+
+  if botName and botName ~= "" and string.lower(trim(botName)) ~= trim(active.botNameKey or "") then
+    return nil
+  end
+
+  if token and token ~= "" and tostring(token) ~= tostring(active.token or "") then
+    return nil
+  end
+
+  if skillId and tonumber(skillId or 0) ~= tonumber(active.skillId or 0) then
+    return nil
+  end
+
+  return active
+end
+
+local function getActiveEnchantTradeRequest(botName, token)
+  local state = ensureBridgeState()
+  local active = state.enchantTradeActive
+  if type(active) ~= "table" then
+    return nil
+  end
+
+  if botName and botName ~= "" and string.lower(trim(botName)) ~= trim(active.botNameKey or "") then
+    return nil
+  end
+
+  if token and token ~= "" and tostring(token) ~= tostring(active.token or "") then
+    return nil
+  end
+
+  return active
+end
+
+local function parseRecipeMaterials(raw)
+  local materials = {}
+  for token in string.gmatch(raw or "", "([^;]+)") do
+    local itemId, rest = splitOnce(token, ":")
+    local required, available = splitOnce(rest or "", ":")
+    table.insert(materials, {
+      itemId = tonumber(itemId or "0") or 0,
+      required = tonumber(required or "0") or 0,
+      available = tonumber(available or "0") or 0,
+    })
+  end
+  return materials
+end
+
+-- MB_VENDOR_BUYBACK_V1_RX_HELPER_BEGIN
+function Comm.HandleInventoryBuybackAddonMessage(opcode, payload, state)
+  if opcode == "BUYBACK_BEGIN" then
+    local fields = splitFields(payload)
+    local active = state.inventoryBuybackActive
+    if #fields ~= 3 then
+      state.lastError = "BUYBACK_BAD_RESPONSE"
+      if type(active) == "table" then active.error = "BAD_RESPONSE" end
+      return true
+    end
+
+    local botName = urlDecodeFieldStrict(fields[1], 64, false)
+    local token = trim(fields[2])
+    local count = parseBoundedInteger(fields[3], 0, 12)
+    if not botName or not isValidStateToken(token) or count == nil then
+      state.lastError = "BUYBACK_BAD_RESPONSE"
+      if type(active) == "table" then active.error = "BAD_RESPONSE" end
+      return true
+    end
+    if type(active) ~= "table" or active.token ~= token then
+      return true
+    end
+    if string.lower(botName) ~= active.botNameKey then
+      active.error = "RESPONSE_MISMATCH"
+      return true
+    end
+
+    active.begun = true
+    active.expectedCount = count
+    active.items = {}
+    active.seenSlots = {}
+    active.error = nil
+    state.connected = true
+    return true
+  end
+
+  if opcode == "BUYBACK_ITEM" then
+    local fields = splitFields(payload)
+    local active = state.inventoryBuybackActive
+    if #fields ~= 7 then
+      state.lastError = "BUYBACK_BAD_RESPONSE"
+      if type(active) == "table" then active.error = "BAD_RESPONSE" end
+      return true
+    end
+
+    local botName = urlDecodeFieldStrict(fields[1], 64, false)
+    local token = trim(fields[2])
+    local slot = parseBoundedInteger(fields[3], 74, 85)
+    local itemId = parseBoundedInteger(fields[4], 1, 4294967295)
+    local count = parseBoundedInteger(fields[5], 1, INVENTORY_BUYBACK_MAX_COUNT)
+    local price = parseBoundedInteger(fields[6], 0, 4294967295)
+    local timestamp = parseBoundedInteger(fields[7], 0, 4294967295)
+
+    if not botName or not isValidStateToken(token) or slot == nil or itemId == nil or
+        count == nil or price == nil or timestamp == nil then
+      state.lastError = "BUYBACK_BAD_RESPONSE"
+      if type(active) == "table" then active.error = "BAD_RESPONSE" end
+      return true
+    end
+    if type(active) ~= "table" or active.token ~= token then
+      return true
+    end
+    if not active.begun or string.lower(botName) ~= active.botNameKey then
+      active.error = "RESPONSE_MISMATCH"
+      return true
+    end
+    if active.seenSlots[slot] then
+      active.error = "BAD_RESPONSE"
+      return true
+    end
+
+    active.seenSlots[slot] = true
+    table.insert(active.items, {
+      slot = slot,
+      itemId = itemId,
+      count = count,
+      price = price,
+      timestamp = timestamp,
+    })
+    state.connected = true
+    return true
+  end
+
+  if opcode == "BUYBACK_END" then
+    local fields = splitFields(payload)
+    local active = state.inventoryBuybackActive
+    if #fields ~= 5 then
+      state.lastError = "BUYBACK_BAD_RESPONSE"
+      if type(active) == "table" then
+        state.inventoryBuybackActive = nil
+        if MultiBot.OnBridgeInventoryBuybackList then
+          MultiBot.OnBridgeInventoryBuybackList(active.botName, {}, {
+            token = active.token or "",
+            status = "ERR",
+            reason = "BAD_RESPONSE",
+          })
+        end
+      end
+      return true
+    end
+
+    local botName = urlDecodeFieldStrict(fields[1], 64, false)
+    local token = trim(fields[2])
+    local status = string.upper(trim(fields[3]))
+    local reason = urlDecodeFieldStrict(fields[4], 64, false)
+    local count = parseBoundedInteger(fields[5], 0, 12)
+
+    if type(active) ~= "table" or active.token ~= token then
+      return true
+    end
+
+    local valid = botName ~= nil and isValidStateToken(token) and
+      (status == "OK" or status == "ERR") and reason ~= nil and count ~= nil and
+      string.lower(botName) == active.botNameKey
+    local items = active.items or {}
+
+    if valid and status == "OK" then
+      valid = active.begun == true and active.error == nil and
+        active.expectedCount == count and #items == count
+    elseif valid then
+      valid = count == 0
+      items = {}
+    end
+
+    if not valid then
+      status = "ERR"
+      reason = active.error or "RESPONSE_MISMATCH"
+      items = {}
+    end
+
+    table.sort(items, function(left, right)
+      local leftTime = tonumber(left.timestamp or 0) or 0
+      local rightTime = tonumber(right.timestamp or 0) or 0
+      if leftTime == rightTime then
+        return (tonumber(left.slot or 0) or 0) > (tonumber(right.slot or 0) or 0)
+      end
+      return leftTime > rightTime
+    end)
+
+    state.inventoryBuybackActive = nil
+    state.connected = true
+    state.lastError = status == "OK" and nil or ("BUYBACK_" .. tostring(reason or "UNKNOWN"))
+
+    if MultiBot.OnBridgeInventoryBuybackList then
+      MultiBot.OnBridgeInventoryBuybackList(active.botName, items, {
+        token = token,
+        status = status,
+        reason = reason or "UNKNOWN",
+      })
+    end
+    return true
+  end
+
+  if opcode == "BUYBACK_RESULT" then
+    local fields = splitFields(payload)
+    if #fields ~= 8 then
+      state.lastError = "BUYBACK_BAD_RESPONSE"
+      return true
+    end
+
+    local botName = urlDecodeFieldStrict(fields[1], 64, false)
+    local token = trim(fields[2])
+    local status = string.upper(trim(fields[3]))
+    local reason = urlDecodeFieldStrict(fields[4], 64, false)
+    local slot = parseBoundedInteger(fields[5], 74, 85)
+    local itemId = parseBoundedInteger(fields[6], 1, 4294967295)
+    local count = parseBoundedInteger(fields[7], 1, INVENTORY_BUYBACK_MAX_COUNT)
+    local price = parseBoundedInteger(fields[8], 0, 4294967295)
+    local command = state.inventoryBuybackCommands and state.inventoryBuybackCommands[token] or nil
+
+    if not botName or not isValidStateToken(token) or (status ~= "OK" and status ~= "ERR") or
+        not reason or slot == nil or itemId == nil or count == nil or price == nil then
+      state.lastError = "BUYBACK_BAD_RESPONSE"
+      if command then
+        state.inventoryBuybackCommands[token] = nil
+        if MultiBot.OnBridgeInventoryBuybackResult then
+          MultiBot.OnBridgeInventoryBuybackResult(
+            command.botName, "ERR", "BAD_RESPONSE",
+            command.slot, command.itemId, command.count, command.price, command
+          )
+        end
+      end
+      return true
+    end
+    if not command then
+      return true
+    end
+
+    local responseMatches = string.lower(botName) == command.botNameKey and
+      slot == command.slot and itemId == command.itemId and
+      count == command.count and price == command.price
+
+    state.inventoryBuybackCommands[token] = nil
+    if not responseMatches then
+      status = "ERR"
+      reason = "RESPONSE_MISMATCH"
+      state.lastError = "BUYBACK_RESPONSE_MISMATCH"
+    elseif status == "OK" then
+      state.lastError = nil
+    else
+      state.lastError = "BUYBACK_" .. reason
+    end
+
+    if MultiBot.OnBridgeInventoryBuybackResult then
+      MultiBot.OnBridgeInventoryBuybackResult(
+        command.botName, status, reason,
+        command.slot, command.itemId, command.count, command.price, command
+      )
+    end
+
+    debugPrint("ADDON:RX", "BUYBACK_RESULT", botName, token, status, reason, slot, itemId, count, price)
+    return true
+  end
+  return false
+end
+-- MB_VENDOR_BUYBACK_V1_RX_HELPER_END
+
+-- MB_BOT_MAINTENANCE_V1_BEGIN
+function Comm.RunBotMaintenance(name, callback)
+  local state = ensureBridgeState()
+  name = trim(name or "")
+
+  if name == "" then
+    state.lastError = "BOT_MAINTENANCE_BAD_BOT_NAME"
+    return false
+  end
+  if not state.connected then
+    state.lastError = "BOT_MAINTENANCE_NOT_CONNECTED"
+    return false
+  end
+  if state.botMaintenanceCapable ~= true then
+    state.lastError = "BOT_MAINTENANCE_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  state.botMaintenanceCommands = type(state.botMaintenanceCommands) == "table" and state.botMaintenanceCommands or {}
+  if countTableEntries(state.botMaintenanceCommands) >= 32 then
+    state.lastError = "BOT_MAINTENANCE_TOO_MANY_REQUESTS"
+    return false
+  end
+
+  state.botMaintenanceSeq = (tonumber(state.botMaintenanceSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-bot-maintenance-" .. tostring(state.botMaintenanceSeq)
+  state.botMaintenanceCommands[token] = {
+    botName = name,
+    botNameKey = string.lower(name),
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "BOT_MAINTENANCE~" .. urlEncodeField(name) .. "~" .. token
+  if not Comm.Send("RUN", payload) then
+    state.botMaintenanceCommands[token] = nil
+    state.lastError = "BOT_MAINTENANCE_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(10.0, function()
+    local bridge = ensureBridgeState()
+    local pending = bridge.botMaintenanceCommands and bridge.botMaintenanceCommands[token] or nil
+    if type(pending) ~= "table" then
+      return
+    end
+
+    bridge.botMaintenanceCommands[token] = nil
+    bridge.lastError = "BOT_MAINTENANCE_TIMEOUT"
+    if type(pending.callback) == "function" then
+      pending.callback({
+        status = "timeout",
+        botName = pending.botName,
+        reason = "TIMEOUT",
+      })
+    end
+  end)
+
+  return token
+end
+
+function Comm.HandleBotMaintenanceAddonMessage(opcode, payload, state)
+  if opcode ~= "BOT_MAINTENANCE_ACK" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  local fields = splitFields(payload or "")
+  if #fields ~= 4 then
+    state.lastError = "BOT_MAINTENANCE_ACK_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = trim(fields[1])
+  local botName = urlDecodeFieldStrict(fields[2], 64, false)
+  local status = string.upper(trim(fields[3]))
+  local reason = urlDecodeFieldStrict(fields[4], 64, false)
+  local pending = state.botMaintenanceCommands and state.botMaintenanceCommands[token] or nil
+
+  if not isValidStateToken(token)
+      or botName == nil
+      or (status ~= "OK" and status ~= "ERR")
+      or reason == nil
+      or type(pending) ~= "table"
+      or string.lower(botName) ~= pending.botNameKey then
+    state.lastError = "BOT_MAINTENANCE_ACK_INVALID"
+    return true
+  end
+
+  state.botMaintenanceCommands[token] = nil
+  state.connected = true
+  state.lastError = status == "OK" and nil or ("BOT_MAINTENANCE_" .. reason)
+  debugPrint("ADDON:RX", "BOT_MAINTENANCE_ACK", token, botName, status, reason)
+
+  if type(pending.callback) == "function" then
+    pending.callback({
+      status = status == "OK" and "ok" or "failed",
+      botName = botName,
+      reason = reason,
+    })
+  end
+
+  return true
+end
+
+function Comm.HandleBotMaintenanceProtocolError(requestType, token, reason, state)
+  if requestType ~= "BOT_MAINTENANCE" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  token = trim(token)
+  local pending = state.botMaintenanceCommands and state.botMaintenanceCommands[token] or nil
+  if type(pending) ~= "table" then
+    return true
+  end
+
+  state.botMaintenanceCommands[token] = nil
+  local failureReason = reason or "PROTOCOL_ERROR"
+  state.lastError = "BOT_MAINTENANCE_" .. failureReason
+  if type(pending.callback) == "function" then
+    pending.callback({
+      status = "error",
+      botName = pending.botName,
+      reason = failureReason,
+    })
+  end
+  return true
+end
+-- MB_BOT_MAINTENANCE_V1_END
+-- MB_BOT_WIPE_V1_BEGIN
+function Comm.RunBotWipe(name, callback)
+  local state = ensureBridgeState()
+  name = trim(name or "")
+
+  if name == "" then
+    state.lastError = "BOT_WIPE_BAD_BOT_NAME"
+    return false
+  end
+  if not state.connected then
+    state.lastError = "BOT_WIPE_NOT_CONNECTED"
+    return false
+  end
+  if state.botWipeCapable ~= true then
+    state.lastError = "BOT_WIPE_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  state.botWipeCommands = type(state.botWipeCommands) == "table" and state.botWipeCommands or {}
+  if countTableEntries(state.botWipeCommands) >= 32 then
+    state.lastError = "BOT_WIPE_TOO_MANY_REQUESTS"
+    return false
+  end
+
+  state.botWipeSeq = (tonumber(state.botWipeSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-bot-wipe-" .. tostring(state.botWipeSeq)
+  state.botWipeCommands[token] = {
+    botName = name,
+    botNameKey = string.lower(name),
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "BOT_WIPE~" .. urlEncodeField(name) .. "~" .. token
+  if not Comm.Send("RUN", payload) then
+    state.botWipeCommands[token] = nil
+    state.lastError = "BOT_WIPE_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(5.0, function()
+    local bridgeState = ensureBridgeState()
+    local pending = bridgeState.botWipeCommands and bridgeState.botWipeCommands[token] or nil
+    if type(pending) ~= "table" then
+      return
+    end
+
+    bridgeState.botWipeCommands[token] = nil
+    bridgeState.lastError = "BOT_WIPE_TIMEOUT"
+    if type(pending.callback) == "function" then
+      pending.callback({
+        status = "timeout",
+        botName = pending.botName,
+        reason = "TIMEOUT",
+      })
+    end
+  end)
+
+  return token
+end
+
+function Comm.HandleBotWipeAddonMessage(opcode, payload, state)
+  if opcode ~= "BOT_WIPE_ACK" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  local fields = splitFields(payload or "")
+  if #fields ~= 4 then
+    state.lastError = "BOT_WIPE_ACK_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = trim(fields[1])
+  local botName = urlDecodeFieldStrict(fields[2], 64, false)
+  local status = string.upper(trim(fields[3]))
+  local reason = urlDecodeFieldStrict(fields[4], 64, false)
+  local pending = state.botWipeCommands and state.botWipeCommands[token] or nil
+
+  if not isValidStateToken(token)
+      or botName == nil
+      or (status ~= "OK" and status ~= "ERR")
+      or reason == nil
+      or reason == ""
+      or not string.match(reason, "^[A-Z0-9_]+$")
+      or type(pending) ~= "table"
+      or string.lower(botName) ~= pending.botNameKey then
+    state.lastError = "BOT_WIPE_ACK_INVALID"
+    return true
+  end
+
+  state.botWipeCommands[token] = nil
+  state.connected = true
+  state.lastError = status == "OK" and nil or ("BOT_WIPE_" .. reason)
+  debugPrint("ADDON:RX", "BOT_WIPE_ACK", token, botName, status, reason)
+
+  if type(pending.callback) == "function" then
+    pending.callback({
+      status = status == "OK" and "ok" or "failed",
+      botName = botName,
+      reason = reason,
+    })
+  end
+
+  return true
+end
+
+function Comm.HandleBotWipeProtocolError(requestType, token, reason, state)
+  if requestType ~= "BOT_WIPE" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  token = trim(token)
+  local pending = state.botWipeCommands and state.botWipeCommands[token] or nil
+  if type(pending) ~= "table" then
+    return true
+  end
+
+  state.botWipeCommands[token] = nil
+  local failureReason = reason or "PROTOCOL_ERROR"
+  state.lastError = "BOT_WIPE_" .. failureReason
+  if type(pending.callback) == "function" then
+    pending.callback({
+      status = "error",
+      botName = pending.botName,
+      reason = failureReason,
+    })
+  end
+  return true
+end
+-- MB_BOT_WIPE_V1_END
+-- MB_BOT_SUMMON_V1_BEGIN
+function Comm.RunBotSummon(name, callback)
+  local state = ensureBridgeState()
+  name = trim(name or "")
+
+  if name == "" then
+    state.lastError = "BOT_SUMMON_BAD_BOT_NAME"
+    return false
+  end
+  if not state.connected then
+    state.lastError = "BOT_SUMMON_NOT_CONNECTED"
+    return false
+  end
+  if state.botSummonCapable ~= true then
+    state.lastError = "BOT_SUMMON_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+
+  state.botSummonCommands = type(state.botSummonCommands) == "table" and state.botSummonCommands or {}
+  if countTableEntries(state.botSummonCommands) >= 32 then
+    state.lastError = "BOT_SUMMON_TOO_MANY_REQUESTS"
+    return false
+  end
+
+  state.botSummonSeq = (tonumber(state.botSummonSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-bot-summon-" .. tostring(state.botSummonSeq)
+  state.botSummonCommands[token] = {
+    botName = name,
+    botNameKey = string.lower(name),
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "BOT_SUMMON~" .. urlEncodeField(name) .. "~" .. token
+  if not Comm.Send("RUN", payload) then
+    state.botSummonCommands[token] = nil
+    state.lastError = "BOT_SUMMON_SEND_FAILED"
+    return false
+  end
+
+  safeDelay(5.0, function()
+    local bridgeState = ensureBridgeState()
+    local pending = bridgeState.botSummonCommands and bridgeState.botSummonCommands[token] or nil
+    if type(pending) ~= "table" then
+      return
+    end
+
+    bridgeState.botSummonCommands[token] = nil
+    bridgeState.lastError = "BOT_SUMMON_TIMEOUT"
+    if type(pending.callback) == "function" then
+      pending.callback({
+        status = "timeout",
+        botName = pending.botName,
+        reason = "TIMEOUT",
+      })
+    end
+  end)
+
+  return token
+end
+
+function Comm.HandleBotSummonAddonMessage(opcode, payload, state)
+  if opcode ~= "BOT_SUMMON_ACK" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  local fields = splitFields(payload or "")
+  if #fields ~= 4 then
+    state.lastError = "BOT_SUMMON_ACK_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = trim(fields[1])
+  local botName = urlDecodeFieldStrict(fields[2], 64, false)
+  local status = string.upper(trim(fields[3]))
+  local reason = urlDecodeFieldStrict(fields[4], 64, false)
+  local pending = state.botSummonCommands and state.botSummonCommands[token] or nil
+
+  if not isValidStateToken(token)
+      or botName == nil
+      or (status ~= "OK" and status ~= "ERR")
+      or reason == nil
+      or reason == ""
+      or not string.match(reason, "^[A-Z0-9_]+$")
+      or type(pending) ~= "table"
+      or string.lower(botName) ~= pending.botNameKey then
+    state.lastError = "BOT_SUMMON_ACK_INVALID"
+    return true
+  end
+
+  state.botSummonCommands[token] = nil
+  state.connected = true
+  state.lastError = status == "OK" and nil or ("BOT_SUMMON_" .. reason)
+  debugPrint("ADDON:RX", "BOT_SUMMON_ACK", token, botName, status, reason)
+
+  if type(pending.callback) == "function" then
+    pending.callback({
+      status = status == "OK" and "ok" or "failed",
+      botName = botName,
+      reason = reason,
+    })
+  end
+
+  return true
+end
+
+function Comm.HandleBotSummonProtocolError(requestType, token, reason, state)
+  if requestType ~= "BOT_SUMMON" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  token = trim(token)
+  local pending = state.botSummonCommands and state.botSummonCommands[token] or nil
+  if type(pending) ~= "table" then
+    return true
+  end
+
+  state.botSummonCommands[token] = nil
+  local failureReason = reason or "PROTOCOL_ERROR"
+  state.lastError = "BOT_SUMMON_" .. failureReason
+  if type(pending.callback) == "function" then
+    pending.callback({
+      status = "error",
+      botName = pending.botName,
+      reason = failureReason,
+    })
+  end
+  return true
+end
+-- MB_BOT_SUMMON_V1_END
+-- MB_BOT_RELEASE_V1_BEGIN
+function Comm.IsBotReleaseAvailable()
+  local state=ensureBridgeState()
+  return state.connected==true and state.botReleaseCapable==true
+end
+function Comm.RunBotRelease(name, callback)
+  local state=ensureBridgeState(); name=trim(name or "")
+  if name=="" then state.lastError="BOT_RELEASE_BAD_BOT_NAME"; return false end
+  if not state.connected then state.lastError="BOT_RELEASE_NOT_CONNECTED"; return false end
+  if state.botReleaseCapable~=true then state.lastError="BOT_RELEASE_CAPABILITY_UNAVAILABLE"; return false end
+  state.botReleaseCommands=type(state.botReleaseCommands)=="table" and state.botReleaseCommands or {}
+  if countTableEntries(state.botReleaseCommands)>=32 then state.lastError="BOT_RELEASE_TOO_MANY_REQUESTS"; return false end
+  state.botReleaseSeq=(tonumber(state.botReleaseSeq) or 0)+1
+  local token=tostring(math.floor(safeNow()*1000)).."-bot-release-"..tostring(state.botReleaseSeq)
+  state.botReleaseCommands[token]={botName=name,botNameKey=string.lower(name),callback=type(callback)=="function" and callback or nil,startedAt=safeNow()}
+  if not Comm.Send("RUN","BOT_RELEASE~"..urlEncodeField(name).."~"..token) then state.botReleaseCommands[token]=nil; state.lastError="BOT_RELEASE_SEND_FAILED"; return false end
+  safeDelay(5.0,function()
+    local bridgeState=ensureBridgeState(); local pending=bridgeState.botReleaseCommands and bridgeState.botReleaseCommands[token] or nil
+    if type(pending)~="table" then return end
+    bridgeState.botReleaseCommands[token]=nil; bridgeState.lastError="BOT_RELEASE_TIMEOUT"
+    if type(pending.callback)=="function" then pending.callback({status="timeout",botName=pending.botName,reason="TIMEOUT"}) end
+  end)
+  return token
+end
+function Comm.HandleBotReleaseAddonMessage(opcode,payload,state)
+  state=type(state)=="table" and state or ensureBridgeState()
+  if opcode=="BOT_DEATH" then
+    local botName=urlDecodeFieldStrict(payload or "",64,false)
+    if botName==nil or botName=="" then state.lastError="BOT_DEATH_INVALID"; return true end
+    state.connected=true
+    if MultiBot.auto and MultiBot.auto.release==true and state.botReleaseCapable==true then
+      Comm.RunBotRelease(botName,function(result)
+        if result and result.status=="ok" and MultiBot.auto and MultiBot.auto.release==true then Comm.RunBotSummon(botName) end
+      end)
+    end
+    return true
+  end
+  if opcode~="BOT_RELEASE_ACK" then return false end
+  local fields=splitFields(payload or "")
+  if #fields~=4 then state.lastError="BOT_RELEASE_ACK_BAD_FIELD_COUNT"; return true end
+  local token=trim(fields[1]); local botName=urlDecodeFieldStrict(fields[2],64,false); local status=string.upper(trim(fields[3])); local reason=urlDecodeFieldStrict(fields[4],64,false)
+  local pending=state.botReleaseCommands and state.botReleaseCommands[token] or nil
+  if not isValidStateToken(token) or botName==nil or (status~="OK" and status~="ERR") or reason==nil or reason=="" or not string.match(reason,"^[A-Z0-9_]+$") or type(pending)~="table" or string.lower(botName)~=pending.botNameKey then state.lastError="BOT_RELEASE_ACK_INVALID"; return true end
+  state.botReleaseCommands[token]=nil; state.connected=true; state.lastError=status=="OK" and nil or ("BOT_RELEASE_"..reason)
+  debugPrint("ADDON:RX","BOT_RELEASE_ACK",token,botName,status,reason)
+  if type(pending.callback)=="function" then pending.callback({status=status=="OK" and "ok" or "failed",botName=botName,reason=reason}) end
+  return true
+end
+function Comm.HandleBotReleaseProtocolError(requestType,token,reason,state)
+  if requestType~="BOT_RELEASE" then return false end
+  state=type(state)=="table" and state or ensureBridgeState(); token=trim(token)
+  local pending=state.botReleaseCommands and state.botReleaseCommands[token] or nil
+  if type(pending)~="table" then return true end
+  state.botReleaseCommands[token]=nil; local failureReason=reason or "PROTOCOL_ERROR"; state.lastError="BOT_RELEASE_"..failureReason
+  if type(pending.callback)=="function" then pending.callback({status="error",botName=pending.botName,reason=failureReason}) end
+  return true
+end
+-- MB_BOT_RELEASE_V1_END
+-- MB_SELFBOT_ACTION_V1_BEGIN
+function Comm.RunSelfAction(action, argument, callback)
+  local state = ensureBridgeState()
+  action = string.upper(trim(action or ""))
+  argument = trim(argument or "")
+
+  if not state.connected then
+    state.lastError = "SELF_ACTION_NOT_CONNECTED"
+    return false
+  end
+  if state.selfBotCapable ~= true then
+    state.lastError = "SELF_ACTION_SELF_BOT_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+  if state.selfActionCapable ~= true then
+    state.lastError = "SELF_ACTION_CAPABILITY_UNAVAILABLE"
+    return false
+  end
+  if state.selfBotLastActive ~= true then
+    state.lastError = "SELF_ACTION_NOT_ACTIVE"
+    return false
+  end
+
+  local allowed = action == "AUTOGEAR"
+      or action == "MAINTENANCE"
+      or action == "WAIT_ATTACK_TIME"
+  if not allowed then
+    state.lastError = "SELF_ACTION_UNSUPPORTED"
+    return false
+  end
+
+  if (action == "AUTOGEAR" or action == "MAINTENANCE") and argument ~= "" then
+    state.lastError = "SELF_ACTION_BAD_ARGUMENT"
+    return false
+  end
+  if action == "WAIT_ATTACK_TIME"
+      and argument ~= "0"
+      and argument ~= "3"
+      and argument ~= "5"
+      and argument ~= "10" then
+    state.lastError = "SELF_ACTION_BAD_ARGUMENT"
+    return false
+  end
+
+  if countTableEntries(state.selfActionCommands) >= STRATEGY_MUTATION_MAX_ACTIVE then
+    state.lastError = "SELF_ACTION_TOO_MANY_REQUESTS"
+    return false
+  end
+
+  state.selfActionSeq = (tonumber(state.selfActionSeq) or 0) + 1
+  local token = tostring(math.floor(safeNow() * 1000)) .. "-self-action-" .. tostring(state.selfActionSeq)
+  state.selfActionCommands[token] = {
+    action = action,
+    argument = argument,
+    callback = type(callback) == "function" and callback or nil,
+    startedAt = safeNow(),
+  }
+
+  local payload = "SELF_ACTION~" .. token .. "~" .. action .. "~" .. argument
+  if not Comm.Send("RUN", payload) then
+    state.selfActionCommands[token] = nil
+    state.lastError = "SELF_ACTION_SEND_FAILED"
+    return false
+  end
+
+  if MultiBot and type(MultiBot.TimerAfter) == "function" then
+    MultiBot.TimerAfter(SELF_ACTION_TIMEOUT_SECONDS, function()
+      local bridge = ensureBridgeState()
+      local pending = bridge.selfActionCommands[token]
+      if type(pending) ~= "table" then
+        return
+      end
+
+      bridge.selfActionCommands[token] = nil
+      bridge.lastError = "SELF_ACTION_TIMEOUT"
+      if type(pending.callback) == "function" then
+        pending.callback({
+          status = "timeout",
+          action = pending.action,
+          reason = "TIMEOUT",
+        })
+      end
+    end)
+  end
+
+  return token
+end
+
+function Comm.HandleSelfActionAddonMessage(opcode, payload, state)
+  if opcode ~= "SELF_ACTION_ACK" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  local fields = splitFields(payload or "")
+  if #fields ~= 4 then
+    state.lastError = "SELF_ACTION_ACK_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = trim(fields[1])
+  local action = string.upper(trim(fields[2]))
+  local status = string.upper(trim(fields[3]))
+  local reason = urlDecodeFieldStrict(fields[4], 96, true)
+  local pending = state.selfActionCommands[token]
+
+  if not isValidStateToken(token)
+      or (status ~= "OK" and status ~= "ERR")
+      or reason == nil
+      or type(pending) ~= "table"
+      or pending.action ~= action then
+    state.lastError = "SELF_ACTION_ACK_INVALID"
+    return true
+  end
+
+  state.selfActionCommands[token] = nil
+  state.connected = true
+  state.lastError = status == "OK" and nil or ("SELF_ACTION_" .. reason)
+  debugPrint("ADDON:RX", "SELF_ACTION_ACK", token, action, status, reason)
+
+  if type(pending.callback) == "function" then
+    pending.callback({
+      status = status == "OK" and "ok" or "failed",
+      action = action,
+      reason = reason,
+    })
+  end
+
+  return true
+end
+
+function Comm.HandleSelfActionProtocolError(requestType, token, reason, state)
+  if requestType ~= "SELF_ACTION" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  token = trim(token)
+  local pending = state.selfActionCommands[token]
+  if type(pending) ~= "table" then
+    return true
+  end
+
+  state.selfActionCommands[token] = nil
+  local failureReason = reason or "PROTOCOL_ERROR"
+  state.lastError = "SELF_ACTION_" .. failureReason
+  if type(pending.callback) == "function" then
+    pending.callback({
+      status = "error",
+      action = pending.action,
+      reason = failureReason,
+    })
+  end
+  return true
+end
+-- MB_SELFBOT_ACTION_V1_END
+-- MB_SELFBOT_STRATEGY_V1_RX_HELPER_BEGIN
+function Comm.HandleSelfStrategyAddonMessage(opcode, payload, state)
+  if opcode ~= "SELF_STRATEGY_ACK" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  local fields = splitFields(payload or "")
+  if #fields ~= 4 then
+    state.lastError = "SELF_STRATEGY_ACK_BAD_FIELD_COUNT"
+    return true
+  end
+
+  local token = trim(fields[1])
+  local stateScope = string.upper(trim(fields[2]))
+  local status = string.upper(trim(fields[3]))
+  local reason = urlDecodeFieldStrict(fields[4], 64, false)
+  local pending = state.selfStrategyCommands[token]
+
+  if not isValidStateToken(token)
+      or (stateScope ~= "C" and stateScope ~= "N")
+      or (status ~= "OK" and status ~= "ERR")
+      or reason == nil
+      or type(pending) ~= "table"
+      or pending.stateScope ~= stateScope then
+    state.lastError = "SELF_STRATEGY_ACK_INVALID"
+    return true
+  end
+
+  state.connected = true
+  state.lastError = status == "OK" and nil or ("SELF_STRATEGY_" .. reason)
+  debugPrint("ADDON:RX", "SELF_STRATEGY_ACK", token, stateScope, status, reason)
+  finishSelfStrategyCommand(token, {
+    status = status == "OK" and "ok" or "failed",
+    stateScope = stateScope,
+    reason = reason,
+  })
+  return true
+end
+
+function Comm.HandleSelfStrategyProtocolError(requestType, token, reason, state)
+  if requestType ~= "SELF_STRATEGY" then
+    return false
+  end
+
+  state = type(state) == "table" and state or ensureBridgeState()
+  token = trim(token)
+  local pending = state.selfStrategyCommands[token]
+  if type(pending) ~= "table" then
+    return true
+  end
+
+  finishSelfStrategyCommand(token, {
+    status = "error",
+    stateScope = pending.stateScope,
+    reason = reason or "PROTOCOL_ERROR",
+  })
+  return true
+end
+-- MB_SELFBOT_STRATEGY_V1_RX_HELPER_END
+function Comm.IsExpectedBridgeSender(sender)
+  local expectedSender = getPlayerName()
+  local senderName = trim(sender or "")
+  senderName = string.gsub(senderName, "%-.*$", "")
+  if not expectedSender or string.lower(senderName) ~= string.lower(expectedSender) then
+    debugPrint("ADDON:RX:DROP", "SENDER", sender or "")
+    return false
+  end
+
+  return true
+end
+
+local function resetCapabilityFlags(state)
+  for _, stateField in pairs(CAPABILITY_STATE_FIELDS) do
+    state[stateField] = false
+  end
+end
+
+local function finishCapabilityResolution(state, debugOpcode, payload)
+  state.capabilityFallbackDeadline = 0
+  state.capabilityFallbackGeneration = 0
+  state.capabilitiesResolved = true
+  debugPrint("ADDON:RX", debugOpcode, payload or "")
+  flushPendingStateRefreshes()
+  if MultiBot and type(MultiBot.rewardOnBridgeCapabilityReady) == "function" then
+    MultiBot.rewardOnBridgeCapabilityReady()
+  end  if state.selfBotCapable == true and type(Comm.RequestSelfBotState) == "function" then
+    Comm.RequestSelfBotState()
+  end
+  if state.altRosterCapable == true and type(Comm.RequestAltRoster) == "function" then
+    Comm.RequestAltRoster()
+  end
+  if state.botLifecycleCapable == true
+      and state.botTargetResolveCapable == true
+      and type(MultiBot.AutoStructuredGroupReconnect) == "function" then
+    MultiBot.AutoStructuredGroupReconnect()
+  end
+  if MultiBot.RefreshEnchantingEveryButtons then
+    MultiBot.RefreshEnchantingEveryButtons()
+  end
+  if state.formationCapable == true and type(MultiBot.RefreshFormationAuthoritative) == "function" then
+    MultiBot.RefreshFormationAuthoritative(0)
+  end
+end
+
+local function handleCapabilityMessage(opcode, payload, state)
+  if opcode == "CAPS_BEGIN" then
+    resetCapabilityFlags(state)
+    state.questRewardPolicy = nil
+    state.capabilityBatchActive = true
+    state.capabilitiesResolved = false
+    debugPrint("ADDON:RX", "CAPS_BEGIN")
+    return true
+  end
+
+  if opcode == "CAPS" then
+    if not state.capabilityBatchActive then
+      resetCapabilityFlags(state)
+      state.questRewardPolicy = nil
+    end
+
+    for capability in string.gmatch(payload or "", "([^,]+)") do
+      capability = trim(capability)
+      local stateField = CAPABILITY_STATE_FIELDS[capability]
+      if stateField then
+        state[stateField] = true
+      end
+    end
+
+    if state.capabilityBatchActive then
+      debugPrint("ADDON:RX", "CAPS_PART", payload or "")
+      return true
+    end
+
+    finishCapabilityResolution(state, "CAPS", payload)
+    return true
+  end
+
+  -- MB_QUEST_REWARD_POLICY_V1_RX_BEGIN
+  if opcode == "QUEST_REWARD_POLICY" then
+    if state.questRewardPolicyCapable ~= true then
+      state.lastError = "QUEST_REWARD_POLICY_UNEXPECTED"
+      return true
+    end
+
+    local policy = trim(string.upper(tostring(payload or "")))
+    if policy ~= "AUTO" and policy ~= "MANUAL" then
+      state.lastError = "QUEST_REWARD_POLICY_BAD_VALUE"
+      return true
+    end
+
+    state.questRewardPolicy = policy
+    if policy == "AUTO" and MultiBot and MultiBot.reward and MultiBot.reward.Hide then
+      MultiBot.reward:Hide()
+    end
+
+    debugPrint("ADDON:RX", "QUEST_REWARD_POLICY", policy)
+    if MultiBot and type(MultiBot.rewardOnBridgeCapabilityReady) == "function" then
+      MultiBot.rewardOnBridgeCapabilityReady()
+    end
+    return true
+  end
+  -- MB_QUEST_REWARD_POLICY_V1_RX_END
+
+  if opcode == "CAPS_END" then
+    if not state.capabilityBatchActive then
+      return true
+    end
+
+    state.capabilityBatchActive = false
+    finishCapabilityResolution(state, "CAPS_END")
+    return true
+  end
+
+  return false
+end
+
+local function handleInventoryItemDepositExactResponse(payload, state)
+  local fields = splitFields(payload)
+  local token = trim(fields[2] or "")
+  local command = isValidStateToken(token) and state.inventoryItemDepositExacts and state.inventoryItemDepositExacts[token] or nil
+  if #fields ~= 10 then
+    state.lastError = "ITEM_DEPOSIT_EXACT_BAD_FIELD_COUNT"
+    if command then
+      state.inventoryItemDepositExacts[token] = nil
+      if MultiBot.OnBridgeInventoryItemActionResult then
+        MultiBot.OnBridgeInventoryItemActionResult(
+          command.botName, command.action, command.srcItemId,
+          "ERR", "BAD_RESPONSE", 0, command
+        )
+      end
+    end
+    return true
+  end
+
+  local botName = urlDecodeFieldStrict(fields[1], 64, false)
+  local status = string.upper(trim(fields[3]))
+  local reason = urlDecodeFieldStrict(fields[4], 64, false)
+  local action = string.upper(trim(fields[5]))
+  local srcBag = parseBoundedInteger(fields[6], 0, 255)
+  local srcSlot = parseBoundedInteger(fields[7], 0, 255)
+  local srcItemId = parseBoundedInteger(fields[8], 1, 4294967295)
+  local srcCount = parseBoundedInteger(fields[9], 1, INVENTORY_ITEM_DEPOSIT_EXACT_MAX_COUNT)
+  local movedCount = parseBoundedInteger(fields[10], 0, INVENTORY_ITEM_DEPOSIT_EXACT_MAX_COUNT)
+
+  state.connected = true
+  if not botName
+      or not isValidStateToken(token)
+      or (status ~= "OK" and status ~= "ERR")
+      or not reason
+      or (action ~= "BANK_DEPOSIT" and action ~= "GBANK_DEPOSIT")
+      or srcBag == nil
+      or srcSlot == nil
+      or srcItemId == nil
+      or srcCount == nil
+      or movedCount == nil then
+    state.lastError = "ITEM_DEPOSIT_EXACT_BAD_RESPONSE"
+    if command then
+      state.inventoryItemDepositExacts[token] = nil
+      if MultiBot.OnBridgeInventoryItemActionResult then
+        MultiBot.OnBridgeInventoryItemActionResult(
+          command.botName, command.action, command.srcItemId,
+          "ERR", "BAD_RESPONSE", 0, command
+        )
+      end
+    end
+    return true
+  end
+
+  if not command then
+    return true
+  end
+
+  local responseMatches = string.lower(botName) == command.botNameKey
+      and action == command.action
+      and srcBag == command.srcBag
+      and srcSlot == command.srcSlot
+      and srcItemId == command.srcItemId
+      and srcCount == command.srcCount
+      and ((status == "OK" and movedCount == command.srcCount)
+        or (status == "ERR" and movedCount == 0))
+
+  state.inventoryItemDepositExacts[token] = nil
+  if not responseMatches then
+    status = "ERR"
+    reason = "RESPONSE_MISMATCH"
+    movedCount = 0
+    state.lastError = "ITEM_DEPOSIT_EXACT_RESPONSE_MISMATCH"
+  elseif status == "OK" then
+    state.lastError = nil
+  else
+    state.lastError = "ITEM_DEPOSIT_EXACT_" .. reason
+  end
+
+  if MultiBot.OnBridgeInventoryItemActionResult then
+    MultiBot.OnBridgeInventoryItemActionResult(
+      command.botName, command.action, command.srcItemId,
+      status, reason, movedCount, command
+    )
+  end
+
+  debugPrint(
+    "ADDON:RX", "ITEM_DEPOSIT_EXACT",
+    botName, token, status, reason, action,
+    srcBag, srcSlot, srcItemId, srcCount, movedCount
+  )
+  return true
+end
+
+-- MB_LOOT_RULE_ITEM_V1_RX_BEGIN
+local function handleLootRuleItemResponse(payload, state)
+  local fields = splitFields(payload or "")
+  local token = trim(fields[3] or "")
+  local pending = isValidStateToken(token) and state.lootRuleItemCommands[token] or nil
+  if #fields ~= 9 then
+    state.lastError = "LOOT_RULE_ITEM_BAD_FIELD_COUNT"
+    if type(pending) == "table" then
+      state.lootRuleItemCommands[token] = nil
+      if MultiBot.OnLootRuleItemResult then
+        MultiBot.OnLootRuleItemResult(
+          pending.scope, pending.target, pending.action, pending.itemId,
+          "ERR", "BAD_RESPONSE", 0, 0, pending
+        )
+      end
+    end
+    return true
+  end
+
+  local scope = string.upper(trim(fields[1]))
+  local target = urlDecodeFieldStrict(fields[2], 64, true)
+  local action = string.upper(trim(fields[4]))
+  local itemId = parseBoundedInteger(fields[5], 1, 4294967295)
+  local status = string.upper(trim(fields[6]))
+  local reason = urlDecodeFieldStrict(fields[7], 64, false)
+  local matched = parseBoundedInteger(fields[8], 0, 128)
+  local changed = parseBoundedInteger(fields[9], 0, 128)
+  local validScope = scope == "ALL" or scope == "RAID" or scope == "GROUP"
+      or scope == "PARTY" or scope == "BOT"
+
+  state.connected = true
+  if not validScope
+      or target == nil
+      or not isValidStateToken(token)
+      or (action ~= "ADD" and action ~= "REMOVE")
+      or itemId == nil
+      or (status ~= "OK" and status ~= "ERR")
+      or reason == nil
+      or matched == nil
+      or changed == nil
+      or changed > matched
+      or (status == "OK" and matched == 0)
+      or (status == "ERR" and changed ~= 0) then
+    state.lastError = "LOOT_RULE_ITEM_BAD_RESPONSE"
+    if type(pending) == "table" then
+      state.lootRuleItemCommands[token] = nil
+      if MultiBot.OnLootRuleItemResult then
+        MultiBot.OnLootRuleItemResult(
+          pending.scope, pending.target, pending.action, pending.itemId,
+          "ERR", "BAD_RESPONSE", 0, 0, pending
+        )
+      end
+    end
+    return true
+  end
+
+  if type(pending) ~= "table" then
+    return true
+  end
+
+  local responseMatches = scope == pending.scope
+      and string.lower(target) == pending.targetKey
+      and action == pending.action
+      and itemId == pending.itemId
+  state.lootRuleItemCommands[token] = nil
+
+  if not responseMatches then
+    status = "ERR"
+    reason = "RESPONSE_MISMATCH"
+    matched = 0
+    changed = 0
+    state.lastError = "LOOT_RULE_ITEM_RESPONSE_MISMATCH"
+  elseif status == "OK" then
+    state.lastError = nil
+  else
+    state.lastError = "LOOT_RULE_ITEM_" .. reason
+  end
+
+  if MultiBot.OnLootRuleItemResult then
+    MultiBot.OnLootRuleItemResult(
+      pending.scope, pending.target, pending.action, pending.itemId,
+      status, reason, matched, changed, pending
+    )
+  end
+
+  debugPrint(
+    "ADDON:RX", "LOOT_RULE_ITEM_RESULT",
+    scope, target, token, action, itemId, status, reason, matched, changed
+  )
+  return true
+end
+-- MB_LOOT_RULE_ITEM_V1_RX_END
+local function handleInventoryItemTradeResponse(payload, state)
+  local fields = splitFields(payload)
+  local token = trim(fields[2] or "")
+  local command = isValidStateToken(token) and state.inventoryItemTrades and state.inventoryItemTrades[token] or nil
+  if #fields ~= 9 then
+    state.lastError = "ITEM_TRADE_BAD_FIELD_COUNT"
+    if command then
+      state.inventoryItemTrades[token] = nil
+      if MultiBot.OnBridgeInventoryItemTradeResult then
+        MultiBot.OnBridgeInventoryItemTradeResult(
+          command.botName, "ERR", "BAD_RESPONSE",
+          command.srcBag, command.srcSlot, command.srcItemId, command.srcCount, 255, command
+        )
+      end
+    end
+    return true
+  end
+
+  local botName = urlDecodeFieldStrict(fields[1], 64, false)
+  local status = string.upper(trim(fields[3]))
+  local reason = urlDecodeFieldStrict(fields[4], 64, false)
+  local srcBag = parseBoundedInteger(fields[5], 0, 255)
+  local srcSlot = parseBoundedInteger(fields[6], 0, 255)
+  local srcItemId = parseBoundedInteger(fields[7], 1, 4294967295)
+  local srcCount = parseBoundedInteger(fields[8], 1, INVENTORY_ITEM_TRADE_MAX_COUNT)
+  local tradeSlot = parseBoundedInteger(fields[9], 0, 255)
+
+  state.connected = true
+  if not botName or not isValidStateToken(token) or (status ~= "OK" and status ~= "ERR") or not reason or
+    srcBag == nil or srcSlot == nil or srcItemId == nil or srcCount == nil or tradeSlot == nil then
+    state.lastError = "ITEM_TRADE_BAD_RESPONSE"
+    if command then
+      state.inventoryItemTrades[token] = nil
+      if MultiBot.OnBridgeInventoryItemTradeResult then
+        MultiBot.OnBridgeInventoryItemTradeResult(
+          command.botName, "ERR", "BAD_RESPONSE",
+          command.srcBag, command.srcSlot, command.srcItemId, command.srcCount, 255, command
+        )
+      end
+    end
+    return true
+  end
+
+  if not command then
+    return true
+  end
+
+  local responseMatches = string.lower(botName) == command.botNameKey and
+    srcBag == command.srcBag and srcSlot == command.srcSlot and
+    srcItemId == command.srcItemId and srcCount == command.srcCount and
+    ((status == "OK" and tradeSlot >= 0 and tradeSlot <= 5) or status == "ERR")
+
+  state.inventoryItemTrades[token] = nil
+  if not responseMatches then
+    status = "ERR"
+    reason = "RESPONSE_MISMATCH"
+    tradeSlot = 255
+    state.lastError = "ITEM_TRADE_RESPONSE_MISMATCH"
+  elseif status == "OK" then
+    state.lastError = nil
+  else
+    state.lastError = "ITEM_TRADE_" .. reason
+  end
+
+  if MultiBot.OnBridgeInventoryItemTradeResult then
+    MultiBot.OnBridgeInventoryItemTradeResult(
+      command.botName, status, reason,
+      command.srcBag, command.srcSlot, command.srcItemId, command.srcCount, tradeSlot, command
+    )
+  end
+
+  debugPrint("ADDON:RX", "INVENTORY_ITEM_TRADE", botName, token, status, reason, srcBag, srcSlot, srcItemId, srcCount, tradeSlot)
+  return true
+end
+
+local function handleProfessionRecipeTargetResponse(payload)
+  return Comm.ApplyProfessionRecipeTargetResultPayload(payload)
+end
+
+-- New structured response handlers should be registered here instead of adding
+-- another large branch directly inside Comm.HandleAddonMessage.
+local STRUCTURED_OPCODE_HANDLERS = {
+  ITEM_DEPOSIT_EXACT = handleInventoryItemDepositExactResponse,
+  LOOT_RULE_ITEM_RESULT = handleLootRuleItemResponse,
+  INVENTORY_ITEM_TRADE = handleInventoryItemTradeResponse,
+  QUEST_ABANDON_RESULT = handleQuestAbandonResponse,
+  QUEST_ABANDON_TARGET_RESULT = Comm.HandleQuestAbandonTargetResponse,
+  TALENT_APPLY_RESULT = handleTalentApplyResponse,
+  TALENT_SPEC_CURRENT = handleTalentSpecCurrentResponse,
+  TALENT_SPEC_APPLY_RESULT = handleTalentSpecApplyResponse,
+  GLYPH_EQUIP_RESULT = Comm.HandleGlyphEquipResponse,
+  CRAFT_RECIPE_TARGET_RESULT = handleProfessionRecipeTargetResponse,
+}
+
+-- MB_QUEST_TALK_V1_FEEDBACK_BEGIN
+
+function Comm._QuestTalkFeedbackDisplayName(name)
+
+  name = trim(tostring(name or ""))
+
+  if name == "" then
+
+    return ""
+
+  end
+
+
+
+  local dash = string.find(name, "-", 1, true)
+
+  if dash and dash > 1 then
+
+    name = string.sub(name, 1, dash - 1)
+
+  end
+
+
+
+  return name
+
+end
+
+
+
+function Comm._QuestFeedbackParts(rawMessage)
+  rawMessage = tostring(rawMessage or "")
+  local plain = string.gsub(rawMessage, "|c%x%x%x%x%x%x%x%x", "")
+  plain = string.gsub(plain, "|r", "")
+
+  local sourcePrefix, localeKey, feedbackColor = Comm._QuestAcceptAllFeedbackPrefix(plain)
+  if sourcePrefix == nil and string.sub(plain, 1, string.len("Quest Incomplete: ")) == "Quest Incomplete: " then
+    sourcePrefix = "Quest Incomplete: "
+    localeKey = "quest.feedback.incomplete"
+    feedbackColor = "yellow"
+  end
+  if sourcePrefix == nil and string.sub(plain, 1, string.len("Quest Incompleted: ")) == "Quest Incompleted: " then
+    sourcePrefix = "Quest Incompleted: "
+    localeKey = "quest.feedback.incomplete"
+    feedbackColor = "yellow"
+  end
+  if sourcePrefix == nil then
+    return nil, nil, nil
+  end
+
+  local suffix = string.sub(plain, string.len(sourcePrefix) + 1)
+  local questLink = string.find(rawMessage, "|Hquest:", 1, true)
+  if questLink then
+    local searchAt = 1
+    local lastColorStart = nil
+    while true do
+      local colorStart = string.find(rawMessage, "|c", searchAt, true)
+      if not colorStart or colorStart >= questLink then
+        break
+      end
+      lastColorStart = colorStart
+      searchAt = colorStart + 2
+    end
+    suffix = string.sub(rawMessage, lastColorStart or questLink)
+  end
+  return localeKey, feedbackColor, suffix
+end
+function Comm._ShowQuestFeedbackMessage(rawMessage, sender)
+  local localeKey, feedbackColor, suffix = Comm._QuestFeedbackParts(rawMessage)
+  if localeKey == nil then
+    return false
+  end
+
+  local displayName = Comm._QuestTalkFeedbackDisplayName(sender)
+  if displayName == "" then
+    return false
+  end
+
+  local state = MultiBot and MultiBot.bridge or nil
+  local dedupeKey = displayName .. "\031" .. localeKey .. "\031" .. tostring(suffix or "")
+  local now = safeNow()
+  if type(state) == "table"
+      and state.questFeedbackLastKey == dedupeKey
+      and now - (tonumber(state.questFeedbackLastAt) or 0) <= 0.25 then
+    return true
+  end
+  if type(state) == "table" then
+    state.questFeedbackLastKey = dedupeKey
+    state.questFeedbackLastAt = now
+  end
+
+  systemMessage("[" .. displayName .. "] " .. L(localeKey) .. tostring(suffix or ""), feedbackColor)
+  return true
+end
+
+function Comm.HandleQuestTalkFeedbackAddonMessage(prefix, message, distribution, sender)
+  if type(prefix) ~= "string" or prefix == "" or tostring(message or "") ~= "" then
+    return false
+  end
+
+  if distribution ~= "PARTY" then
+    return false
+  end
+
+  local state = MultiBot and MultiBot.bridge or nil
+  if type(state) ~= "table"
+      or state.connected ~= true
+      or type(state.groupOrderCommands) ~= "table" then
+    return false
+  end
+
+  local senderKey = Comm._NormalizeFleeWhisperName(sender)
+  if senderKey == "" then
+    return false
+  end
+
+  for _, pending in pairs(state.groupOrderCommands) do
+    if type(pending) == "table"
+        and pending.order == "QUEST_TALK"
+        and type(pending.feedbackNames) == "table"
+        and pending.feedbackNames[senderKey] then
+      return Comm._ShowQuestFeedbackMessage(prefix, sender)
+    end
+  end
+
+  return false
+end
+-- MB_QUEST_TALK_V1_FEEDBACK_END
+
+-- MB_QUEST_GAMEOBJECT_USE_V1_FEEDBACK_BEGIN
+function Comm._QuestGameObjectUseFeedbackDisplayName(name)
+  name = trim(tostring(name or ""))
+  if name == "" then
+    return ""
+  end
+
+  local dash = string.find(name, "-", 1, true)
+  if dash and dash > 1 then
+    name = string.sub(name, 1, dash - 1)
+  end
+
+  return name
+end
+
+function Comm.HandleQuestGameObjectUseFeedbackAddonMessage(prefix, message, distribution, sender)
+  if type(prefix) ~= "string" or prefix == "" or tostring(message or "") ~= "" then
+    return false
+  end
+
+  if distribution ~= "PARTY" then
+    return false
+  end
+
+  local state = MultiBot and MultiBot.bridge or nil
+  if type(state) ~= "table"
+      or state.connected ~= true
+      or type(state.groupOrderCommands) ~= "table" then
+    return false
+  end
+
+  local senderKey = Comm._NormalizeFleeWhisperName(sender)
+  if senderKey == "" then
+    return false
+  end
+
+  for _, pending in pairs(state.groupOrderCommands) do
+    if type(pending) == "table"
+        and pending.order == "QUEST_GAMEOBJECT_USE"
+        and pending.feedbackName == senderKey then
+      local displayName = Comm._QuestGameObjectUseFeedbackDisplayName(sender)
+      if displayName == "" then
+        return false
+      end
+
+      systemMessage("[" .. displayName .. "] " .. prefix)
+      return true
+    end
+  end
+
+  return false
+end
+-- MB_QUEST_GAMEOBJECT_USE_V1_FEEDBACK_END
+-- MB_QUEST_REWARD_V1_FEEDBACK_BEGIN
+function Comm._QuestRewardFeedbackDisplayName(name)
+  name = trim(tostring(name or ""))
+  if name == "" then
+    return ""
+  end
+
+  local dash = string.find(name, "-", 1, true)
+  if dash and dash > 1 then
+    name = string.sub(name, 1, dash - 1)
+  end
+
+  return name
+end
+
+function Comm.HandleQuestRewardFeedbackAddonMessage(prefix, message, distribution, sender)
+  if type(prefix) ~= "string" or prefix == "" or tostring(message or "") ~= "" then
+    return false
+  end
+
+  if distribution ~= "PARTY" then
+    return false
+  end
+
+  local state = MultiBot and MultiBot.bridge or nil
+  if type(state) ~= "table"
+      or state.connected ~= true
+      or type(state.groupOrderCommands) ~= "table" then
+    return false
+  end
+
+  local senderKey = Comm._NormalizeFleeWhisperName(sender)
+  if senderKey == "" then
+    return false
+  end
+
+  for _, pending in pairs(state.groupOrderCommands) do
+    if type(pending) == "table"
+        and pending.order == "QUEST_REWARD"
+        and pending.feedbackName == senderKey then
+      local displayName = Comm._QuestRewardFeedbackDisplayName(sender)
+      if displayName == "" then
+        return false
+      end
+
+      systemMessage("[" .. displayName .. "] " .. prefix)
+      return true
+    end
+  end
+
+  return false
+end
+-- MB_QUEST_REWARD_V1_FEEDBACK_END
+function Comm.HandleAddonMessage(prefix, message, distribution, sender)
+  if Comm.HandleQuestRewardFeedbackAddonMessage(prefix, message, distribution, sender) then
+    return true
+  end
+  if Comm.HandleQuestGameObjectUseFeedbackAddonMessage(prefix, message, distribution, sender) then
+    return true
+  end
+  if Comm.HandleQuestAcceptAllFeedbackAddonMessage(prefix, message, distribution, sender) then
+    return true
+  end
+
+  if Comm.HandleQuestTalkFeedbackAddonMessage(prefix, message, distribution, sender) then
+
+    return true
+
+  end
+  if prefix ~= Comm.prefix then
+    return false
+  end
+
+  if not Comm.IsExpectedBridgeSender(sender) then
+    return true
+  end
+
+  local state = ensureBridgeState()
+  local opcode, payload = splitOnce(message or "", "~")
+  opcode = string.upper(trim(opcode))
+
+  if MultiBot.RandomBotDirectory and MultiBot.RandomBotDirectory.HandlePacket(opcode, payload) then
+    return true
+  end
+
+  if Comm._HandleEquipObservePacket(opcode, payload, state) then
+    return true
+  end
+
+  if opcode ~= "CAPS" and opcode ~= "CAPS_BEGIN" and opcode ~= "CAPS_END" then
+    maybeResolveCapabilityFallback(state.connectionGeneration)
+  end
+
+  if opcode == "HELLO_ACK" then
+    local protocol, serverName = splitOnce(payload, "~")
+    local wasConnected = state.connected == true
+    local generation = state.connectionGeneration
+
+    state.connected = true
+    state.protocol = protocol ~= "" and protocol or nil
+    state.server = serverName ~= "" and serverName or nil
+    state.lastError = nil
+    debugPrint("ADDON:RX", "HELLO_ACK", payload or "")
+    armCapabilityFallback(generation)
+
+    if (not wasConnected or state.bootstrapPending) and state.protocol then
+      safeDelay(0.10, function()
+        local bridge = ensureBridgeState()
+        if bridge.connectionGeneration == generation and bridge.connected then
+          bridge.bootstrapPending = false
+          bridge.bootstrapDeadline = 0
+          if Comm.RequestRoster then
+            Comm.RequestRoster()
+          end
+          requestBootstrapStates()
+          if Comm.RequestBotDetails then
+            Comm.RequestBotDetails()
+          end
+        end
+      end)
+    else
+      state.bootstrapPending = false
+      state.bootstrapDeadline = 0
+    end
+
+    return true
+  end
+
+  if opcode == "PONG" then
+    state.connected = true
+    state.lastPongAt = safeNow()
+    state.lastError = nil
+    state.bootstrapPending = false
+    state.bootstrapDeadline = 0
+    debugPrint("ADDON:RX", "PONG", payload or "")
+    return true
+  end
+
+  if handleCapabilityMessage(opcode, payload, state) then
+    return true
+  end
+
+  if MultiBot.Autogear and MultiBot.Autogear.HandleMessage(opcode, payload) then
+    return true
+  end
+
+  if opcode == "WEAPON_ENCHANT" then
+    state.connected = true
+
+    local fields = splitFields(payload)
+    if #fields ~= 9 then
+      state.lastError = "WEAPON_ENCHANT_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local token = trim(fields[1])
+    local botName = urlDecodeFieldStrict(fields[2], 64, false)
+    local status = string.upper(trim(fields[3]))
+    local mainItem = parseBoundedInteger(fields[4], 0, 4294967295)
+    local mainEnchant = parseBoundedInteger(fields[5], 0, 4294967295)
+    local mainDuration = parseBoundedInteger(fields[6], 0, 4294967295)
+    local offItem = parseBoundedInteger(fields[7], 0, 4294967295)
+    local offEnchant = parseBoundedInteger(fields[8], 0, 4294967295)
+    local offDuration = parseBoundedInteger(fields[9], 0, 4294967295)
+
+    if not isValidStateToken(token)
+        or not botName
+        or (status ~= "OK" and status ~= "RATE_LIMIT" and status ~= "BOT_NOT_VISIBLE" and status ~= "FORBIDDEN")
+        or mainItem == nil
+        or mainEnchant == nil
+        or mainDuration == nil
+        or offItem == nil
+        or offEnchant == nil
+        or offDuration == nil then
+      state.lastError = "WEAPON_ENCHANT_BAD_PAYLOAD"
+      return true
+    end
+
+    state.lastError = status == "OK" and nil or ("WEAPON_ENCHANT_" .. status)
+    debugPrint("ADDON:RX", "WEAPON_ENCHANT", payload or "")
+
+    if MultiBot.OnWeaponEnchantDebug then
+      MultiBot.OnWeaponEnchantDebug({
+        token = token,
+        botName = botName,
+        status = status,
+        mainItem = mainItem,
+        mainEnchant = mainEnchant,
+        mainDuration = mainDuration,
+        offItem = offItem,
+        offEnchant = offEnchant,
+        offDuration = offDuration,
+      })
+    end
+
+    return true
+  end
+
+  if opcode == "WARLOCK_STONE_STATE" then
+    state.connected = true
+
+    local fields = splitFields(payload)
+    local token = trim(fields[1] or "")
+    local pending = isValidStateToken(token) and state.warlockStoneStateRequests[token] or nil
+    if #fields ~= 6 then
+      state.lastError = "WARLOCK_STONE_STATE_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local botName = urlDecodeFieldStrict(fields[2], 64, false)
+    local status = string.upper(trim(fields[3]))
+    local kind = string.upper(trim(fields[4]))
+    local enchantId = parseBoundedInteger(fields[5], 0, 4294967295)
+    local duration = parseBoundedInteger(fields[6], 0, 4294967295)
+
+    if not isValidStateToken(token)
+        or not botName
+        or (status ~= "OK" and status ~= "RATE_LIMIT" and status ~= "BOT_NOT_VISIBLE" and status ~= "FORBIDDEN")
+        or (kind ~= "NONE" and kind ~= "FIRESTONE" and kind ~= "SPELLSTONE" and kind ~= "OTHER")
+        or enchantId == nil
+        or duration == nil
+        or type(pending) ~= "table"
+        or pending.botNameKey ~= string.lower(botName)
+        or (status == "OK" and kind == "NONE" and enchantId ~= 0)
+        or (status == "OK" and kind ~= "NONE" and enchantId == 0) then
+      state.lastError = "WARLOCK_STONE_STATE_BAD_PAYLOAD"
+      return true
+    end
+
+    state.warlockStoneStateRequests[token] = nil
+    state.lastError = status == "OK" and nil or ("WARLOCK_STONE_STATE_" .. status)
+    debugPrint("ADDON:RX", "WARLOCK_STONE_STATE", payload or "")
+
+    if type(pending.callback) == "function" then
+      pending.callback(status == "OK", {
+        token = token,
+        botName = botName,
+        status = status,
+        kind = kind,
+        enchantId = enchantId,
+        duration = duration,
+      })
+    end
+
+    return true
+  end
+
+  -- MB_ISSUE33_SELF_BOT_V1_RX_BEGIN
+  if Comm.HandleSelfBotAddonMessage(opcode, payload, state) then
+    return true
+  end
+  -- MB_ISSUE33_SELF_BOT_V1_RX_END
+
+  -- MB_SELFBOT_ACTION_V1_RX_BEGIN
+  if Comm.HandleSelfActionAddonMessage(opcode, payload, state) then
+    return true
+  end
+  -- MB_SELFBOT_ACTION_V1_RX_END
+
+  -- MB_SELFBOT_STRATEGY_V1_RX_BEGIN
+  if Comm.HandleSelfStrategyAddonMessage(opcode, payload, state) then
+    return true
+  end
+  -- MB_SELFBOT_STRATEGY_V1_RX_END
+
+  -- MB_FLEE_ORDER_V1_RX_BEGIN
+  if Comm.HandleFleeOrderAddonMessage(opcode, payload, state) then
+    return true
+  end
+  -- MB_FLEE_ORDER_V1_RX_END
+
+  -- MB_BOT_RESET_V1_RX_BEGIN
+  if Comm.HandleBotResetAddonMessage(opcode, payload, state) then
+    return true
+  end
+  -- MB_BOT_RESET_V1_RX_END
+
+  -- MB_ADDON_ALT_ROSTER_LIFECYCLE_V1_RX_BEGIN
+  if Comm.HandleAltBotLifecycleAddonMessage(opcode, payload, state) then
+    return true
+  end
+  -- MB_ADDON_ALT_ROSTER_LIFECYCLE_V1_RX_END
+
+  if opcode == "ROSTER" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyRosterPayload(payload)
+    return true
+  end
+
+  if opcode == "STATE_BEGIN" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyStateBeginPayload(payload)
+    return true
+  end
+
+  if opcode == "STATE_ITEM" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyStateItemPayload(payload)
+    return true
+  end
+
+  if opcode == "STATE_END" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyStateEndPayload(payload)
+    return true
+  end
+
+  if opcode == "STATE_ABORT" then
+    state.connected = true
+    Comm.ApplyStateAbortPayload(payload)
+    return true
+  end
+
+  if opcode == "STATES_BEGIN" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyStatesBeginPayload(payload)
+    return true
+  end
+
+  if opcode == "STATES_END" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyStatesEndPayload(payload)
+    return true
+  end
+
+  if opcode == "STATE" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyStatePayload(payload)
+    return true
+  end
+
+  if opcode == "STATES" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyStatesPayload(payload)
+    return true
+  end
+
+  if opcode == "DETAIL" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyBotDetailPayload(payload)
+    return true
+  end
+
+  if opcode == "DETAILS" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyBotDetailsPayload(payload)
+    return true
+  end
+
+  if opcode == "PROFESSION" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyBotProfessionPayload(payload)
+    return true
+  end
+
+  if opcode == "PROFESSIONS" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyBotProfessionsPayload(payload)
+    return true
+  end
+
+  if opcode == "TALENT_SPEC_BEGIN" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyTalentSpecBeginPayload(payload)
+    return true
+  end
+
+  if opcode == "TALENT_SPEC_ITEM" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyTalentSpecItemPayload(payload)
+    return true
+  end
+
+  if opcode == "TALENT_SPEC_END" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyTalentSpecEndPayload(payload)
+    return true
+  end
+
+  if opcode == "OUTFITS_BEGIN" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyOutfitsBeginPayload(payload)
+  end
+
+  if opcode == "OUTFITS_ITEM" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyOutfitsItemPayload(payload)
+  end
+
+  if opcode == "OUTFITS_END" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyOutfitsEndPayload(payload)
+  end
+
+  if opcode == "OUTFITS_FBEGIN" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyOutfitsFramedBeginPayload(payload)
+  end
+
+  if opcode == "OUTFITS_FPART" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyOutfitsFramedPartPayload(payload)
+  end
+
+  if opcode == "OUTFITS_FEND" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyOutfitsFramedEndPayload(payload)
+  end
+
+  if opcode == "OUTFITS_CMD" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyOutfitCommandPayload(payload)
+  end
+
+  if opcode == "TRAINER_BEGIN" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyTrainerBeginPayload(payload)
+  end
+
+  if opcode == "TRAINER_ITEM" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyTrainerItemPayload(payload)
+  end
+
+  if opcode == "TRAINER_ERROR" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyTrainerErrorPayload(payload)
+  end
+
+  if opcode == "TRAINER_END" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyTrainerEndPayload(payload)
+  end
+
+  if opcode == "TRAINER_LEARN" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyTrainerLearnPayload(payload)
+  end
+
+  if opcode == "GLYPHS_BEGIN" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyGlyphsBeginPayload(payload)
+    return true
+  end
+
+  if opcode == "GLYPHS_ITEM" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyGlyphsItemPayload(payload)
+    return true
+  end
+
+  if opcode == "GLYPHS" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyGlyphsPayload(payload)
+    return true
+  end
+
+  if opcode == "GLYPHS_END" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyGlyphsEndPayload(payload)
+    return true
+  end
+
+  if opcode == "QUESTS_BEGIN" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyQuestBeginPayload(payload)
+    return true
+  end
+
+  if opcode == "QUESTS_ITEM" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyQuestItemPayload(payload)
+    return true
+  end
+
+  if opcode == "QUESTS_END" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyQuestEndPayload(payload)
+    return true
+  end
+
+  if opcode == "QUESTS_DONE" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyQuestDonePayload(payload)
+    return true
+  end
+
+  if opcode == "PVP_STATS" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyPvpStatsPayload(payload)
+    return true
+  end
+
+  if opcode == "STATS" then
+    state.connected = true
+    state.lastError = nil
+    Comm.ApplyStatsPayload(payload)
+    return true
+  end
+
+  if opcode == "GAMEOBJECTS_BEGIN" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyGameObjectBeginPayload(payload)
+  end
+
+  if opcode == "GAMEOBJECTS_ITEM" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyGameObjectItemPayload(payload)
+  end
+
+  if opcode == "GAMEOBJECTS_END" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyGameObjectEndPayload(payload)
+  end
+
+  if opcode == "GAMEOBJECTS_DONE" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyGameObjectDonePayload(payload)
+  end
+
+  if opcode == "INV_EXACT_BEGIN" then
+    local botName, token = splitOnce(payload or "", "~")
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveInventoryExactRequest(botName, token)
+    if active then
+      if active.begun then
+        active.integrityError = "DUPLICATE_BEGIN"
+        state.lastError = "INV_EXACT_DUPLICATE_BEGIN"
+      else
+        active.begun = true
+        active.integrityError = nil
+        active.bags = {}
+        active.items = {}
+        active.itemsByPosition = {}
+      end
+    end
+
+    return true
+  end
+
+  if opcode == "INV_BAG" then
+    local fields = splitFields(payload or "")
+    state.connected = true
+    state.lastError = nil
+
+    if #fields ~= 7 then
+      local active = #fields >= 2 and getActiveInventoryExactRequest(trim(fields[1]), trim(fields[2])) or nil
+      if active then
+        active.integrityError = "INV_BAG_BAD_FIELD_COUNT"
+      end
+      state.lastError = "INV_BAG_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local botName = trim(fields[1])
+    local token = trim(fields[2])
+    local kind = trim(fields[3])
+    local bag = isWholeNumberInRange(fields[4], 0, 255)
+    local slotStart = isWholeNumberInRange(fields[5], 0, 255)
+    local slotCount = isWholeNumberInRange(fields[6], 0, 255)
+    local bagItemId = isWholeNumberInRange(fields[7], 0, 4294967295)
+    local active = getActiveInventoryExactRequest(botName, token)
+
+    if not active then
+      return true
+    end
+    if not active.begun then
+      active.integrityError = "FRAME_BEFORE_BEGIN"
+      state.lastError = "INV_BAG_BEFORE_BEGIN"
+      return true
+    end
+
+    if (kind ~= "BACKPACK" and kind ~= "BAG" and kind ~= "KEYRING")
+        or bag == nil or slotStart == nil or slotCount == nil or bagItemId == nil then
+      active.integrityError = "INV_BAG_BAD_FIELDS"
+      state.lastError = "INV_BAG_BAD_FIELDS"
+      return true
+    end
+
+    local entry = {
+      kind = kind,
+      bag = bag,
+      slotStart = slotStart,
+      slotCount = slotCount,
+      itemId = bagItemId,
+    }
+    table.insert(active.bags, entry)
+    return true
+  end
+
+  if opcode == "INV_ITEM_LOC" then
+    local fields = splitFields(payload or "")
+    state.connected = true
+    state.lastError = nil
+
+    if #fields ~= 7 then
+      local active = #fields >= 2 and getActiveInventoryExactRequest(trim(fields[1]), trim(fields[2])) or nil
+      if active then
+        active.integrityError = "INV_ITEM_LOC_BAD_FIELD_COUNT"
+      end
+      state.lastError = "INV_ITEM_LOC_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local botName = trim(fields[1])
+    local token = trim(fields[2])
+    local bag = isWholeNumberInRange(fields[3], 0, 255)
+    local slot = isWholeNumberInRange(fields[4], 0, 255)
+    local itemId = isWholeNumberInRange(fields[5], 1, 4294967295)
+    local count = isWholeNumberInRange(fields[6], 1, 4294967295)
+    local soulbound = trim(fields[7])
+    local active = getActiveInventoryExactRequest(botName, token)
+
+    if not active then
+      return true
+    end
+    if not active.begun then
+      active.integrityError = "FRAME_BEFORE_BEGIN"
+      state.lastError = "INV_ITEM_LOC_BEFORE_BEGIN"
+      return true
+    end
+
+    if bag == nil or slot == nil or itemId == nil or count == nil or (soulbound ~= "0" and soulbound ~= "1") then
+      active.integrityError = "INV_ITEM_LOC_BAD_FIELDS"
+      state.lastError = "INV_ITEM_LOC_BAD_FIELDS"
+      return true
+    end
+
+    local positionKey = tostring(bag) .. ":" .. tostring(slot)
+    if active.itemsByPosition[positionKey] then
+      active.integrityError = "DUPLICATE_ITEM_POSITION"
+      state.lastError = "INV_ITEM_LOC_DUPLICATE_POSITION"
+      return true
+    end
+
+    local item = {
+      bag = bag,
+      slot = slot,
+      itemId = itemId,
+      count = count,
+      soulbound = soulbound == "1",
+    }
+    table.insert(active.items, item)
+    active.itemsByPosition[positionKey] = item
+    return true
+  end
+
+  if opcode == "INV_EXACT_ERROR" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, reason = splitOnce(rest or "", "~")
+    state.connected = true
+
+    local active = getActiveInventoryExactRequest(botName, token)
+    if active then
+      if not active.begun then
+        active.integrityError = "FRAME_BEFORE_BEGIN"
+        state.lastError = "INV_EXACT_ERROR_BEFORE_BEGIN"
+      else
+        reason = trim(reason)
+        active.integrityError = reason ~= "" and reason or "FAILED"
+        state.lastError = "INV_EXACT_" .. active.integrityError
+      end
+    end
+    return true
+  end
+
+  if opcode == "INV_EXACT_END" then
+    local botName, token = splitOnce(payload or "", "~")
+    state.connected = true
+
+    local active = getActiveInventoryExactRequest(botName, token)
+    if active and active.begun and not active.integrityError then
+      local snapshot = {
+        botName = active.botName,
+        token = active.token,
+        receivedAt = safeNow(),
+        bags = active.bags or {},
+        items = active.items or {},
+        itemsByPosition = active.itemsByPosition or {},
+      }
+      state.inventoryExactSnapshots[active.botNameKey] = snapshot
+      state.lastError = nil
+
+      if MultiBot.OnBridgeInventoryExactSnapshot then
+        MultiBot.OnBridgeInventoryExactSnapshot(active.botName, snapshot)
+      end
+    elseif active then
+      state.lastError = "INV_EXACT_" .. tostring(active.integrityError or "INCOMPLETE")
+    end
+
+    clearActiveInventoryExactRequest(botName, token)
+    return true
+  end
+
+  if opcode == "INV_BEGIN" then
+    local botName, token = splitOnce(payload or "", "~")
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveInventoryRequest(botName, token)
+    if active then
+      active.begun = true
+      local inventory = getInventoryFrame()
+      if inventory and inventory.beginPayload then
+        inventory:beginPayload(trim(botName))
+      end
+    end
+
+    return true
+  end
+
+  if opcode == "INV_SUMMARY" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, rest2 = splitOnce(rest or "", "~")
+    local gold, rest3 = splitOnce(rest2 or "", "~")
+    local silver, rest4 = splitOnce(rest3 or "", "~")
+    local copper, rest5 = splitOnce(rest4 or "", "~")
+    local bagUsed, bagTotal = splitOnce(rest5 or "", "~")
+
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveInventoryRequest(botName, token)
+    if active then
+      active.summaryReceived = true
+      local inventory = getInventoryFrame()
+      if inventory and inventory.applySummaryData then
+        inventory:applySummaryData({
+          gold = tonumber(gold or "0") or 0,
+          silver = tonumber(silver or "0") or 0,
+          copper = tonumber(copper or "0") or 0,
+          bagUsed = tonumber(bagUsed or "0") or 0,
+          bagTotal = tonumber(bagTotal or "0") or 0,
+        })
+      end
+    end
+
+    return true
+  end
+
+  if opcode == "INV_ITEM" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, encodedLine = splitOnce(rest or "", "~")
+
+    state.connected = true
+    state.lastError = nil
+
+    if getActiveInventoryRequest(botName, token) then
+      local inventory = getInventoryFrame()
+      local itemsFrame = inventory and inventory.frames and inventory.frames.Items or nil
+      if itemsFrame and itemsFrame.addChatItem then
+        itemsFrame:addChatItem(urlDecodeField(encodedLine))
+        if itemsFrame.updateCanvas then
+          itemsFrame:updateCanvas()
+        end
+      end
+    end
+
+    return true
+  end
+
+  if opcode == "INV_END" then
+    local botName, token = splitOnce(payload or "", "~")
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveInventoryRequest(botName, token)
+    if active then
+      local inventory = getInventoryFrame()
+      if not active.summaryReceived then
+        state.lastError = "INV_UNAVAILABLE"
+        local isCurrentVisible = inventory and inventory.IsVisible and inventory:IsVisible()
+            and string.lower(trim(inventory.name)) == string.lower(trim(botName))
+        if isCurrentVisible then
+          if inventory.Hide then
+            inventory:Hide()
+          end
+          Comm.ShowSystemMessage(string.format(
+            L("inventory.unavailable.bot", "[MultiBot] Cannot access %s's inventory. The bot may be on another map, too far away, or unavailable."),
+            trim(botName)))
+        end
+      else
+        local itemsFrame = inventory and inventory.frames and inventory.frames.Items or nil
+        if itemsFrame then
+          if itemsFrame.updateCanvas then
+            itemsFrame:updateCanvas()
+          end
+          if itemsFrame.updateLayout then
+            itemsFrame:updateLayout()
+          end
+        end
+        if inventory and inventory.endPayload then
+          inventory:endPayload(trim(botName))
+        end
+      end
+    end
+
+    clearActiveInventoryRequest(botName, token)
+    return true
+  end
+
+  if opcode == "BANK_BEGIN" then
+    local botName, token = splitOnce(payload or "", "~")
+    botName = trim(urlDecodeField(botName))
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveBankRequest(botName, token)
+    if active then
+      active.items = {}
+      active.error = nil
+      if MultiBot.OnBridgeBankBegin then
+        MultiBot.OnBridgeBankBegin(botName, token)
+      end
+    end
+
+    return true
+  end
+
+  if opcode == "BANK_ITEM" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, encodedLine = splitOnce(rest or "", "~")
+    botName = trim(urlDecodeField(botName))
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveBankRequest(botName, token)
+    if active then
+      table.insert(active.items, urlDecodeField(encodedLine))
+    end
+
+    return true
+  end
+
+  if opcode == "BANK_ERROR" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, reason = splitOnce(rest or "", "~")
+    botName = trim(urlDecodeField(botName))
+    reason = trim(urlDecodeField(reason))
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveBankRequest(botName, token)
+    if active then
+      active.error = reason ~= "" and reason or "FAILED"
+    end
+
+    return true
+  end
+
+  if opcode == "BANK_END" then
+    local botName, token = splitOnce(payload or "", "~")
+    botName = trim(urlDecodeField(botName))
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveBankRequest(botName, token)
+    if active then
+      local key = string.lower(botName)
+      state.bankItems[key] = active.items or {}
+      if MultiBot.OnBridgeBankItems then
+        MultiBot.OnBridgeBankItems(botName, state.bankItems[key], active.error, token)
+      end
+    end
+
+    clearActiveBankRequest(botName, token)
+    return true
+  end
+
+  if opcode == "GBANK_BEGIN" then
+    local botName, token = splitOnce(payload or "", "~")
+    botName = trim(urlDecodeField(botName))
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveGuildBankRequest(botName, token)
+    if active then
+      active.items = {}
+      active.error = nil
+      if MultiBot.OnBridgeGuildBankBegin then
+        MultiBot.OnBridgeGuildBankBegin(botName, token)
+      end
+    end
+
+    return true
+  end
+
+  if opcode == "GBANK_ITEM" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, encodedLine = splitOnce(rest or "", "~")
+    botName = trim(urlDecodeField(botName))
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveGuildBankRequest(botName, token)
+    if active then
+      table.insert(active.items, urlDecodeField(encodedLine))
+    end
+
+    return true
+  end
+
+  if opcode == "GBANK_ERROR" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, reason = splitOnce(rest or "", "~")
+    botName = trim(urlDecodeField(botName))
+    reason = trim(urlDecodeField(reason))
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveGuildBankRequest(botName, token)
+    if active then
+      active.error = reason ~= "" and reason or "FAILED"
+    end
+
+    return true
+  end
+
+  if opcode == "GBANK_RIGHTS" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, rest2 = splitOnce(rest or "", "~")
+    local canWithdraw, remaining = splitOnce(rest2 or "", "~")
+    botName = trim(urlDecodeField(botName))
+    canWithdraw = trim(canWithdraw)
+    remaining = tonumber(remaining or "0") or 0
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveGuildBankRequest(botName, token)
+    if active then
+      active.rights = {
+        canWithdraw = canWithdraw == "1" or string.lower(canWithdraw) == "true",
+        remaining = remaining,
+      }
+    end
+
+    return true
+  end
+
+  if opcode == "GBANK_END" then
+    local botName, token = splitOnce(payload or "", "~")
+    botName = trim(urlDecodeField(botName))
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveGuildBankRequest(botName, token)
+    if active then
+      local key = string.lower(botName)
+      state.guildBankItems[key] = active.items or {}
+      if MultiBot.OnBridgeGuildBankItems then
+        MultiBot.OnBridgeGuildBankItems(botName, state.guildBankItems[key], active.error, token, active.rights)
+      end
+    end
+
+    clearActiveGuildBankRequest(botName, token)
+    return true
+  end
+
+  if opcode == "INVENTORY_ITEM_MOVE" then
+    local fields = splitFields(payload)
+    if #fields ~= 8 then
+      state.lastError = "ITEM_MOVE_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local botName = urlDecodeFieldStrict(fields[1], 64, false)
+    local token = trim(fields[2])
+    local status = string.upper(trim(fields[3]))
+    local reason = urlDecodeFieldStrict(fields[4], 64, false)
+    local srcBag = parseBoundedInteger(fields[5], 0, 255)
+    local srcSlot = parseBoundedInteger(fields[6], 0, 255)
+    local dstBag = parseBoundedInteger(fields[7], 0, 255)
+    local dstSlot = parseBoundedInteger(fields[8], 0, 255)
+
+    state.connected = true
+    local command = state.inventoryItemMoves and state.inventoryItemMoves[token] or nil
+    if not botName or not isValidStateToken(token) or (status ~= "OK" and status ~= "ERR") or not reason or
+      srcBag == nil or srcSlot == nil or dstBag == nil or dstSlot == nil then
+      state.lastError = "ITEM_MOVE_BAD_RESPONSE"
+      if command then
+        state.inventoryItemMoves[token] = nil
+        if MultiBot.OnBridgeInventoryItemMoveResult then
+          MultiBot.OnBridgeInventoryItemMoveResult(
+            command.botName, "ERR", "BAD_RESPONSE",
+            command.srcBag, command.srcSlot, command.dstBag, command.dstSlot, command
+          )
+        end
+      end
+      return true
+    end
+
+    if not command then
+      return true
+    end
+
+    local responseMatches = string.lower(botName) == command.botNameKey and
+      srcBag == command.srcBag and srcSlot == command.srcSlot and
+      dstBag == command.dstBag and dstSlot == command.dstSlot
+
+    state.inventoryItemMoves[token] = nil
+    if not responseMatches then
+      status = "ERR"
+      reason = "RESPONSE_MISMATCH"
+      state.lastError = "ITEM_MOVE_RESPONSE_MISMATCH"
+    elseif status == "OK" then
+      state.lastError = nil
+    else
+      state.lastError = "ITEM_MOVE_" .. reason
+    end
+
+    if MultiBot.OnBridgeInventoryItemMoveResult then
+      MultiBot.OnBridgeInventoryItemMoveResult(
+        command.botName, status, reason,
+        command.srcBag, command.srcSlot, command.dstBag, command.dstSlot, command
+      )
+    end
+
+    debugPrint("ADDON:RX", "INVENTORY_ITEM_MOVE", botName, token, status, reason, srcBag, srcSlot, dstBag, dstSlot)
+    return true
+  end
+
+  local structuredHandler = STRUCTURED_OPCODE_HANDLERS[opcode]
+  if structuredHandler then
+    return structuredHandler(payload, state)
+  end
+
+  if opcode == "INVENTORY_ITEM_EQUIP" then
+    local fields = splitFields(payload)
+    if #fields ~= 7 then
+      state.lastError = "ITEM_EQUIP_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local botName = urlDecodeFieldStrict(fields[1], 64, false)
+    local token = trim(fields[2])
+    local status = string.upper(trim(fields[3]))
+    local reason = urlDecodeFieldStrict(fields[4], 64, false)
+    local srcBag = parseBoundedInteger(fields[5], 0, 255)
+    local srcSlot = parseBoundedInteger(fields[6], 0, 255)
+    local dstSlot = parseBoundedInteger(fields[7], 0, 255)
+
+    state.connected = true
+    local command = state.inventoryItemEquips and state.inventoryItemEquips[token] or nil
+    if not botName or not isValidStateToken(token) or (status ~= "OK" and status ~= "ERR") or not reason or
+      srcBag == nil or srcSlot == nil or dstSlot == nil then
+      state.lastError = "ITEM_EQUIP_BAD_RESPONSE"
+      if command then
+        state.inventoryItemEquips[token] = nil
+        if MultiBot.OnBridgeInventoryItemEquipResult then
+          MultiBot.OnBridgeInventoryItemEquipResult(
+            command.botName, "ERR", "BAD_RESPONSE",
+            command.srcBag, command.srcSlot, command.dstSlot, command
+          )
+        end
+        if Comm.RequestInventoryExact then
+          Comm.RequestInventoryExact(command.botName)
+        end
+      end
+      return true
+    end
+
+    if not command then
+      return true
+    end
+
+    local responseMatches = string.lower(botName) == command.botNameKey and
+      srcBag == command.srcBag and srcSlot == command.srcSlot
+
+    state.inventoryItemEquips[token] = nil
+    if not responseMatches then
+      status = "ERR"
+      reason = "RESPONSE_MISMATCH"
+      state.lastError = "ITEM_EQUIP_RESPONSE_MISMATCH"
+    elseif status == "OK" then
+      state.lastError = nil
+    else
+      state.lastError = "ITEM_EQUIP_" .. reason
+    end
+
+    if MultiBot.OnBridgeInventoryItemEquipResult then
+      MultiBot.OnBridgeInventoryItemEquipResult(
+        command.botName, status, reason,
+        command.srcBag, command.srcSlot, dstSlot, command
+      )
+    end
+
+    if status == "OK" then
+      local refreshed = MultiBot.RequestInventoryRefresh
+        and MultiBot.RequestInventoryRefresh(command.botName, 0.30)
+      if not refreshed and Comm.RequestInventoryExact then
+        Comm.RequestInventoryExact(command.botName)
+      end
+    elseif Comm.RequestInventoryExact then
+      Comm.RequestInventoryExact(command.botName)
+    end
+
+    debugPrint("ADDON:RX", "INVENTORY_ITEM_EQUIP", botName, token, status, reason, srcBag, srcSlot, dstSlot)
+    return true
+  end
+
+  if opcode == "INVENTORY_ITEM_UNEQUIP" then
+    local fields = splitFields(payload)
+    if #fields ~= 6 then
+      state.lastError = "ITEM_UNEQUIP_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local botName = urlDecodeFieldStrict(fields[1], 64, false)
+    local token = trim(fields[2])
+    local status = string.upper(trim(fields[3]))
+    local reason = urlDecodeFieldStrict(fields[4], 64, false)
+    local srcSlot = parseBoundedInteger(fields[5], 0, 18)
+    local srcItemId = parseBoundedInteger(fields[6], 1, 4294967295)
+
+    state.connected = true
+    local command = state.inventoryItemUnequips and state.inventoryItemUnequips[token] or nil
+    if not botName or not isValidStateToken(token) or (status ~= "OK" and status ~= "ERR") or not reason or
+      srcSlot == nil or srcItemId == nil then
+      state.lastError = "ITEM_UNEQUIP_BAD_RESPONSE"
+      if command then
+        state.inventoryItemUnequips[token] = nil
+        if MultiBot.OnBridgeInventoryItemUnequipResult then
+          MultiBot.OnBridgeInventoryItemUnequipResult(
+            command.botName, "ERR", "BAD_RESPONSE", command.srcSlot, command.srcItemId, command
+          )
+        end
+      end
+      return true
+    end
+
+    if not command then
+      return true
+    end
+
+    local responseMatches = string.lower(botName) == command.botNameKey and
+      srcSlot == command.srcSlot and srcItemId == command.srcItemId
+
+    state.inventoryItemUnequips[token] = nil
+    if not responseMatches then
+      status = "ERR"
+      reason = "RESPONSE_MISMATCH"
+      state.lastError = "ITEM_UNEQUIP_RESPONSE_MISMATCH"
+    elseif status == "OK" then
+      state.lastError = nil
+    else
+      state.lastError = "ITEM_UNEQUIP_" .. reason
+    end
+
+    if MultiBot.OnBridgeInventoryItemUnequipResult then
+      MultiBot.OnBridgeInventoryItemUnequipResult(
+        command.botName, status, reason, command.srcSlot, command.srcItemId, command
+      )
+    end
+
+    debugPrint("ADDON:RX", "INVENTORY_ITEM_UNEQUIP", botName, token, status, reason, srcSlot, srcItemId)
+    return true
+  end
+
+  -- MB_ITEM_SELL_SINGLE_V1_RX_BEGIN
+  if opcode == "INVENTORY_ITEM_SELL" then
+    local fields = splitFields(payload)
+    if #fields ~= 8 then
+      state.lastError = "ITEM_SELL_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local botName = urlDecodeFieldStrict(fields[1], 64, false)
+    local token = trim(fields[2])
+    local status = string.upper(trim(fields[3]))
+    local reason = urlDecodeFieldStrict(fields[4], 64, false)
+    local srcBag = parseBoundedInteger(fields[5], 0, 255)
+    local srcSlot = parseBoundedInteger(fields[6], 0, 255)
+    local srcItemId = parseBoundedInteger(fields[7], 1, 4294967295)
+    local soldCount = parseBoundedInteger(fields[8], 0, INVENTORY_ITEM_SELL_MAX_COUNT)
+
+    state.connected = true
+    local command = state.inventoryItemSells and state.inventoryItemSells[token] or nil
+    if not botName or not isValidStateToken(token) or (status ~= "OK" and status ~= "ERR") or not reason or
+      srcBag == nil or srcSlot == nil or srcItemId == nil or soldCount == nil then
+      state.lastError = "ITEM_SELL_BAD_RESPONSE"
+      if command then
+        state.inventoryItemSells[token] = nil
+        if MultiBot.OnBridgeInventoryItemSellResult then
+          MultiBot.OnBridgeInventoryItemSellResult(
+            command.botName, "ERR", "BAD_RESPONSE",
+            command.srcBag, command.srcSlot, command.srcItemId, 0, command
+          )
+        end
+      end
+      return true
+    end
+
+    if not command then
+      return true
+    end
+
+    local responseMatches = string.lower(botName) == command.botNameKey and
+      srcBag == command.srcBag and srcSlot == command.srcSlot and srcItemId == command.srcItemId and
+      soldCount <= command.srcCount and
+      ((status == "OK" and soldCount >= 1) or (status == "ERR" and soldCount == 0))
+
+    state.inventoryItemSells[token] = nil
+    if not responseMatches then
+      status = "ERR"
+      reason = "RESPONSE_MISMATCH"
+      soldCount = 0
+      state.lastError = "ITEM_SELL_RESPONSE_MISMATCH"
+    elseif status == "OK" then
+      state.lastError = nil
+    else
+      state.lastError = "ITEM_SELL_" .. reason
+    end
+
+    if MultiBot.OnBridgeInventoryItemSellResult then
+      MultiBot.OnBridgeInventoryItemSellResult(
+        command.botName, status, reason,
+        command.srcBag, command.srcSlot, command.srcItemId, soldCount, command
+      )
+    end
+
+    debugPrint("ADDON:RX", "INVENTORY_ITEM_SELL", botName, token, status, reason, srcBag, srcSlot, srcItemId, soldCount)
+    return true
+  end
+  -- MB_ITEM_SELL_SINGLE_V1_RX_END
+  -- MB_VENDOR_BUYBACK_V1_RX_DISPATCH_BEGIN
+  if Comm.HandleInventoryBuybackAddonMessage(opcode, payload, state) then
+    return true
+  end
+  -- MB_VENDOR_BUYBACK_V1_RX_DISPATCH_END
+
+
+  if opcode == "INVENTORY_ITEM_USE" then
+    local fields = splitFields(payload)
+    if #fields ~= 7 then
+      state.lastError = "ITEM_USE_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local botName = urlDecodeFieldStrict(fields[1], 64, false)
+    local token = trim(fields[2])
+    local status = string.upper(trim(fields[3]))
+    local reason = urlDecodeFieldStrict(fields[4], 64, false)
+    local srcBag = parseBoundedInteger(fields[5], 0, 255)
+    local srcSlot = parseBoundedInteger(fields[6], 0, 255)
+    local srcItemId = parseBoundedInteger(fields[7], 1, 4294967295)
+
+    state.connected = true
+    local command = state.inventoryItemUses and state.inventoryItemUses[token] or nil
+    if not botName or not isValidStateToken(token) or (status ~= "OK" and status ~= "ERR") or not reason or
+      srcBag == nil or srcSlot == nil or srcItemId == nil then
+      state.lastError = "ITEM_USE_BAD_RESPONSE"
+      if command then
+        state.inventoryItemUses[token] = nil
+        if MultiBot.OnBridgeInventoryItemUseResult then
+          MultiBot.OnBridgeInventoryItemUseResult(
+            command.botName, "ERR", "BAD_RESPONSE",
+            command.srcBag, command.srcSlot, command.srcItemId, command
+          )
+        end
+      end
+      return true
+    end
+
+    if not command then
+      return true
+    end
+
+    local responseMatches = string.lower(botName) == command.botNameKey and
+      srcBag == command.srcBag and srcSlot == command.srcSlot and srcItemId == command.srcItemId
+
+    state.inventoryItemUses[token] = nil
+    if not responseMatches then
+      status = "ERR"
+      reason = "RESPONSE_MISMATCH"
+      state.lastError = "ITEM_USE_RESPONSE_MISMATCH"
+    elseif status == "OK" then
+      state.lastError = nil
+    else
+      state.lastError = "ITEM_USE_" .. reason
+    end
+
+    if MultiBot.OnBridgeInventoryItemUseResult then
+      MultiBot.OnBridgeInventoryItemUseResult(
+        command.botName, status, reason,
+        command.srcBag, command.srcSlot, command.srcItemId, command
+      )
+    end
+
+    debugPrint("ADDON:RX", "INVENTORY_ITEM_USE", botName, token, status, reason, srcBag, srcSlot, srcItemId)
+    return true
+  end
+
+  if opcode == "INVENTORY_ITEM_DESTROY" then
+    local fields = splitFields(payload)
+    if #fields ~= 7 then
+      state.lastError = "ITEM_DESTROY_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local botName = urlDecodeFieldStrict(fields[1], 64, false)
+    local token = trim(fields[2])
+    local status = string.upper(trim(fields[3]))
+    local reason = urlDecodeFieldStrict(fields[4], 64, false)
+    local srcBag = parseBoundedInteger(fields[5], 0, 255)
+    local srcSlot = parseBoundedInteger(fields[6], 0, 255)
+    local srcItemId = parseBoundedInteger(fields[7], 1, 4294967295)
+
+    state.connected = true
+    local command = state.inventoryItemDestroys and state.inventoryItemDestroys[token] or nil
+    if not botName or not isValidStateToken(token) or (status ~= "OK" and status ~= "ERR") or not reason or
+      srcBag == nil or srcSlot == nil or srcItemId == nil then
+      state.lastError = "ITEM_DESTROY_BAD_RESPONSE"
+      if command then
+        state.inventoryItemDestroys[token] = nil
+        if MultiBot.OnBridgeInventoryItemDestroyResult then
+          MultiBot.OnBridgeInventoryItemDestroyResult(
+            command.botName, "ERR", "BAD_RESPONSE",
+            command.srcBag, command.srcSlot, command.srcItemId, command
+          )
+        end
+      end
+      return true
+    end
+
+    if not command then
+      return true
+    end
+
+    local responseMatches = string.lower(botName) == command.botNameKey and
+      srcBag == command.srcBag and srcSlot == command.srcSlot and srcItemId == command.srcItemId
+
+    state.inventoryItemDestroys[token] = nil
+    if not responseMatches then
+      status = "ERR"
+      reason = "RESPONSE_MISMATCH"
+      state.lastError = "ITEM_DESTROY_RESPONSE_MISMATCH"
+    elseif status == "OK" then
+      state.lastError = nil
+    else
+      state.lastError = "ITEM_DESTROY_" .. reason
+    end
+
+    if MultiBot.OnBridgeInventoryItemDestroyResult then
+      MultiBot.OnBridgeInventoryItemDestroyResult(
+        command.botName, status, reason,
+        command.srcBag, command.srcSlot, command.srcItemId, command
+      )
+    end
+
+    debugPrint("ADDON:RX", "INVENTORY_ITEM_DESTROY", botName, token, status, reason, srcBag, srcSlot, srcItemId)
+    return true
+  end
+  if opcode == "INVENTORY_ITEM_ACTION" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, rest2 = splitOnce(rest or "", "~")
+    local action, rest3 = splitOnce(rest2 or "", "~")
+    local itemId, rest4 = splitOnce(rest3 or "", "~")
+    local result, rest5 = splitOnce(rest4 or "", "~")
+    local reason, moved = splitOnce(rest5 or "", "~")
+
+    botName = trim(urlDecodeField(botName))
+    token = trim(token)
+    action = string.upper(trim(action))
+    itemId = tonumber(itemId or "0") or 0
+    result = trim(result)
+    reason = trim(urlDecodeField(reason))
+    moved = tonumber(moved or "0") or 0
+    state.connected = true
+    state.lastError = nil
+
+    local command = state.inventoryItemActions and state.inventoryItemActions[token] or nil
+    if command then
+      command.botName = botName ~= "" and botName or command.botName
+      command.action = action ~= "" and action or command.action
+      command.itemId = itemId > 0 and itemId or command.itemId
+      command.result = result
+      command.reason = reason
+      command.moved = moved
+
+      if MultiBot.OnBridgeInventoryItemActionResult then
+        MultiBot.OnBridgeInventoryItemActionResult(command.botName, command.action, command.itemId, result, reason, moved, command)
+      end
+      if type(command.callback) == "function" then
+        command.callback(command.botName, command.action, command.itemId, result, reason, moved, command)
+      end
+
+      state.inventoryItemActions[token] = nil
+    end
+
+    debugPrint("ADDON:RX", "INVENTORY_ITEM_ACTION", botName, action, itemId, result, reason, moved)
+    return true
+  end
+
+  if opcode == "SB_BEGIN" then
+    local botName, token = splitOnce(payload or "", "~")
+    state.connected = true
+    state.lastError = nil
+
+    if getActiveSpellbookRequest(botName, token) then
+      local spellbook = getSpellbookFrame()
+      if spellbook and spellbook.beginPayload then
+        spellbook:beginPayload(trim(botName))
+      elseif MultiBot and MultiBot.beginSpellbookCollection then
+        MultiBot.beginSpellbookCollection(trim(botName))
+      end
+    end
+
+    return true
+  end
+
+  if opcode == "SB_ITEM" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, spellId = splitOnce(rest or "", "~")
+    spellId, rest = splitOnce(spellId or "", "~")
+
+    state.connected = true
+    state.lastError = nil
+
+    if getActiveSpellbookRequest(botName, token)
+        and (trim(rest or "") == "0" or trim(rest or "") == "1") then
+      local spellbook = getSpellbookFrame()
+      if spellbook and spellbook.appendSpellId then
+        spellbook:appendSpellId(tonumber(spellId or "0") or 0, trim(botName), trim(rest or "") == "1")
+      elseif MultiBot and MultiBot.addSpellById then
+        MultiBot.addSpellById(tonumber(spellId or "0") or 0, trim(botName), trim(rest or "") == "1")
+      end
+    end
+
+    return true
+  end
+
+  if opcode == "SB_END" then
+    local botName, token = splitOnce(payload or "", "~")
+    state.connected = true
+    state.lastError = nil
+
+    if getActiveSpellbookRequest(botName, token) then
+      local spellbook = getSpellbookFrame()
+      if spellbook and spellbook.finishPayload then
+        spellbook:finishPayload()
+      elseif MultiBot and MultiBot.finishSpellbookCollection then
+        MultiBot.finishSpellbookCollection()
+      end
+    end
+
+    clearActiveSpellbookRequest(botName, token)
+    return true
+  end
+
+  if opcode == "BOT_SKILLS_BEGIN" then
+    local botName, token = splitOnce(payload or "", "~")
+    botName = trim(urlDecodeField(botName))
+    token = trim(token)
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveBotSkillRequest(botName, token)
+    if active then
+      active.items = {}
+    end
+
+    return true
+  end
+
+  if opcode == "BOT_SKILLS_ITEM" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, rest2 = splitOnce(rest or "", "~")
+    local category, rest3 = splitOnce(rest2 or "", "~")
+    local skillId, rest4 = splitOnce(rest3 or "", "~")
+    local key, rest5 = splitOnce(rest4 or "", "~")
+    local skillName, rest6 = splitOnce(rest5 or "", "~")
+    local value, maxValue = splitOnce(rest6 or "", "~")
+
+    botName = trim(urlDecodeField(botName))
+    token = trim(token)
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveBotSkillRequest(botName, token)
+    if active then
+      table.insert(active.items, {
+        category = trim(urlDecodeField(category)),
+        skillId = tonumber(skillId or "0") or 0,
+        key = trim(urlDecodeField(key)),
+        name = trim(urlDecodeField(skillName)),
+        value = tonumber(value or "0") or 0,
+        max = tonumber(maxValue or "0") or 0,
+      })
+    end
+
+    return true
+  end
+
+  if opcode == "BOT_SKILLS_END" then
+    local botName, token = splitOnce(payload or "", "~")
+    botName = trim(urlDecodeField(botName))
+    token = trim(token)
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveBotSkillRequest(botName, token)
+    if active then
+      local key = string.lower(botName)
+      state.botSkills[key] = active.items or {}
+      if MultiBot.OnBridgeBotSkills then
+        MultiBot.OnBridgeBotSkills(botName, state.botSkills[key], token)
+      end
+      state.botSkillActive = nil
+    end
+
+    return true
+  end
+
+  if opcode == "BOT_REPUTATIONS_BEGIN" then
+    local botName, token = splitOnce(payload or "", "~")
+    botName = trim(urlDecodeField(botName))
+    token = trim(token)
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveBotReputationRequest(botName, token)
+    if active then
+      active.items = {}
+    end
+
+    return true
+  end
+
+  if opcode == "BOT_REPUTATION_ITEM" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, rest2 = splitOnce(rest or "", "~")
+    local factionId, rest3 = splitOnce(rest2 or "", "~")
+    local factionName, rest4 = splitOnce(rest3 or "", "~")
+    local rank, rest5 = splitOnce(rest4 or "", "~")
+    local value, maxValue = splitOnce(rest5 or "", "~")
+
+    botName = trim(urlDecodeField(botName))
+    token = trim(token)
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveBotReputationRequest(botName, token)
+    if active then
+      table.insert(active.items, {
+        factionId = tonumber(factionId or "0") or 0,
+        name = trim(urlDecodeField(factionName)),
+        rank = tonumber(rank or "0") or 0,
+        value = tonumber(value or "0") or 0,
+        max = tonumber(maxValue or "0") or 0,
+      })
+    end
+
+    return true
+  end
+
+  if opcode == "BOT_REPUTATIONS_END" then
+    local botName, token = splitOnce(payload or "", "~")
+    botName = trim(urlDecodeField(botName))
+    token = trim(token)
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveBotReputationRequest(botName, token)
+    if active then
+      local key = string.lower(botName)
+      state.botReputations[key] = active.items or {}
+      if MultiBot.OnBridgeBotReputations then
+        MultiBot.OnBridgeBotReputations(botName, state.botReputations[key], token)
+      end
+      state.botReputationActive = nil
+    end
+
+    return true
+  end
+
+  if opcode == "BOT_EMBLEMS_BEGIN" then
+    local botName, token = splitOnce(payload or "", "~")
+    botName = trim(urlDecodeField(botName))
+    token = trim(token)
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveBotEmblemRequest(botName, token)
+    if active then
+      active.items = {}
+      active.money = nil
+    end
+
+    return true
+  end
+
+  if opcode == "BOT_EMBLEM_ITEM" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, rest2 = splitOnce(rest or "", "~")
+    local itemId, count = splitOnce(rest2 or "", "~")
+
+    botName = trim(urlDecodeField(botName))
+    token = trim(token)
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveBotEmblemRequest(botName, token)
+    if active then
+      table.insert(active.items, {
+        itemId = tonumber(itemId or "0") or 0,
+        count = tonumber(count or "0") or 0,
+      })
+    end
+
+    return true
+  end
+
+  if opcode == "BOT_EMBLEMS_MONEY" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, money = splitOnce(rest or "", "~")
+
+    botName = trim(urlDecodeField(botName))
+    token = trim(token)
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveBotEmblemRequest(botName, token)
+    if active then
+      active.money = tonumber(money or "0") or 0
+    end
+
+    return true
+  end
+
+  if opcode == "BOT_EMBLEMS_END" then
+    local botName, token = splitOnce(payload or "", "~")
+    botName = trim(urlDecodeField(botName))
+    token = trim(token)
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveBotEmblemRequest(botName, token)
+    if active then
+      local key = string.lower(botName)
+      state.botEmblems[key] = active.items or {}
+      state.botEmblemMoney[key] = active.money
+      if MultiBot.OnBridgeBotEmblems then
+        MultiBot.OnBridgeBotEmblems(botName, state.botEmblems[key], token, state.botEmblemMoney[key])
+      end
+      state.botEmblemActive = nil
+    end
+
+    return true
+  end
+
+  if opcode == "ENCHANT_TRADE_BEGIN" then
+    local fields = splitFields(payload or "")
+    if #fields ~= 6 then
+      state.lastError = "ENCHANT_TRADE_BEGIN_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local botName = trim(urlDecodeField(fields[1]))
+    local token = trim(fields[2])
+    local status = string.upper(trim(fields[3]))
+    local reason = string.upper(trim(urlDecodeField(fields[4])))
+    local skillValue = tonumber(fields[5] or "0") or 0
+    local maxSkill = tonumber(fields[6] or "0") or 0
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveEnchantTradeRequest(botName, token)
+    if active then
+      if active.began then
+        active.integrityError = active.integrityError or "DUPLICATE_BEGIN"
+        state.lastError = "ENCHANT_TRADE_DUPLICATE_BEGIN"
+      else
+        active.began = true
+        active.status = status
+        active.reason = reason
+        active.skillValue = skillValue
+        active.maxSkill = maxSkill
+        active.items = {}
+        active.itemBySpellId = {}
+        markEnchantTradeListProgress(active)
+      end
+    end
+
+    return true
+  end
+
+  if opcode == "ENCHANT_TRADE_ITEM" then
+    local fields = splitFields(payload or "")
+    if #fields ~= 7 then
+      state.lastError = "ENCHANT_TRADE_ITEM_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local botName = trim(urlDecodeField(fields[1]))
+    local token = trim(fields[2])
+    local spellId = tonumber(fields[3] or "0") or 0
+    local difficulty = trim(urlDecodeField(fields[4]))
+    local available = tonumber(fields[5] or "0") or 0
+    local hasTools = tonumber(fields[6] or "0") or 0
+    local materialCount = tonumber(fields[7] or "")
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveEnchantTradeRequest(botName, token)
+    if active then
+      if not active.began then
+        active.integrityError = active.integrityError or "MISSING_BEGIN"
+        state.lastError = "ENCHANT_TRADE_ITEM_BEFORE_BEGIN"
+      elseif spellId <= 0 or materialCount == nil or materialCount < 0 or materialCount > 256 then
+        active.integrityError = active.integrityError or "BAD_ITEM"
+        state.lastError = "ENCHANT_TRADE_ITEM_INVALID"
+      else
+        active.itemBySpellId = active.itemBySpellId or {}
+        if active.itemBySpellId[spellId] then
+          active.integrityError = active.integrityError or "DUPLICATE_SPELL_ID"
+          state.lastError = "ENCHANT_TRADE_DUPLICATE_SPELL_ID"
+        else
+          local entry = {
+            spellId = spellId,
+            difficulty = difficulty,
+            available = available ~= 0 and 1 or 0,
+            materials = {},
+            hasTools = hasTools ~= 0 and 1 or 0,
+            expectedMaterialCount = materialCount,
+            receivedMaterialCount = 0,
+            materialIndexes = {},
+          }
+          table.insert(active.items, entry)
+          active.itemBySpellId[spellId] = entry
+          markEnchantTradeListProgress(active)
+        end
+      end
+    end
+
+    return true
+  end
+
+  if opcode == "ENCHANT_TRADE_MATERIAL" then
+    local fields = splitFields(payload or "")
+    if #fields ~= 7 then
+      state.lastError = "ENCHANT_TRADE_MATERIAL_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local botName = trim(urlDecodeField(fields[1]))
+    local token = trim(fields[2])
+    local spellId = tonumber(fields[3] or "0") or 0
+    local materialIndex = tonumber(fields[4] or "0") or 0
+    local itemId = tonumber(fields[5] or "0") or 0
+    local required = tonumber(fields[6] or "0") or 0
+    local available = tonumber(fields[7] or "0") or 0
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveEnchantTradeRequest(botName, token)
+    if active then
+      if not active.began then
+        active.integrityError = active.integrityError or "MISSING_BEGIN"
+        state.lastError = "ENCHANT_TRADE_MATERIAL_BEFORE_BEGIN"
+      else
+        local entry = active.itemBySpellId and active.itemBySpellId[spellId] or nil
+        if not entry then
+          active.integrityError = active.integrityError or "MATERIAL_WITHOUT_ITEM"
+          state.lastError = "ENCHANT_TRADE_MATERIAL_WITHOUT_ITEM"
+        else
+          local expectedMaterialCount = tonumber(entry.expectedMaterialCount or 0) or 0
+          entry.materialIndexes = entry.materialIndexes or {}
+          if materialIndex <= 0 or materialIndex > expectedMaterialCount then
+            active.integrityError = active.integrityError or "MATERIAL_INDEX_OUT_OF_RANGE"
+            state.lastError = "ENCHANT_TRADE_MATERIAL_INDEX_OUT_OF_RANGE"
+          elseif entry.materialIndexes[materialIndex] then
+            active.integrityError = active.integrityError or "DUPLICATE_MATERIAL_INDEX"
+            state.lastError = "ENCHANT_TRADE_DUPLICATE_MATERIAL_INDEX"
+          elseif itemId <= 0 or required <= 0 then
+            active.integrityError = active.integrityError or "BAD_MATERIAL"
+            state.lastError = "ENCHANT_TRADE_MATERIAL_INVALID"
+          else
+            entry.materials[materialIndex] = {
+              itemId = itemId,
+              required = required,
+              available = available,
+            }
+            entry.materialIndexes[materialIndex] = true
+            entry.receivedMaterialCount = (tonumber(entry.receivedMaterialCount or 0) or 0) + 1
+            markEnchantTradeListProgress(active)
+          end
+        end
+      end
+    end
+
+    return true
+  end
+
+  if opcode == "ENCHANT_TRADE_END" then
+    local fields = splitFields(payload or "")
+    if #fields ~= 5 then
+      state.lastError = "ENCHANT_TRADE_END_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local botName = trim(urlDecodeField(fields[1]))
+    local token = trim(fields[2])
+    local status = string.upper(trim(fields[3]))
+    local reason = string.upper(trim(urlDecodeField(fields[4])))
+    local count = tonumber(fields[5] or "0") or 0
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveEnchantTradeRequest(botName, token)
+    if active then
+      active.status = status
+      active.reason = reason
+      active.count = count
+
+      local items = active.items or {}
+      local deliveredItems = items
+      local integrityError = active.integrityError
+
+      if not active.began then
+        integrityError = integrityError or "MISSING_BEGIN"
+      end
+
+      if status == "OK" and not integrityError and #items ~= count then
+        integrityError = "COUNT_MISMATCH"
+      end
+
+      if status == "OK" and not integrityError then
+        for _, entry in ipairs(items) do
+          local expectedMaterialCount = tonumber(entry.expectedMaterialCount or 0) or 0
+          local receivedMaterialCount = tonumber(entry.receivedMaterialCount or 0) or 0
+          if receivedMaterialCount ~= expectedMaterialCount then
+            integrityError = "MATERIAL_COUNT_MISMATCH"
+            break
+          end
+
+          for materialIndex = 1, expectedMaterialCount do
+            if not entry.materialIndexes or not entry.materialIndexes[materialIndex] then
+              integrityError = "MATERIAL_INDEX_GAP"
+              break
+            end
+          end
+
+          if integrityError then
+            break
+          end
+        end
+      end
+
+      if integrityError then
+        status = "ERR"
+        reason = "TRY_AGAIN"
+        active.status = status
+        active.reason = reason
+        state.lastError = "ENCHANT_TRADE_" .. integrityError
+        deliveredItems = {}
+      elseif status == "OK" then
+        local key = string.lower(active.botName or botName)
+        state.enchantTradeLists[key] = items
+      end
+
+      state.enchantTradeActive = nil
+
+      if MultiBot.OnBridgeEnchantTradeList then
+        MultiBot.OnBridgeEnchantTradeList(active.botName or botName, deliveredItems, {
+          token = active.token or token,
+          status = status,
+          reason = reason,
+          skillValue = active.skillValue or 0,
+          maxSkill = active.maxSkill or 0,
+          count = count,
+        })
+      end
+    end
+
+    return true
+  end
+
+  if opcode == "ENCHANT_TRADE_RESULT" then
+    local fields = splitFields(payload or "")
+    if #fields ~= 6 then
+      state.lastError = "ENCHANT_TRADE_RESULT_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local botName = trim(urlDecodeField(fields[1]))
+    local token = trim(fields[2])
+    local spellId = tonumber(fields[3] or "0") or 0
+    local status = string.upper(trim(fields[4]))
+    local reason = string.upper(trim(urlDecodeField(fields[5])))
+    local accepted = tonumber(fields[6] or "0") or 0
+    state.connected = true
+    state.lastError = nil
+
+    local command = state.enchantTradeCommands and state.enchantTradeCommands[token] or nil
+    if command then
+      if botName == "" or string.lower(botName) ~= tostring(command.botNameKey or "") then
+        state.lastError = "ENCHANT_TRADE_RESULT_BOT_MISMATCH"
+        return true
+      end
+
+      if spellId <= 0 or spellId ~= tonumber(command.spellId or 0) then
+        state.lastError = "ENCHANT_TRADE_RESULT_SPELL_MISMATCH"
+        return true
+      end
+
+      state.enchantTradeCommands[token] = nil
+      command.accepted = accepted ~= 0
+      command.status = status
+      command.reason = reason
+
+      if MultiBot.OnBridgeEnchantTradeResult then
+        MultiBot.OnBridgeEnchantTradeResult(command.botName, command.spellId, status, reason, command)
+      end
+    end
+
+    return true
+  end
+
+  if opcode == "PROFESSION_RECIPES_BEGIN" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, skillId = splitOnce(rest or "", "~")
+    botName = trim(urlDecodeField(botName))
+    token = trim(token)
+    skillId = tonumber(skillId or "0") or 0
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveProfessionRecipeRequest(botName, token, skillId)
+    if active then
+      active.recipes = {}
+    end
+
+    return true
+  end
+
+  if opcode == "PROFESSION_RECIPES_ITEM" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, rest2 = splitOnce(rest or "", "~")
+    local skillId, rest3 = splitOnce(rest2 or "", "~")
+    local spellId, rest4 = splitOnce(rest3 or "", "~")
+    local itemId, rest5 = splitOnce(rest4 or "", "~")
+    local difficulty, rest6 = splitOnce(rest5 or "", "~")
+    local craftable, materials = splitOnce(rest6 or "", "~")
+
+    botName = trim(urlDecodeField(botName))
+    token = trim(token)
+    skillId = tonumber(skillId or "0") or 0
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveProfessionRecipeRequest(botName, token, skillId)
+    if active then
+      table.insert(active.recipes, {
+        skillId = skillId,
+        spellId = tonumber(spellId or "0") or 0,
+        itemId = tonumber(itemId or "0") or 0,
+        difficulty = trim(urlDecodeField(difficulty)),
+        craftable = tonumber(craftable or "0") or 0,
+        materials = parseRecipeMaterials(urlDecodeField(materials)),
+      })
+    end
+
+    return true
+  end
+
+  if opcode == "PROFESSION_RECIPES_END" then
+    local botName, rest = splitOnce(payload or "", "~")
+    local token, skillId = splitOnce(rest or "", "~")
+    botName = trim(urlDecodeField(botName))
+    token = trim(token)
+    skillId = tonumber(skillId or "0") or 0
+    state.connected = true
+    state.lastError = nil
+
+    local active = getActiveProfessionRecipeRequest(botName, token, skillId)
+    if active then
+      local key = string.lower(botName) .. ":" .. tostring(skillId)
+      state.professionRecipes[key] = active.recipes or {}
+      if MultiBot.OnBridgeProfessionRecipes then
+        MultiBot.OnBridgeProfessionRecipes(botName, skillId, state.professionRecipes[key], token)
+      end
+      state.professionRecipeActive = nil
+    end
+
+    return true
+  end
+
+  if opcode == "PROFESSION_RECIPE_CRAFT" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyProfessionRecipeCraftPayload(payload)
+  end
+
+  if opcode == "FORMATIONS_BEGIN" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyFormationsBeginPayload(payload)
+  end
+
+  if opcode == "FORMATIONS_ITEM" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyFormationsItemPayload(payload)
+  end
+
+  if opcode == "FORMATIONS_END" then
+    state.connected = true
+    state.lastError = nil
+    return Comm.ApplyFormationsEndPayload(payload)
+  end
+
+  if opcode == "FORMATION_ACK" then
+    local scope, rest = splitOnce(payload or "", "~")
+    local target, rest2 = splitOnce(rest or "", "~")
+    local token, rest3 = splitOnce(rest2 or "", "~")
+    local successText, rest4 = splitOnce(rest3 or "", "~")
+    local failureText, encodedFormation = splitOnce(rest4 or "", "~")
+
+    scope = string.upper(trim(scope))
+    target = trim(urlDecodeField(target))
+    token = trim(token)
+    local success = tonumber(successText or "0") or 0
+    local failure = tonumber(failureText or "0") or 0
+    local formation = string.lower(trim(urlDecodeField(encodedFormation)))
+
+    state.connected = true
+    state.lastError = nil
+    debugPrint("ADDON:RX", "FORMATION_ACK", payload or "")
+
+    local pending = state.formationCommands[token]
+    state.formationCommands[token] = nil
+
+    local result = {
+      scope = scope,
+      target = target,
+      token = token,
+      success = success,
+      failure = failure,
+      formation = formation,
+    }
+
+    if pending and type(pending.callback) == "function" then
+      pending.callback(result)
+    end
+
+    if MultiBot.OnFormationCommandApplied then
+      MultiBot.OnFormationCommandApplied(result)
+    end
+
+    if success <= 0 then
+      systemMessage(L("formation.confirm.none"))
+    elseif failure > 0 then
+      systemMessage(string.format(
+        L("formation.confirm.partial"),
+        success,
+        failure
+      ))
+    end
+
+    return true
+  end
+
+  if opcode == "STRATEGY_ACK" then
+    local fields = splitFields(payload or "")
+    if #fields ~= 8 then
+      state.lastError = "STRATEGY_ACK_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local scope = string.upper(trim(fields[1]))
+    local target = urlDecodeFieldStrict(fields[2], 64, true)
+    local token = trim(fields[3])
+    local stateScope = string.upper(trim(fields[4]))
+    local matched = parseBoundedInteger(fields[5], 0, 128)
+    local succeeded = parseBoundedInteger(fields[6], 0, 128)
+    local failed = parseBoundedInteger(fields[7], 0, 128)
+    local reason = urlDecodeFieldStrict(fields[8], 64, false)
+
+    local pending = state.strategyMutationCommands[token]
+    if (scope ~= "ALL" and scope ~= "GROUP" and scope ~= "PARTY" and scope ~= "RAID" and scope ~= "BOT")
+        or target == nil
+        or not isValidStateToken(token)
+        or (stateScope ~= "C" and stateScope ~= "N")
+        or matched == nil
+        or succeeded == nil
+        or failed == nil
+        or reason == nil
+        or succeeded + failed > matched
+        or type(pending) ~= "table"
+        or pending.scope ~= scope
+        or string.lower(pending.target or "") ~= string.lower(target)
+        or pending.stateScope ~= stateScope then
+      state.lastError = "STRATEGY_ACK_INVALID"
+      return true
+    end
+
+    state.connected = true
+    state.lastError = nil
+    debugPrint("ADDON:RX", "STRATEGY_ACK", payload or "")
+
+    local status = "failed"
+    if matched == 0 then
+      status = "no_match"
+    elseif succeeded == matched and failed == 0 then
+      status = "ok"
+    elseif succeeded > 0 then
+      status = "partial"
+    end
+
+    finishStrategyMutationCommand(token, {
+      status = status,
+      scope = scope,
+      target = target,
+      stateScope = stateScope,
+      matched = matched,
+      succeeded = succeeded,
+      failed = failed,
+      reason = reason,
+    })
+    return true
+  end
+
+  -- MB_HUNTER_PET_CONTROL_V1_RX_BEGIN
+  if opcode == "HUNTER_PET_CONTROL_ACK" then
+    return Comm._HandleHunterPetControlAck(payload)
+  end
+  -- MB_HUNTER_PET_CONTROL_V1_RX_END
+  -- MB_HUNTER_PET_MANAGE_V1_RX_BEGIN
+  if opcode == "HUNTER_PET_MANAGE_ACK" then
+    return Comm._HandleHunterPetManageAck(payload)
+  end
+  -- MB_HUNTER_PET_MANAGE_V1_RX_END
+  -- MB_FOLLOW_STAY_ORDER_V1_RX_BEGIN
+  if opcode == "FOLLOW_ORDER_ACK" or opcode == "STAY_ORDER_ACK" or opcode == "GRIND_ORDER_ACK" then
+    local fields = splitFields(payload or "")
+    if #fields ~= 5 then
+      state.lastError = "GROUP_ORDER_ACK_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local token = fields[1]
+    local matched = tonumber(fields[2])
+    local succeeded = tonumber(fields[3])
+    local failed = tonumber(fields[4])
+    local reason = fields[5]
+    local order = "STAY"
+    if opcode == "FOLLOW_ORDER_ACK" then
+      order = "FOLLOW"
+    elseif opcode == "GRIND_ORDER_ACK" then
+      order = "GRIND"
+    end
+    state.groupOrderCommands = state.groupOrderCommands or {}
+    local pending = state.groupOrderCommands[token]
+
+    local countsValid = matched and succeeded and failed
+      and matched >= 0 and matched <= 40 and math.floor(matched) == matched
+      and succeeded >= 0 and succeeded <= matched and math.floor(succeeded) == succeeded
+      and failed >= 0 and failed <= matched and math.floor(failed) == failed
+      and succeeded + failed == matched
+
+    if not isValidStateToken(token)
+        or not countsValid
+        or type(reason) ~= "string"
+        or reason == ""
+        or string.len(reason) > 32
+        or not string.match(reason, "^[A-Z0-9_]+$")
+        or type(pending) ~= "table"
+        or pending.order ~= order then
+      state.lastError = "GROUP_ORDER_ACK_INVALID"
+      return true
+    end
+
+    state.connected = true
+    state.lastError = reason == "OK" and nil or ("GROUP_ORDER_" .. reason)
+    debugPrint("ADDON:RX", opcode, payload or "")
+    local feedbackKey = "w3a.feedback.stay"
+    if order == "FOLLOW" then
+      feedbackKey = "w3a.feedback.follow"
+    elseif order == "GRIND" then
+      feedbackKey = "w3a.feedback.grind"
+    end
+    Comm._ShowW3ASummary(feedbackKey, matched, succeeded, reason)
+
+    local status = "failed"
+    if matched == 0 then
+      status = "empty"
+    elseif failed == 0 and succeeded == matched then
+      status = "ok"
+    elseif succeeded > 0 then
+      status = "partial"
+    end
+
+    Comm._FinishGroupOrderCommand(token, {
+      status = status,
+      matched = matched,
+      succeeded = succeeded,
+      failed = failed,
+      reason = reason,
+    })
+    return true
+  end
+  -- MB_FOLLOW_STAY_ORDER_V1_RX_END
+
+  -- MB_GROUP_ACTION_V1_RX_BEGIN
+  if opcode == "GROUP_ACTION_ACK" then
+    local fields = splitFields(payload or "")
+    if #fields ~= 6 then
+      state.lastError = "GROUP_ACTION_ACK_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local token = fields[1]
+    local action = fields[2]
+    local matched = tonumber(fields[3])
+    local succeeded = tonumber(fields[4])
+    local failed = tonumber(fields[5])
+    local reason = fields[6]
+    state.groupOrderCommands = state.groupOrderCommands or {}
+    local pending = state.groupOrderCommands[token]
+
+    local actionValid = action == "DRINK"
+      or action == "RELEASE"
+      or action == "REVIVE"
+      or action == "SUMMON"
+
+    local countsValid = matched and succeeded and failed
+      and matched >= 0 and matched <= 40 and math.floor(matched) == matched
+      and succeeded >= 0 and succeeded <= matched and math.floor(succeeded) == succeeded
+      and failed >= 0 and failed <= matched and math.floor(failed) == failed
+      and succeeded + failed == matched
+
+    local reasonValid = reason == "OK"
+      or reason == "BAD_ACTION"
+      or reason == "RATE_LIMIT"
+      or reason == "REPLAY"
+      or reason == "NO_GROUP"
+      or reason == "NO_BOTS"
+      or reason == "BOT_LIMIT"
+      or reason == "PARTIAL"
+      or reason == "FAILED"
+
+    if not isValidStateToken(token)
+        or not actionValid
+        or not countsValid
+        or not reasonValid
+        or type(pending) ~= "table"
+        or pending.order ~= "GROUP_ACTION"
+        or pending.action ~= action then
+      state.lastError = "GROUP_ACTION_ACK_INVALID"
+      return true
+    end
+
+    state.connected = true
+    if reason == "OK" then
+      state.lastError = nil
+    else
+      state.lastError = "GROUP_ACTION_" .. reason
+    end
+    debugPrint("ADDON:RX", opcode, payload or "")
+    if action ~= "DRINK" then
+      Comm._ShowW3ASummary("w3a.feedback." .. string.lower(action), matched, succeeded, reason)
+    end
+
+    local status = "failed"
+    if reason == "OK" and matched > 0 and failed == 0 and succeeded == matched then
+      status = "ok"
+    elseif reason == "NO_BOTS" and matched == 0 then
+      status = "empty"
+    elseif succeeded > 0 then
+      status = "partial"
+    end
+
+    Comm._FinishGroupOrderCommand(token, {
+      status = status,
+      action = action,
+      matched = matched,
+      succeeded = succeeded,
+      failed = failed,
+      reason = reason,
+    })
+    return true
+  end
+  -- MB_GROUP_ACTION_V1_RX_END
+  -- MB_QUEST_ACCEPT_ALL_V1_RX_BEGIN
+  if opcode == "QUEST_ACCEPT_ALL_ACK" then
+    local fields = splitFields(payload or "")
+    if #fields ~= 5 then
+      state.lastError = "QUEST_ACCEPT_ALL_ACK_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local token = fields[1]
+    local matched = parseBoundedInteger(fields[2], 0, 40)
+    local processed = parseBoundedInteger(fields[3], 0, 40)
+    local accepted = parseBoundedInteger(fields[4], 0, 1000)
+    local reason = urlDecodeFieldStrict(fields[5], 64, false)
+
+    state.groupOrderCommands = state.groupOrderCommands or {}
+    local pending = state.groupOrderCommands[token]
+
+    local countsValid = matched ~= nil
+      and processed ~= nil
+      and accepted ~= nil
+      and processed <= matched
+      and (processed > 0 or accepted == 0)
+
+    local reasonValid = reason == "OK"
+      or reason == "BAD_TOKEN"
+      or reason == "RATE_LIMIT"
+      or reason == "REPLAY"
+      or reason == "NO_GROUP"
+      or reason == "NO_BOTS"
+      or reason == "BOT_LIMIT"
+      or reason == "PARTIAL"
+      or reason == "FAILED"
+
+    if not isValidStateToken(token)
+        or not countsValid
+        or not reasonValid
+        or type(pending) ~= "table"
+        or pending.order ~= "QUEST_ACCEPT_ALL" then
+      state.lastError = "QUEST_ACCEPT_ALL_ACK_INVALID"
+      return true
+    end
+
+    state.connected = true
+    if reason == "OK" or reason == "NO_BOTS" then
+      state.lastError = nil
+    else
+      state.lastError = "QUEST_ACCEPT_ALL_" .. reason
+    end
+
+    local status = "failed"
+    if reason == "OK" then
+      status = "ok"
+    elseif reason == "NO_BOTS" and matched == 0 then
+      status = "empty"
+    elseif reason == "PARTIAL" or (reason == "BOT_LIMIT" and processed > 0) then
+      status = "partial"
+    end
+
+    Comm._FinishGroupOrderCommand(token, {
+      status = status,
+      matched = matched,
+      processed = processed,
+      accepted = accepted,
+      reason = reason,
+    })
+
+    return true
+  end
+  -- MB_QUEST_ACCEPT_ALL_V1_RX_END
+  -- MB_QUEST_TALK_V1_RX_BEGIN
+
+  if opcode == "QUEST_TALK_ACK" then
+
+    local fields = splitFields(payload or "")
+
+    if #fields ~= 5 then
+
+      state.lastError = "QUEST_TALK_ACK_BAD_FIELD_COUNT"
+
+      return true
+
+    end
+
+
+
+    local token = fields[1]
+
+    local matched = parseBoundedInteger(fields[2], 0, 40)
+
+    local processed = parseBoundedInteger(fields[3], 0, 40)
+
+    local interacted = parseBoundedInteger(fields[4], 0, 40)
+
+    local reason = urlDecodeFieldStrict(fields[5], 64, false)
+
+
+
+    state.groupOrderCommands = state.groupOrderCommands or {}
+
+    local pending = state.groupOrderCommands[token]
+
+
+
+    if token == nil or token == ""
+
+        or matched == nil
+
+        or processed == nil
+
+        or interacted == nil
+
+        or reason == nil
+
+        or type(pending) ~= "table"
+
+        or pending.order ~= "QUEST_TALK" then
+
+      state.lastError = "QUEST_TALK_ACK_INVALID"
+
+      return true
+
+    end
+
+
+
+    local status = "error"
+
+    if reason == "OK" then
+
+      status = "ok"
+
+    elseif interacted > 0 then
+
+      status = "partial"
+
+    end
+
+
+
+    if reason == "OK" then
+
+      state.lastError = nil
+
+    else
+
+      state.lastError = "QUEST_TALK_" .. reason
+
+    end
+
+
+
+    Comm._FinishGroupOrderCommand(token, {
+
+      status = status,
+
+      matched = matched,
+
+      processed = processed,
+
+      interacted = interacted,
+
+      reason = reason,
+
+    })
+
+
+
+    return true
+
+  end
+
+  -- MB_QUEST_TALK_V1_RX_END
+  -- MB_QUEST_GAMEOBJECT_USE_V1_RX_BEGIN
+  if opcode == "QUEST_GAMEOBJECT_USE_ACK" then
+    local fields = splitFields(payload or "")
+    if #fields ~= 4 then
+      state.lastError = "QUEST_GAMEOBJECT_USE_ACK_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local token = fields[1]
+    local botName = urlDecodeFieldStrict(fields[2], 64, false)
+    local used = parseBoundedInteger(fields[3], 0, 1)
+    local reason = urlDecodeFieldStrict(fields[4], 64, false)
+
+    if not botName or used == nil or not reason then
+      state.lastError = "QUEST_GAMEOBJECT_USE_ACK_BAD_PAYLOAD"
+      return true
+    end
+
+    state.groupOrderCommands = state.groupOrderCommands or {}
+    local pending = state.groupOrderCommands[token]
+    if type(pending) ~= "table" or pending.order ~= "QUEST_GAMEOBJECT_USE" then
+      return true
+    end
+
+    if Comm._NormalizeFleeWhisperName(botName) ~= pending.feedbackName then
+      state.lastError = "QUEST_GAMEOBJECT_USE_ACK_BOT_MISMATCH"
+      return true
+    end
+
+    local status = "failed"
+    if used == 1 and reason == "OK" then
+      status = "ok"
+    else
+      state.lastError = "QUEST_GAMEOBJECT_USE_FAILED~" .. reason
+    end
+
+    Comm._FinishGroupOrderCommand(token, {
+      status = status,
+      botName = botName,
+      used = used,
+      reason = reason,
+    })
+
+    return true
+  end
+  -- MB_QUEST_GAMEOBJECT_USE_V1_RX_END
+  -- MB_QUEST_REWARD_V1_RX_BEGIN
+  if opcode == "QUEST_REWARD_ACK" then
+    local fields = splitFields(payload or "")
+    if #fields ~= 4 then
+      state.lastError = "QUEST_REWARD_ACK_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local token = fields[1]
+    local botName = urlDecodeFieldStrict(fields[2], 64, false)
+    local rewarded = parseBoundedInteger(fields[3], 0, 1)
+    local reason = urlDecodeFieldStrict(fields[4], 64, false)
+
+    if not botName or rewarded == nil or not reason then
+      state.lastError = "QUEST_REWARD_ACK_BAD_PAYLOAD"
+      return true
+    end
+
+    state.groupOrderCommands = state.groupOrderCommands or {}
+    local pending = state.groupOrderCommands[token]
+    if type(pending) ~= "table" or pending.order ~= "QUEST_REWARD" then
+      return true
+    end
+
+    if Comm._NormalizeFleeWhisperName(botName) ~= pending.feedbackName then
+      state.lastError = "QUEST_REWARD_ACK_BOT_MISMATCH"
+      return true
+    end
+
+    local status = "failed"
+    if rewarded == 1 and reason == "OK" then
+      status = "ok"
+    else
+      state.lastError = "QUEST_REWARD_FAILED~" .. reason
+    end
+
+    Comm._FinishGroupOrderCommand(token, {
+      status = status,
+      botName = botName,
+      rewarded = rewarded,
+      reason = reason,
+    })
+
+    return true
+  end
+  -- MB_QUEST_REWARD_V1_RX_END
+  -- MB_RTSC_ORDER_V1_RX_BEGIN
+  if opcode == "RTSC_ORDER_ACK" then
+    local fields = splitFields(payload or "")
+    if #fields ~= 9 then
+      state.lastError = "RTSC_ORDER_ACK_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local token = fields[1]
+    local operation = string.upper(trim(fields[2]))
+    local audience = string.upper(trim(fields[3]))
+    local groupMask = parseBoundedInteger(fields[4], 0, 31)
+    local slot = parseBoundedInteger(fields[5], 0, 9)
+    local matched = parseBoundedInteger(fields[6], 0, 40)
+    local succeeded = parseBoundedInteger(fields[7], 0, 40)
+    local failed = parseBoundedInteger(fields[8], 0, 40)
+    local reason = urlDecodeFieldStrict(fields[9], 64, false)
+
+    state.groupOrderCommands = state.groupOrderCommands or {}
+    local pending = state.groupOrderCommands[token]
+
+    local operationValid = operation == "ENABLE"
+      or operation == "RESET"
+      or operation == "SELECT"
+      or operation == "CANCEL"
+      or operation == "SAVE"
+      or operation == "UNSAVE"
+      or operation == "GO"
+
+    local audienceValid = audience == "ALL"
+      or audience == "TANK"
+      or audience == "HEALER"
+      or audience == "DPS"
+      or audience == "MELEE"
+      or audience == "RANGED"
+      or audience == "MELEE_DPS"
+      or audience == "RANGED_DPS"
+      or audience == "GROUPS"
+
+    local countsValid = matched ~= nil
+      and succeeded ~= nil
+      and failed ~= nil
+      and succeeded <= matched
+      and failed <= matched
+      and succeeded + failed == matched
+
+    local reasonValid = reason == "OK"
+      or reason == "BAD_TOKEN"
+      or reason == "BAD_OP"
+      or reason == "BAD_AUDIENCE"
+      or reason == "BAD_GROUP_MASK"
+      or reason == "BAD_SLOT"
+      or reason == "BAD_COMBINATION"
+      or reason == "RATE_LIMIT"
+      or reason == "REPLAY"
+      or reason == "NO_GROUP"
+      or reason == "NO_BOTS"
+      or reason == "BOT_LIMIT"
+      or reason == "PARTIAL"
+      or reason == "FAILED"
+
+    if not isValidStateToken(token)
+        or not operationValid
+        or not audienceValid
+        or groupMask == nil
+        or slot == nil
+        or not countsValid
+        or not reasonValid
+        or type(pending) ~= "table"
+        or pending.order ~= "RTSC"
+        or pending.operation ~= operation
+        or pending.audience ~= audience
+        or pending.groupMask ~= groupMask
+        or pending.slot ~= slot then
+      state.lastError = "RTSC_ORDER_ACK_INVALID"
+      return true
+    end
+
+    state.connected = true
+    if reason == "OK" then
+      state.lastError = nil
+    else
+      state.lastError = "RTSC_ORDER_" .. reason
+    end
+
+    if operation == "ENABLE" or operation == "RESET" then
+      Comm._ShowW3ASummary("w3a.feedback.rtsc_" .. string.lower(operation), matched, succeeded, reason)
+    end
+
+    Comm._FinishGroupOrderCommand(token, {
+      status = reason == "OK" and "ok" or "error",
+      reason = reason,
+      operation = operation,
+      audience = audience,
+      groupMask = groupMask,
+      slot = slot,
+      matched = matched,
+      succeeded = succeeded,
+      failed = failed,
+    })
+
+    return true
+  end
+  -- MB_RTSC_ORDER_V1_RX_END
+  -- MB_ATTACK_ORDER_V1_RX_BEGIN
+  if opcode == "ATTACK_ORDER_ACK" then
+    local fields = splitFields(payload or "")
+    if #fields ~= 6 then
+      state.lastError = "ATTACK_ORDER_ACK_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local token = fields[1]
+    local audience = fields[2]
+    local matched = tonumber(fields[3])
+    local succeeded = tonumber(fields[4])
+    local failed = tonumber(fields[5])
+    local reason = fields[6]
+    state.groupOrderCommands = state.groupOrderCommands or {}
+    local pending = state.groupOrderCommands[token]
+
+    local audienceValid = audience == "ALL"
+      or audience == "TANK"
+      or audience == "HEALER"
+      or audience == "DPS"
+      or audience == "MELEE"
+      or audience == "RANGED"
+
+    local countsValid = matched and succeeded and failed
+      and matched >= 0 and matched <= 40 and math.floor(matched) == matched
+      and succeeded >= 0 and succeeded <= matched and math.floor(succeeded) == succeeded
+      and failed >= 0 and failed <= matched and math.floor(failed) == failed
+      and succeeded + failed == matched
+
+    local reasonValid = reason == "OK"
+      or reason == "BAD_AUDIENCE"
+      or reason == "RATE_LIMIT"
+      or reason == "REPLAY"
+      or reason == "NO_GROUP"
+      or reason == "NO_TARGET"
+      or reason == "NO_BOTS"
+      or reason == "BOT_LIMIT"
+      or reason == "PARTIAL"
+      or reason == "FAILED"
+
+    if not isValidStateToken(token)
+        or not audienceValid
+        or not countsValid
+        or not reasonValid
+        or type(pending) ~= "table"
+        or pending.order ~= "ATTACK"
+        or pending.audience ~= audience then
+      state.lastError = "ATTACK_ORDER_ACK_INVALID"
+      return true
+    end
+
+    state.connected = true
+    if reason == "OK" then
+      state.lastError = nil
+    else
+      state.lastError = "ATTACK_ORDER_" .. reason
+    end
+    debugPrint("ADDON:RX", opcode, payload or "")
+
+    local status = "failed"
+    if reason == "OK" and matched > 0 and failed == 0 and succeeded == matched then
+      status = "ok"
+    elseif reason == "NO_BOTS" and matched == 0 then
+      status = "empty"
+    elseif succeeded > 0 then
+      status = "partial"
+    end
+
+    Comm._FinishGroupOrderCommand(token, {
+      status = status,
+      audience = audience,
+      matched = matched,
+      succeeded = succeeded,
+      failed = failed,
+      reason = reason,
+    })
+    return true
+  end
+  -- MB_ATTACK_ORDER_V1_RX_END
+
+  if opcode == "RTI_ACK" then
+    state.connected = true
+    state.lastError = nil
+    debugPrint("ADDON:RX", "RTI_ACK", payload or "")
+    Comm._ShowW3AExecutionAck("w3a.feedback.rti", payload)
+    return true
+  end
+
+  if opcode == "COMBAT_ACK" then
+    state.connected = true
+    state.lastError = nil
+    debugPrint("ADDON:RX", "COMBAT_ACK", payload or "")
+    Comm._ShowW3AExecutionAck("w3a.feedback.combat", payload)
+    return true
+  end
+
+  if opcode == "POSITION_ACK" then
+    state.connected = true
+    state.lastError = nil
+    debugPrint("ADDON:RX", "POSITION_ACK", payload or "")
+
+    local rest = select(2, splitOnce(payload or "", "~"))
+    local rest2 = select(2, splitOnce(rest, "~"))
+    local rest3 = select(2, splitOnce(rest2, "~"))
+    local executedText, encodedCommand = splitOnce(rest3, "~")
+    local executed = tonumber(executedText) or 0
+    local command = trim(urlDecodeField(encodedCommand))
+
+    if executed > 0 then
+      local distance = string.match(command, "^disperse set%s+(.+)$")
+
+      if distance then
+        systemMessage(string.format(
+          L("disperse.confirm.set", "Disperse set to %s yards."),
+          distance
+        ))
+      elseif command == "disperse disable" then
+        systemMessage(L("disperse.confirm.disable", "Disperse disabled."))
+      end
+    end
+
+    return true
+  end
+
+  if opcode == "LOOT_ACK" then
+    state.connected = true
+    state.lastError = nil
+    debugPrint("ADDON:RX", "LOOT_ACK", payload or "")
+
+    local rest = select(2, splitOnce(payload or "", "~"))
+    local rest2 = select(2, splitOnce(rest, "~"))
+    local rest3 = select(2, splitOnce(rest2, "~"))
+    local executedText, encodedCommand = splitOnce(rest3, "~")
+    local executed = tonumber(executedText) or 0
+    local command = string.lower(trim(urlDecodeField(encodedCommand)))
+
+    if executed <= 0 then
+      systemMessage(L("loot.confirm.none", "Loot command was not applied to any bot."))
+      return true
+    end
+
+    if MultiBot.OnLootCommandApplied then
+      MultiBot.OnLootCommandApplied(command, executed)
+    end
+
+    if command == "nc +loot" then
+      systemMessage(string.format(L("loot.confirm.enable", "Loot enabled for %d bot(s)."), executed))
+      return true
+    end
+
+    if command == "nc -loot" then
+      systemMessage(string.format(L("loot.confirm.disable", "Loot disabled for %d bot(s)."), executed))
+      return true
+    end
+
+    local profile = command:match("^ll%s+([%w_%-]+)$")
+    if profile then
+      local profileName = ({
+        all = L("loot.profile.all", "All"),
+        normal = L("loot.profile.normal", "Normal"),
+        gray = L("loot.profile.gray", "Gray"),
+        disenchant = L("loot.profile.disenchant", "Disenchant"),
+      })[profile] or profile
+
+      systemMessage(string.format(L("loot.confirm.profile", "Loot profile set to %s for %d bot(s)."), profileName, executed))
+    end
+
+    return true
+  end
+
+  if opcode == "GROUP_ROLL_ACK" then
+    local fields = splitFields(payload or "")
+    if #fields ~= 7 then
+      state.lastError = "GROUP_ROLL_ACK_BAD_FIELD_COUNT"
+      return true
+    end
+
+    local token = trim(fields[1])
+    local status = string.upper(trim(fields[2]))
+    local mode = string.upper(trim(fields[3]))
+    local scope = string.upper(trim(fields[4]))
+    local matched = parseBoundedInteger(fields[5], 0, 128)
+    local invoked = parseBoundedInteger(fields[6], 0, 128)
+    local reason = urlDecodeFieldStrict(fields[7], 64, false)
+    local pending = state.groupRollCommands[token]
+
+    if not isValidStateToken(token)
+        or (status ~= "OK" and status ~= "ERR")
+        or (mode ~= "NORMAL" and mode ~= "ITEM")
+        or (scope ~= "PARTY" and scope ~= "RAID" and scope ~= "NONE")
+        or matched == nil
+        or invoked == nil
+        or invoked > matched
+        or reason == nil
+        or type(pending) ~= "table"
+        or pending.mode ~= mode then
+      state.lastError = "GROUP_ROLL_ACK_INVALID"
+      return true
+    end
+
+    state.connected = true
+    state.lastError = nil
+    debugPrint("ADDON:RX", "GROUP_ROLL_ACK", payload or "")
+
+    finishGroupRollCommand(token, {
+      status = status == "OK" and "ok" or "error",
+      mode = mode,
+      scope = scope,
+      matched = matched,
+      invoked = invoked,
+      reason = reason,
+    })
+
+    return true
+  end
+
+  if Comm.HandleSpellbookCastAddonMessage(opcode, payload, state) then
+    return true
+  end
+
+  if Comm.HandleSpellbookIgnoreAddonMessage(opcode, payload, state) then
+    return true
+  end
+
+  if Comm.HandleBotMaintenanceAddonMessage(opcode, payload, state) then
+    return true
+  end
+
+  if Comm.HandleBotWipeAddonMessage(opcode, payload, state) then
+    return true
+  end
+
+  if Comm.HandleBotSummonAddonMessage(opcode, payload, state) then
+    return true
+  end
+  if Comm.HandleBotReleaseAddonMessage(opcode, payload, state) then
+    return true
+  end
+
+  if opcode == "ERR" then
+    state.lastError = payload
+    debugPrint("ADDON:RX", "ERR", payload or "")
+
+    local fields = splitFields(payload or "")
+    if #fields == 4 then
+      local requestType = urlDecodeFieldStrict(fields[2], 32, false)
+      local token = trim(fields[3])
+      local reason = urlDecodeFieldStrict(fields[4], 64, false)
+
+      requestType = requestType and string.upper(trim(requestType)) or nil
+      if requestType and isValidStateToken(token) and reason then
+        if Comm.HandleSelfBotProtocolError(requestType, token, reason, state) then
+          return true
+        elseif Comm.HandleSpellbookCastProtocolError(requestType, token, reason, state) then
+          return true
+        elseif Comm.HandleSpellbookIgnoreProtocolError(requestType, token, reason, state) then
+          return true
+        elseif Comm.HandleBotMaintenanceProtocolError(requestType, token, reason, state) then
+          return true
+        elseif Comm.HandleBotWipeProtocolError(requestType, token, reason, state) then
+          return true
+        elseif Comm.HandleBotSummonProtocolError(requestType, token, reason, state) then
+          return true
+        elseif Comm.HandleBotReleaseProtocolError(requestType, token, reason, state) then
+          return true
+        elseif Comm.HandleFormationProtocolError(requestType, token, reason, state) then
+          return true
+        elseif Comm.HandleSelfActionProtocolError(requestType, token, reason, state) then
+          return true
+        elseif Comm.HandleSelfStrategyProtocolError(requestType, token, reason, state) then
+          return true
+        elseif Comm.HandleFleeOrderProtocolError(requestType, token, reason, state) then
+          return true
+        elseif Comm.HandleBotResetProtocolError(requestType, token, reason, state) then
+          return true
+        elseif Comm.HandleAltBotLifecycleProtocolError(requestType, token, reason, state) then
+          return true
+        elseif requestType == "LOOT_RULE_ITEM" and state.lootRuleItemCommands[token] then
+          local pending = state.lootRuleItemCommands[token]
+          state.lootRuleItemCommands[token] = nil
+          state.lastError = "LOOT_RULE_ITEM_" .. reason
+          if MultiBot.OnLootRuleItemResult then
+            MultiBot.OnLootRuleItemResult(
+              pending.scope, pending.target, pending.action, pending.itemId,
+              "ERR", reason, 0, 0, pending
+            )
+          end
+        elseif requestType == "GROUP_ROLL" and state.groupRollCommands[token] then
+          finishGroupRollCommand(token, {
+            status = "error",
+            matched = 0,
+            invoked = 0,
+            reason = reason,
+          })
+        elseif requestType == "STRATEGY" and state.strategyMutationCommands[token] then
+          finishStrategyMutationCommand(token, {
+            status = "error",
+            matched = 0,
+            succeeded = 0,
+            failed = 0,
+            reason = reason,
+          })
+        elseif (requestType == "STATE" or requestType == "STATES" or requestType == "SELF_STRATEGY_STATE") and state.stateRequests[token] then
+          failBootstrapStateRequest(state, token)
+          clearStateRequest(state, token)
+        end
+      end
+    end
+
+    return true
+  end
+
+  debugPrint("ADDON:RX", opcode, payload or "")
+  return true
+end
+
+local function dispatchBootstrapRequests(generation)
+  local state = ensureBridgeState()
+  if generation ~= nil and state.connectionGeneration ~= generation then
+    return false
+  end
+
+  Comm.SendHello()
+  Comm.SendPing()
+  Comm.RequestRoster()
+  requestBootstrapStates()
+  if Comm.RequestBotDetails then
+    Comm.RequestBotDetails()
+  end
+  return true
+end
+
+function Comm.OnPlayerEnteringWorld()
+  Comm._ArmFleeWhisperFilter()
+  local state = ensureBridgeState()
+  state.autogearOptionsCapable = false
+  if MultiBot.Autogear then MultiBot.Autogear.OnDisconnect() end
+  state.states = {}
+  state.stateRequests = {}
+  state.stateActive = {}
+  state.stateLatestByBot = {}
+  state.stateLatestOrderByBot = {}
+  state.stateGlobalLatestToken = nil
+  state.stateFramingCapable = false
+  state.capabilitiesResolved = false
+  state.bootstrapStatePending = false
+  state.bootstrapStateRequested = false
+  state.bootstrapStateToken = nil
+  state.bootstrapStateAttempts = 0
+  state.pendingStateRefreshAll = false
+  state.pendingStateRefreshByBot = {}
+  state.strategyMutationCapable = false
+state.selfStrategyCapable = false
+state.selfActionCapable = false
+state.botMaintenanceCapable = false
+state.botWipeCapable = false
+  state.botSummonCapable = false
+  state.spellbookCastCapable = false
+  state.spellbookIgnoreCapable = false
+  state.outfitCapable = false
+  state.outfitFramingCapable = false
+  state.inventoryCapable = false
+  state.inventoryExactCapable = false
+  state.inventoryItemMoveCapable = false
+  state.inventoryItemTradeCapable = false
+  state.inventoryItemDepositExactCapable = false
+  state.inventoryItemEquipCapable = false
+  state.inventoryItemUnequipCapable = false
+  state.inventoryItemDestroyCapable = false
+  state.inventoryItemUseCapable = false
+  state.inventoryItemSellCapable = false
+  state.inventoryBuybackCapable = false
+  state.inventoryBulkSellCapable = false
+  state.inventoryOpenCapable = false
+  state.lootRuleItemCapable = false
+  state.groupRollCapable = false
+  state.groupActionCapable = false
+  state.formationCapable = false
+  state.rtscOrderCapable = false
+  state.questAcceptAllCapable = false
+  state.enchantTradeCapable = false
+  state.questAbandonCapable = false
+  state.talentApplyCapable = false
+  state.talentSpecApplyCapable = false
+  state.craftRecipeTargetCapable = false
+  state.altRosterCapable = false
+  state.botLifecycleCapable = false
+  state.botTargetResolveCapable = false
+  state.altRoster = {}
+  state.altRosterBatch = nil
+  state.selfBotCapable = false
+  state.details = {}
+  state.stats = {}
+  state.pvpStats = {}
+  state.quests = {}
+  state.questActive = {}
+  state.gameObjects = {}
+  state.gameObjectActive = {}
+  state.formationCommands = {}
+  state.formationQueryActive = nil
+  state.talentSpecs = {}
+  state.talentSpecActive = nil
+  state.inventoryActive = nil
+  state.inventoryExactActive = nil
+  state.inventoryExactSnapshots = {}
+  state.spellbookActive = nil
+  state.botSkills = {}
+  state.botSkillActive = nil
+  state.botReputations = {}
+  state.botReputationActive = nil
+  state.botEmblems = {}
+  state.botEmblemMoney = {}
+  state.botEmblemActive = nil
+  state.professionRecipes = {}
+  state.professionRecipeActive = nil
+  state.outfitActive = nil
+  state.outfitCommands = {}
+  state.trainerSpells = {}
+  Comm.MarkDisconnected(nil)
+  local generation = state.connectionGeneration
+  state.trainerActive = nil
+  state.trainerCommands = {}
+  state.trainerSpells = {}
+  state.bootstrapPending = true
+  state.bootstrapDeadline = safeNow() + 4.0
+
+  local function expireBootstrap()
+    local bridge = ensureBridgeState()
+    if bridge.connectionGeneration ~= generation then
+      return
+    end
+    if not bridge.connected and bridge.bootstrapPending and bridge.bootstrapDeadline > 0 and safeNow() >= bridge.bootstrapDeadline then
+      bridge.bootstrapPending = false
+      bridge.bootstrapDeadline = 0
+    end
+  end
+
+  if not MultiBot.TimerAfter then
+    dispatchBootstrapRequests(generation)
+    expireBootstrap()
+    return
+  end
+
+  dispatchBootstrapRequests(generation)
+
+  MultiBot.TimerAfter(1.0, function()
+    dispatchBootstrapRequests(generation)
+  end)
+
+  MultiBot.TimerAfter(4.1, expireBootstrap)
+end
+
+ensureBridgeState()

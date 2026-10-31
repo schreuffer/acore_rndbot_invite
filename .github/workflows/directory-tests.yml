@@ -1,0 +1,19 @@
+name: RandomBot directory tests
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  isolated-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua 5.1
+        run: sudo apt-get update && sudo apt-get install -y lua5.1
+      - name: Test server directory and Lua addon
+        run: ./scripts/test.sh
+      - name: Verify complete addon packaging
+        run: |
+          python3 scripts/package-addon.py
+          git diff --exit-code -- dist/MultiBot-RandomBotBrowser.zip

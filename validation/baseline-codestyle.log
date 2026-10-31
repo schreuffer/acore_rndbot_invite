@@ -1,0 +1,72 @@
+Starting AzerothCore CPP Codestyle check...
+ 
+Please read the C++ Code Standards for AzerothCore:
+https://www.azerothcore.org/wiki/cpp-code-standards
+ 
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 1279
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 2694
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 4357
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 4755
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 5676
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 5677
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 6115
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 9251
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 9697
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11812
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11813
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11820
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11821
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11836
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11837
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11852
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11853
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11866
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11867
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11876
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11877
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11886
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11887
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11890
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11891
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11896
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11897
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11910
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11911
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11926
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11927
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11940
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11941
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11954
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11955
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11970
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11971
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11980
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11981
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11990
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 11991
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 12002
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 12003
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 12008
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 12009
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 12016
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 12017
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 12036
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 12037
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 13264
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 14588
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 18594
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 21904
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 22535
+Multiple blank lines found in /tmp/random-directory-baseline/src/MultiBotBridge.cpp at line 22536
+
+Multiple blank lines check : Failed
+Trailing whitespace check : Passed
+GetCounter() check : Passed
+Misc codestyle check : Passed
+GetTypeId() check : Passed
+NpcFlagHelpers check : Passed
+ItemFlagHelpers check : Passed
+ItemTemplateFlagHelpers check : Passed
+Qualifier alignment check : Passed
+
+Please fix the codestyle issues above.
