@@ -13,5 +13,8 @@
   "runtime_enabled_by_default": false,
   "live_deployed": true,
   "in_game_verified": false,
-  "deployed_baseline_native_invite_confirmed": true
+  "deployed_baseline_native_invite_confirmed": true,
+  "autobalance_base": "1d707cb61a0962ab01e4123681e2d3b66cc558a2",
+  "autobalance_fix_tested": "23dd008242f487a5c66f8064c675ed77122f90c6",
+  "autobalance_fix_deployed": false
 }

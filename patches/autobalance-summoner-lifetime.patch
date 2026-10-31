@@ -1,0 +1,187 @@
+diff --git a/src/ABAllCreatureScript.cpp b/src/ABAllCreatureScript.cpp
+index f0c4782..a1abaf3 100644
+--- a/src/ABAllCreatureScript.cpp
++++ b/src/ABAllCreatureScript.cpp
+@@ -8,6 +8,7 @@
+ #include "AutoBalance.h"
+ 
+ #include "MapMgr.h"
++#include "ObjectAccessor.h"
+ 
+ void AutoBalance_AllCreatureScript::OnBeforeCreatureSelectLevel(const CreatureTemplate* /*creatureTemplate*/, Creature* creature, uint8& level)
+ {
+@@ -559,7 +560,7 @@ void AutoBalance_AllCreatureScript::ModifyCreatureAttributes(Creature* creature)
+         // handle "special" creatures
+         // note that these already passed a more complex check above
+         if (
+-            (creature->IsTotem() && creature->IsSummon() && creatureABInfo->summoner && creatureABInfo->summoner->IsPlayer()) ||
++            (creature->IsTotem() && creature->IsSummon() && creatureABInfo->summonerGuid.IsPlayer()) ||
+             (
+                 creature->IsCritter() && creatureABInfo->UnmodifiedLevel <= 5 && creature->GetMaxHealth() <= 100
+                 )
+@@ -1486,8 +1487,8 @@ bool AutoBalance_AllCreatureScript::_isSummonCloneOfSummoner(Creature* summon)
+     // get the summon's info
+     AutoBalanceCreatureInfo* summonABInfo = summon->CustomData.GetDefault<AutoBalanceCreatureInfo>("AutoBalanceCreatureInfo");
+ 
+-    // get the saved summoner
+-    Creature* summoner = summonABInfo->summoner;
++    // The summoner can despawn before this summon changes entry or is rescaled.
++    Creature* summoner = ObjectAccessor::GetCreature(*summon, summonABInfo->summonerGuid);
+ 
+     // if the summoner doesn't exist
+     if (!summoner)
+diff --git a/src/ABCommandScript.cpp b/src/ABCommandScript.cpp
+index 14b9356..fd95fbd 100644
+--- a/src/ABCommandScript.cpp
++++ b/src/ABCommandScript.cpp
+@@ -156,9 +156,9 @@ bool AutoBalance_CommandScript::HandleABCreatureStatsCommand(ChatHandler* handle
+     handler->PSendSysMessage(ABGetLocaleText(locale, "creature_difficulty_level").c_str(), targetABInfo->instancePlayerCount);
+ 
+     // summon
+-    if (target->IsSummon() && targetABInfo->summoner && targetABInfo->isCloneOfSummoner)
++    if (target->IsSummon() && !targetABInfo->summonerGuid.IsEmpty() && targetABInfo->isCloneOfSummoner)
+         handler->PSendSysMessage(ABGetLocaleText(locale, "clone_of_summon").c_str(), targetABInfo->summonerName, targetABInfo->summonerLevel);
+-    else if (target->IsSummon() && targetABInfo->summoner)
++    else if (target->IsSummon() && !targetABInfo->summonerGuid.IsEmpty())
+         handler->PSendSysMessage(ABGetLocaleText(locale, "summon_of_summon").c_str(), targetABInfo->summonerName, targetABInfo->summonerLevel);
+     else if (target->IsSummon())
+         handler->PSendSysMessage(ABGetLocaleText(locale, "summon_without_summoner").c_str());
+diff --git a/src/ABCreatureInfo.h b/src/ABCreatureInfo.h
+index 5876e2b..fea42d2 100644
+--- a/src/ABCreatureInfo.h
++++ b/src/ABCreatureInfo.h
+@@ -48,7 +48,7 @@ public:
+     uint32      initialMaxHealth       = 0;       // Stored max health value to be applied just before being added to the world
+ 
+     // creature->IsSummon()                       // Whether or not the creature is a summon
+-    Creature*   summoner               = nullptr; // The creature that summoned this creature
++    ObjectGuid  summonerGuid;                     // Resolve the summoner on use; it may despawn first
+     std::string summonerName           = "";      // The name of the creature that summoned this creature
+     uint8       summonerLevel          = 0;       // The level of the creature that summoned this creature
+     bool        isCloneOfSummoner      = false;   // Whether or not the creature is a clone of its summoner
+diff --git a/src/ABUtils.cpp b/src/ABUtils.cpp
+index fbaa47a..6d6af6a 100644
+--- a/src/ABUtils.cpp
++++ b/src/ABUtils.cpp
+@@ -54,11 +54,10 @@ void AddCreatureToMapCreatureList(Creature* creature, bool addToCreatureList, bo
+             creature->ToTempSummon()->GetSummoner() &&
+             creature->ToTempSummon()->GetSummoner()->ToCreature())
+         {
+-            creatureABInfo->summoner      = creature->ToTempSummon()->GetSummoner()->ToCreature();
+-            creatureABInfo->summonerName  = creatureABInfo->summoner->GetName();
+-            creatureABInfo->summonerLevel = creatureABInfo->summoner->GetLevel();
+-
+-            Creature* summoner = creatureABInfo->summoner;
++            Creature* summoner = creature->ToTempSummon()->GetSummoner()->ToCreature();
++            creatureABInfo->summonerGuid  = summoner->GetGUID();
++            creatureABInfo->summonerName  = summoner->GetName();
++            creatureABInfo->summonerLevel = summoner->GetLevel();
+ 
+             if (!summoner)
+             {
+diff --git a/tests/summoner_lifetime_test.py b/tests/summoner_lifetime_test.py
+new file mode 100644
+index 0000000..66a1973
+--- /dev/null
++++ b/tests/summoner_lifetime_test.py
+@@ -0,0 +1,100 @@
++#!/usr/bin/env python3
++"""Exercise the actual clone-check function with a despawned summoner under ASan/UBSan.
++Native adapters are fakes; run with --baseline to reproduce the old dangling-pointer failure.
++"""
++from pathlib import Path
++import subprocess
++import sys
++import tempfile
++
++root = Path(__file__).resolve().parents[1]
++path = 'src/ABAllCreatureScript.cpp'
++source = (subprocess.check_output(['git', '-C', str(root), 'show', '1d707cb:' + path], text=True)
++          if '--baseline' in sys.argv else (root / path).read_text())
++function = source[source.index('bool AutoBalance_AllCreatureScript::_isSummonCloneOfSummoner('):]
++harness = r'''
++#include <algorithm>
++#include <cassert>
++#include <cstdint>
++#include <iostream>
++#include <string>
++#include <unordered_map>
++#include <vector>
++#define LOG_DEBUG(...) ((void)0)
++using int8 = int8_t;
++struct Creature;
++struct AutoBalanceCreatureInfo
++{
++    unsigned summonerGuid = 0;
++    Creature* summoner = nullptr; // Present only to compile/reproduce the old implementation.
++    int selectedLevel = 60;
++};
++struct Data
++{
++    AutoBalanceCreatureInfo info;
++    template<class T> T* GetDefault(char const*) { return &info; }
++};
++struct Creature
++{
++    bool IsSummon() const { return summoned; }
++    unsigned GetEntry() const { return entry; }
++    int GetLevel() const { return 60; }
++    unsigned GetMaxHealth() const { return health; }
++    unsigned GetCreatureType() const { return type; }
++    std::string const& GetName() const { return name; }
++    unsigned GetDisplayId() const { return display; }
++    Data CustomData;
++    bool summoned = true;
++    unsigned entry = 10, health = 100, type = 1, display = 5;
++    std::string name = "Clone";
++};
++namespace ObjectAccessor
++{
++    std::unordered_map<unsigned, Creature*> creatures;
++    Creature* GetCreature(Creature const&, unsigned guid)
++    {
++        auto it = creatures.find(guid);
++        return it == creatures.end() ? nullptr : it->second;
++    }
++}
++std::vector<unsigned> creatureIDsThatAreNotClones = {99};
++struct AutoBalance_AllCreatureScript
++{
++    bool _isSummonCloneOfSummoner(Creature* summon);
++};
++'''
++harness += function
++harness += r'''
++int main()
++{
++    AutoBalance_AllCreatureScript script;
++    Creature soul;
++    assert(!script._isSummonCloneOfSummoner(nullptr));
++    assert(!script._isSummonCloneOfSummoner(&soul));
++    auto* owner = new Creature;
++    soul.CustomData.info.summonerGuid = 42;
++    soul.CustomData.info.summoner = owner;
++    ObjectAccessor::creatures[42] = owner;
++    assert(script._isSummonCloneOfSummoner(&soul));
++    soul.entry = 99;
++    assert(!script._isSummonCloneOfSummoner(&soul));
++    soul.entry = 11; soul.health = 1; soul.type = 2; soul.name = "Different"; soul.display = 8;
++    assert(!script._isSummonCloneOfSummoner(&soul));
++    soul.summoned = false;
++    assert(!script._isSummonCloneOfSummoner(&soul));
++    soul.summoned = true;
++    // The summoned soul outlives its original creature and later changes entry.
++    ObjectAccessor::creatures.erase(42);
++    delete owner;
++    soul.entry = 11136;
++    assert(!script._isSummonCloneOfSummoner(&soul));
++    std::cout << "PASS: missing/live/despawned summoner, clone/nonclone and exclusion cases\n";
++}
++'''
++with tempfile.TemporaryDirectory(prefix='autobalance-lifetime-') as directory:
++    test = Path(directory) / 'test.cpp'
++    test.write_text(harness)
++    binary = Path(directory) / 'test'
++    subprocess.run(['c++', '-std=c++20', '-g', '-O1', '-Wall', '-Wextra', '-Werror',
++                    '-fsanitize=address,undefined', '-fno-omit-frame-pointer', str(test), '-o', str(binary)], check=True)
++    subprocess.run([str(binary)], check=True)

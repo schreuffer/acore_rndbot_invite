@@ -13,6 +13,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y lua5.1
       - name: Test server directory and Lua addon
         run: ./scripts/test.sh
+      - name: Test AutoBalance summoner lifetime
+        run: ASAN_OPTIONS=detect_leaks=0 python3 fixes/mod-autobalance/tests/summoner_lifetime_test.py
       - name: Verify complete addon packaging
         run: |
           python3 scripts/package-addon.py

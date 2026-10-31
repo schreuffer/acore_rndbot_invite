@@ -81,3 +81,9 @@ cmake --build /home/karsten/azerothcore-wotlk/build --target worldserver -j2
 
 Apply only to a clean baseline checkout. The development workspace already contains the feature; do
 not apply its patch again there. For a fresh stack, configure the normal Playerbot-core CMake tree first.
+
+## Stratholme Restless Soul crash fix
+
+A separate AutoBalance lifetime fix and server candidate are documented in
+[Restless Soul crash investigation](docs/restless-soul-crash.md). This addresses the captured
+server crash when using Egan's Blaster; it does not require an addon update.
